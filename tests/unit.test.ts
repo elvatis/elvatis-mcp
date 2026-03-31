@@ -13,6 +13,9 @@ import assert from 'node:assert/strict';
 import { matchRules, ROUTING_RULES, KNOWN_AGENTS, ROUTING_GUIDE } from '../src/tools/routing-rules.js';
 import { handlePromptSplit } from '../src/tools/splitter.js';
 import { handleMcpHelp } from '../src/tools/help.js';
+import {
+  initRateLimiter, checkRateLimit, recordUsage, getAllQuotas, getCostSummary,
+} from '../src/rate-limiter.js';
 import type { Config } from '../src/config.js';
 
 // Minimal config stub for heuristic-only tests (no SSH/HTTP needed)
@@ -309,5 +312,81 @@ describe('mcp_help', () => {
     const result = await handleMcpHelp({ task: 'check my stock portfolio and current positions' });
     assert.ok(result.recommendation, 'should have recommendation');
     assert.ok(result.recommendation!.includes('openclaw_run'), 'should recommend openclaw_run');
+  });
+});
+
+// ============================================================================
+// Rate limiter — usage tracking and quota enforcement
+// ============================================================================
+
+describe('rate limiter', () => {
+  // Use a temp dir that doesn't exist (no file I/O side effects)
+  const tempDir = '/tmp/elvatis-mcp-test-' + Date.now();
+
+  it('initializes without errors', () => {
+    initRateLimiter({ dataDir: tempDir, limits: {} });
+  });
+
+  it('allows calls when under limit', () => {
+    initRateLimiter({ dataDir: tempDir, limits: {} });
+    const quota = checkRateLimit('gemini_run');
+    assert.equal(quota.allowed, true);
+    assert.equal(quota.usage.lastMinute, 0);
+  });
+
+  it('tracks usage after recordUsage', () => {
+    initRateLimiter({ dataDir: tempDir, limits: {} });
+    recordUsage('gemini_run');
+    recordUsage('gemini_run');
+    const quota = checkRateLimit('gemini_run');
+    assert.equal(quota.usage.lastMinute, 2);
+    assert.equal(quota.usage.lastHour, 2);
+  });
+
+  it('enforces per-minute rate limit', () => {
+    initRateLimiter({ dataDir: tempDir, limits: { gemini_run: { perMinute: 2 } } });
+    recordUsage('gemini_run');
+    recordUsage('gemini_run');
+    const quota = checkRateLimit('gemini_run');
+    assert.equal(quota.allowed, false);
+    assert.ok(quota.reason?.includes('minute'));
+  });
+
+  it('does not rate-limit local agents', () => {
+    initRateLimiter({ dataDir: tempDir, limits: {} });
+    const quota = checkRateLimit('local_llm_run');
+    assert.equal(quota.allowed, true);
+    assert.equal(quota.limits.perMinute, 0, 'no limits for local agents');
+  });
+
+  it('does not rate-limit home tools', () => {
+    const quota = checkRateLimit('home_light');
+    assert.equal(quota.allowed, true);
+  });
+
+  it('tracks costs per agent', () => {
+    initRateLimiter({ dataDir: tempDir, limits: {} });
+    recordUsage('claude_run');
+    recordUsage('claude_run');
+    const summary = getCostSummary();
+    assert.ok(summary.total > 0, 'should have non-zero cost');
+    assert.ok(summary.agents['claude_run']! > 0, 'should track claude_run cost');
+  });
+
+  it('getAllQuotas returns info for all cloud agents', () => {
+    initRateLimiter({ dataDir: tempDir, limits: {} });
+    const quotas = getAllQuotas();
+    const agents = quotas.map(q => q.agent);
+    assert.ok(agents.includes('claude_run'));
+    assert.ok(agents.includes('codex_run'));
+    assert.ok(agents.includes('gemini_run'));
+  });
+
+  it('respects custom limit overrides', () => {
+    initRateLimiter({ dataDir: tempDir, limits: { codex_run: { perMinute: 1 } } });
+    recordUsage('codex_run');
+    const quota = checkRateLimit('codex_run');
+    assert.equal(quota.allowed, false);
+    assert.equal(quota.limits.perMinute, 1);
   });
 });

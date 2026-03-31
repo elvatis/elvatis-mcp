@@ -53,9 +53,11 @@ src/
     llama-server.ts   <- llama_server: start/stop llama.cpp server for local inference
     splitter.ts       <- prompt_split: analyze complex prompts, split into sub-tasks with agent routing
     routing-rules.ts  <- Shared routing rules, keyword matching, agent constants (used by help + splitter)
+    split-execute.ts  <- prompt_split_execute: execute a SplitPlan with agent dispatch and rate limiting
     help.ts           <- mcp_help routing guide and task-to-tool recommender
     system-status.ts  <- system_status: check host system health (CPU, RAM, disk, GPU)
     file-transfer.ts  <- file_transfer: upload/download files to/from OpenClaw server via SCP
+  rate-limiter.ts     <- Rate limiting + cost tracking for cloud sub-agents (persistent JSON storage)
 ```
 
 ## Client Support

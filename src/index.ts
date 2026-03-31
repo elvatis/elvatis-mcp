@@ -116,6 +116,14 @@ import {
   promptSplitSchema, handlePromptSplit,
 } from './tools/splitter.js';
 
+import {
+  splitExecuteSchema, handleSplitExecute,
+} from './tools/split-execute.js';
+
+import {
+  initRateLimiter, checkRateLimit, recordUsage, getAllQuotas, getCostSummary, flushNow,
+} from './rate-limiter.js';
+
 function toText(result: unknown): string {
   return JSON.stringify(result, null, 2);
 }
@@ -145,6 +153,16 @@ function registerTool(
 
 async function main() {
   const config = loadConfig();
+
+  // Initialize rate limiter with persistent storage
+  initRateLimiter({
+    dataDir: config.dataDir,
+    limits: config.rateLimits,
+  });
+
+  // Flush usage data on shutdown
+  process.on('SIGINT', () => { flushNow(); process.exit(0); });
+  process.on('SIGTERM', () => { flushNow(); process.exit(0); });
 
   const server = new McpServer({
     name: 'elvatis-mcp',
@@ -254,7 +272,13 @@ async function main() {
   registerTool(server, 'gemini_run',
     'Send a prompt to Google Gemini via the local gemini CLI. Fast, direct LLM call with no OpenClaw overhead. Uses cached Google auth — no API key required.',
     geminiRunSchema.shape,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleGeminiRun(args as any, config)) }] })
+    async (args) => {
+      const quota = checkRateLimit('gemini_run');
+      if (!quota.allowed) return { content: [{ type: 'text', text: toText({ success: false, error: quota.reason, quota }) }] };
+      const result = await handleGeminiRun(args as any, config);
+      recordUsage('gemini_run');
+      return { content: [{ type: 'text', text: toText(result) }] };
+    }
   );
 
   // --- Codex sub-agent (local spawn) ---
@@ -262,7 +286,13 @@ async function main() {
   registerTool(server, 'codex_run',
     'Send a task to OpenAI Codex via the local codex CLI. Specializes in coding tasks, file operations, and technical analysis. Uses cached OpenAI auth — no API key required.',
     codexRunSchema.shape,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleCodexRun(args as any, config)) }] })
+    async (args) => {
+      const quota = checkRateLimit('codex_run');
+      if (!quota.allowed) return { content: [{ type: 'text', text: toText({ success: false, error: quota.reason, quota }) }] };
+      const result = await handleCodexRun(args as any, config);
+      recordUsage('codex_run');
+      return { content: [{ type: 'text', text: toText(result) }] };
+    }
   );
 
   // --- Claude sub-agent (for non-Claude MCP clients like Cursor, Windsurf) ---
@@ -270,7 +300,13 @@ async function main() {
   registerTool(server, 'claude_run',
     'Send a prompt to Claude via the local Claude Code CLI. Use this when the MCP client is NOT Claude (e.g. Cursor, Windsurf, Zed) or for cross-checking results from other AI backends. Uses cached Anthropic auth.',
     claudeRunSchema.shape,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleClaudeRun(args as any)) }] })
+    async (args) => {
+      const quota = checkRateLimit('claude_run');
+      if (!quota.allowed) return { content: [{ type: 'text', text: toText({ success: false, error: quota.reason, quota }) }] };
+      const result = await handleClaudeRun(args as any);
+      recordUsage('claude_run');
+      return { content: [{ type: 'text', text: toText(result) }] };
+    }
   );
 
   // --- Local LLM sub-agent ---
@@ -298,6 +334,15 @@ async function main() {
     + 'Strategy: "auto" (default), "gemini", "local", or "heuristic".',
     promptSplitSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handlePromptSplit(args as any, config)) }] })
+  );
+
+  registerTool(server, 'prompt_split_execute',
+    'Execute a prompt_split plan: runs subtasks in dependency order, dispatches to the correct sub-agent, '
+    + 'passes results between dependent tasks, and enforces rate limits on cloud agents. '
+    + 'Provide a "plan" from prompt_split, or just a "prompt" to generate and execute in one step. '
+    + 'Use "overrides" to change agent/model/prompt per task or skip tasks. Set dry_run=true to preview.',
+    splitExecuteSchema.shape,
+    async (args, extra) => ({ content: [{ type: 'text', text: toText(await handleSplitExecute(args as any, config, extra)) }] })
   );
 
   // --- System management ---

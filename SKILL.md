@@ -83,11 +83,12 @@ Local sub-agents for delegating tasks to different AI backends.
 | `system_status` | Check host system health (CPU, RAM, disk, GPU) |
 | `file_transfer` | Upload/download files to/from OpenClaw server via SCP |
 
-### Routing and Orchestration (`mcp_help`, `prompt_split`)
+### Routing and Orchestration (`mcp_help`, `prompt_split`, `prompt_split_execute`)
 | Tool | Description |
 |---|---|
 | `mcp_help` | List all tools with routing guide and task recommendations |
 | `prompt_split` | Analyze a complex prompt, split into sub-tasks with agent assignments and dependency ordering |
+| `prompt_split_execute` | Execute a prompt_split plan: dispatches subtasks to agents in dependency order with rate limiting |
 
 ## Setup
 
@@ -97,4 +98,4 @@ Local sub-agents for delegating tasks to different AI backends.
 
 See `README.md` for full configuration reference and client setup instructions.
 
-**Version:** 0.8.0
+**Version:** 1.0.0

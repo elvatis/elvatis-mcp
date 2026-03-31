@@ -49,6 +49,11 @@ export interface Config {
   localLlmEndpoint?: string;
   /** Default model identifier for the local LLM (as shown in LM Studio / Ollama) */
   localLlmModel?: string;
+  // --- Rate limiting ---
+  /** Directory for persistent data (usage.json). Default: ~/.elvatis-mcp */
+  dataDir?: string;
+  /** Per-agent rate limit overrides. Keys: claude_run, codex_run, gemini_run */
+  rateLimits?: Record<string, { perMinute?: number; perHour?: number; perDay?: number; costPerCall?: number }>;
 }
 
 export function loadConfig(): Config {
@@ -76,5 +81,21 @@ export function loadConfig(): Config {
     // Local LLM (LM Studio default port: 1234, Ollama: 11434, llama.cpp: 8080)
     localLlmEndpoint: optional('LOCAL_LLM_ENDPOINT'),
     localLlmModel: optional('LOCAL_LLM_MODEL'),
+    // Rate limiting
+    dataDir: optional('ELVATIS_DATA_DIR'),
+    rateLimits: parseRateLimits(optional('RATE_LIMITS')),
   };
+}
+
+/** Parse RATE_LIMITS env var (JSON string) into per-agent config. */
+function parseRateLimits(
+  raw?: string,
+): Record<string, { perMinute?: number; perHour?: number; perDay?: number; costPerCall?: number }> | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    process.stderr.write(`[elvatis-mcp] Warning: RATE_LIMITS env var is not valid JSON, ignoring\n`);
+    return undefined;
+  }
 }
