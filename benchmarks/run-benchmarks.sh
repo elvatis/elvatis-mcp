@@ -21,14 +21,14 @@ RESULTS_FILE="benchmarks/results-$(date +%Y%m%d-%H%M%S).json"
 # Models to test (order: smallest to largest)
 # Add or remove models here to match what you have downloaded
 MODELS=(
-  "microsoft/phi-4-mini-reasoning"
-  "nvidia/nemotron-3-nano-4b"
   "qwen/qwen3.5-9b"
   "deepseek/deepseek-r1-0528-qwen3-8b"
-  "mistralai/ministral-3-14b-reasoning"
   "microsoft/phi-4-reasoning-plus"
   "openai/gpt-oss-20b"
+  "microsoft/phi-4-mini-reasoning"
 )
+# Excluded: nvidia/nemotron-3-nano-4b (nemotron_h arch unsupported by llama.cpp 2.8)
+# Excluded: mistralai/ministral-3-14b-reasoning (mistral3 arch unsupported, 9GB RAM, slow to load)
 
 # Max tokens to prevent runaway generation from reasoning models
 MAX_TOKENS=512
@@ -61,8 +61,18 @@ FIRST=true
 for MODEL in "${MODELS[@]}"; do
   echo ""
   echo ">>> Unloading all models..."
+  # Run unload twice and poll until truly empty
   lms unload -a 2>/dev/null || true
-  sleep 2
+  sleep 1
+  lms unload -a 2>/dev/null || true
+  for WAIT in $(seq 1 20); do
+    COUNT=$(lms ps 2>&1 | grep -cE "GENERATING|IDLE|LOADING|PROCESSINGPROMPT" || true)
+    if [ "$COUNT" -eq 0 ]; then break; fi
+    echo "    waiting for unload... ($WAIT)"
+    sleep 2
+    lms unload -a 2>/dev/null || true
+  done
+  echo "    All models unloaded."
 
   # Use --identifier to pin the API name and avoid duplicate :2 instances
   IDENTIFIER="${MODEL//\//-}"
@@ -104,8 +114,8 @@ for MODEL in "${MODELS[@]}"; do
       END=$(date +%s%3N)
 
       MS=$((END - START))
-      TOTAL_TOK=$(echo "$RESPONSE" | grep -o '"total_tokens":[0-9]*' | head -1 | cut -d: -f2)
-      COMP_TOK=$(echo "$RESPONSE" | grep -o '"completion_tokens":[0-9]*' | head -1 | cut -d: -f2)
+      TOTAL_TOK=$(echo "$RESPONSE" | grep -o '"total_tokens": *[0-9]*' | head -1 | grep -o '[0-9]*$')
+      COMP_TOK=$(echo "$RESPONSE" | grep -o '"completion_tokens": *[0-9]*' | head -1 | grep -o '[0-9]*$')
 
       TIMES+=($MS)
       TOKENS+=("${TOTAL_TOK:-0}")
@@ -120,7 +130,7 @@ for MODEL in "${MODELS[@]}"; do
 
     # Compute tokens/sec
     if [ "$MEDIAN" -gt 0 ] && [ "${MEDIAN_COMP:-0}" -gt 0 ]; then
-      TPS=$(echo "scale=1; $MEDIAN_COMP * 1000 / $MEDIAN" | bc 2>/dev/null || echo "?")
+      TPS=$(awk "BEGIN {printf \"%.1f\", $MEDIAN_COMP * 1000 / $MEDIAN}" 2>/dev/null || echo "?")
     else
       TPS="?"
     fi

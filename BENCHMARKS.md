@@ -11,7 +11,7 @@ Performance data for local LLM inference via elvatis-mcp on consumer and worksta
 | RAM | 128 GB DDR4 |
 | GPU | AMD Radeon RX 9070 XT Elite (16 GB GDDR6) |
 | OS | Windows 11 Pro |
-| Runtime | LM Studio with ROCm (`llama.cpp-win-x86_64-amd-rocm-avx2@2.8.0`) |
+| Runtime | LM Studio with ROCm and Vulkan (`llama.cpp 2.8.0`) |
 
 ## Local LLM Inference Benchmarks
 
@@ -28,17 +28,34 @@ Each test runs 3 times; the **median** is reported.
 | **reason** | "A farmer has 17 sheep. All but 9 die. How many are left?" | Short arithmetic reasoning |
 | **code** | "Write a Python function to validate an IPv4 address" | Code generation |
 
-### ROCm Runtime Results (AMD Radeon RX 9070 XT Elite, 16 GB VRAM)
+### ROCm vs Vulkan Comparison (AMD Radeon RX 9070 XT Elite, 16 GB VRAM)
 
-All models loaded with `--gpu max`. Median of 3 runs. `max_tokens=512`.
+All models loaded with `--gpu max`, one at a time. Median of 3 runs. `max_tokens=512`.
 
-| Model | Params | Size | classify | extract | reason | code | Notes |
-|-------|--------|------|----------|---------|--------|------|-------|
-| Phi 4 Mini Reasoning | 3B | 2.5 GB | 3.9s | 5.1s | 8.6s | 8.5s | Solid all-rounder, great for simple tasks |
-| Qwen 3.5 9B | 9B | 6.6 GB | 4.9s | 11.2s | 6.6s | 11.4s | Strong reasoning, slower on long output |
-| Deepseek R1 0528 Qwen3 | 8B | 5.0 GB | 2.5s | 7.7s | 13.3s | 7.3s | Reasoning model, CoT adds time on reason |
-| Phi 4 Reasoning Plus | 15B | 9.1 GB | 0.4s | 17.4s | 4.5s | 17.3s | Fastest classify/reason, slow on long output |
-| GPT-OSS 20B | 20B | 12.1 GB | **0.6s** | **0.7s** | **0.7s** | **3.1s** | **Fastest overall** despite being the largest |
+#### Latency (median ms)
+
+| Model | Params | Size | Runtime | classify | extract | reason | code |
+|-------|--------|------|---------|----------|---------|--------|------|
+| Phi 4 Mini Reasoning | 3B | 2.5 GB | ROCm | 4459ms | 5541ms | 9164ms | 9173ms |
+| | | | Vulkan | **2607ms** | **1857ms** | **4709ms** | **4790ms** |
+| Qwen 3.5 9B | 9B | 6.6 GB | ROCm | **3419ms** | 7615ms | **4548ms** | 7718ms |
+| | | | Vulkan | 6235ms | **3977ms** | 8359ms | **7192ms** |
+| Deepseek R1 0528 Qwen3 | 8B | 5.0 GB | ROCm | 2550ms | 8275ms | 13736ms | 7928ms |
+| | | | Vulkan | **2954ms** | **6529ms** | **7225ms** | **7359ms** |
+| Phi 4 Reasoning Plus | 15B | 9.1 GB | ROCm | 378ms | 17955ms | 4511ms | 17945ms |
+| | | | Vulkan | **375ms** | **9662ms** | **3545ms** | **9943ms** |
+| GPT-OSS 20B | 20B | 12.1 GB | ROCm | 626ms | 703ms | 674ms | 3233ms |
+| | | | Vulkan | **593ms** | **641ms** | **640ms** | **1860ms** |
+
+#### Throughput (tok/s)
+
+| Model | Params | ROCm avg tok/s | Vulkan avg tok/s | Winner |
+|-------|--------|---------------|-----------------|--------|
+| Phi 4 Mini Reasoning | 3B | 48 | **106** | **Vulkan 2.2x** |
+| Qwen 3.5 9B | 9B | **65** | 48 | ROCm 1.4x |
+| Deepseek R1 0528 Qwen3 | 8B | 43 | **70** | **Vulkan 1.6x** |
+| Phi 4 Reasoning Plus | 15B | 25 | **40** | **Vulkan 1.6x** |
+| GPT-OSS 20B | 20B | 55 | **63** | **Vulkan 1.1x** |
 
 ### CPU Baseline (AMD Threadripper 3960X, no GPU)
 
@@ -46,21 +63,24 @@ All models loaded with `--gpu max`. Median of 3 runs. `max_tokens=512`.
 |-------|--------|----------|---------|-------|
 | Deepseek R1 0528 Qwen3 | 8B | ~21s | ~25s | CPU-only, all 48 threads |
 
-### GPU Speedup (ROCm vs CPU, Deepseek R1 8B)
+### GPU Speedup (Vulkan vs CPU, Deepseek R1 8B)
 
-| Metric | CPU | GPU (ROCm) | Speedup |
-|--------|-----|-----------|---------|
-| classify | ~21s | 2.5s | **8.4x** |
-| extract | ~25s | 7.7s | **3.2x** |
+| Metric | CPU | GPU (Vulkan) | Speedup |
+|--------|-----|-------------|---------|
+| classify | ~21s | 2.9s | **7.2x** |
+| extract | ~25s | 6.5s | **3.8x** |
 
 ### Highlights
 
-- **GPT-OSS 20B** is the fastest model overall at 0.6-3.1s despite being 12 GB — the `gpt-oss` architecture is highly optimized for GPU
-- **Phi 4 Reasoning Plus 15B** is extremely fast on short answers (0.4s classify) but slower on longer outputs like code (17s)
-- **Deepseek R1 8B** has longer reason times (13s) due to chain-of-thought thinking tokens before the final answer
-- For `prompt_split` routing: use **GPT-OSS 20B** or **Phi 4 Mini** for fast classify/extract tasks; use **Qwen 3.5-9B** or **Phi 4 Reasoning Plus** for quality reasoning
+- **Vulkan wins 4 of 5 models**, often by significant margins. Phi 4 Mini sees a 2.2x throughput increase on Vulkan
+- **ROCm wins only on Qwen 3.5 9B** (the `qwen35` architecture may be better optimized for ROCm)
+- **GPT-OSS 20B** remains the fastest model overall at 0.6-1.9s despite being 12 GB
+- **Phi 4 Mini on Vulkan** hits **106 tok/s**, the highest throughput measured
+- **Phi 4 Reasoning Plus** benefits hugely from Vulkan on long outputs: extract drops from 18s to 10s
+- For `prompt_split` routing: use **GPT-OSS 20B** for fast classify/extract; use **Phi 4 Mini (Vulkan)** for best throughput per watt
+- **Recommendation:** Use Vulkan as the default runtime on AMD RX 9070 XT unless running Qwen models
 
-> Full Vulkan vs ROCm comparison: run `bash benchmarks/run-benchmarks.sh vulkan` after switching runtime in LM Studio.
+> Switch runtimes: `lms runtime select llama.cpp-win-x86_64-vulkan-avx2@2.8.0`
 
 ## prompt_split Accuracy Benchmark
 
@@ -89,29 +109,27 @@ npx tsx benchmarks/test-prompt-split.ts --strategy gemini
 npx tsx benchmarks/test-prompt-split.ts --verbose --save
 ```
 
-### Heuristic Strategy Results (ThreadripperStation)
+### Heuristic Strategy Results (ThreadripperStation, v0.9.0)
 
-No LLM required - pure keyword scoring, runs in under 1ms per prompt.
+No LLM required. Uses word boundary matching, comma-clause splitting, and per-tool routing rules. Runs in under 1ms per prompt.
 
 | Category | Cases | Pass Rate | Notes |
 |----------|-------|-----------|-------|
-| single-domain | 3 | 2/3 (67%) | "classify" keyword tied with "review" in "reviews" - claude_run wins by insertion order |
+| single-domain | 3 | 3/3 (100%) | |
 | multi-domain-sequential | 1 | 1/1 (100%) | |
 | multi-domain-parallel | 1 | 1/1 (100%) | |
 | multi-domain-mixed | 1 | 1/1 (100%) | |
-| multi-domain-pipeline | 1 | 0/1 (0%) | Splits into 3/4 tasks; wrong first agent (memory_write vs memory_search) |
-| full-orchestration | 1 | 0/1 (0%) | Comma-separated 5-way prompt not split (no "then"/"also" markers) |
+| multi-domain-pipeline | 1 | 1/1 (100%) | |
+| full-orchestration | 1 | 1/1 (100%) | 5-way comma-separated split works |
 | cost-optimization | 1 | 1/1 (100%) | |
-| home-automation | 1 | 0/1 (0%) | Conditional "if CO2 > 1000ppm..." collapses to 2 tasks instead of 4 |
-| **Total** | **10** | **6/10 (60%)** | **<1ms avg latency** |
+| home-automation | 1 | 1/1 (100%) | Conditional "if CO2..." splits correctly |
+| **Total** | **10** | **10/10 (100%)** | **<1ms avg latency** |
 
-Known heuristic limitations:
-- Keyword scoring uses substring match ("reviews" matches "review" in claude_run keywords)
-- Does not split on comma-only separators without explicit "then"/"also" connectors
-- Cannot distinguish `openclaw_memory_search` from `openclaw_memory_write` (same rule group)
-- Conditional logic ("if X then Y") collapses to fewer tasks
-
-The `auto` strategy (Gemini or local LLM) handles all these cases correctly.
+Improvements in v0.8.0+:
+- Word boundary regex matching (no more partial matches like "reviews" matching "review")
+- Comma-clause splitting for multi-agent prompts (splits when clauses route to different agents)
+- Individual routing rules per tool (home_light, home_climate, etc. instead of combined entries)
+- Added `openclaw_notify` routing for WhatsApp/Telegram notifications
 
 > Run `npx tsx benchmarks/test-prompt-split.ts --save` and submit your results as a PR.
 
@@ -172,16 +190,16 @@ All agents tested on the same 5 tasks. Local LLM uses GPT-OSS 20B with ROCm GPU 
 
 > Community contributors: run `npx tsx benchmarks/test-subagents.ts --save` and submit results as a PR.
 
-### Orchestration Results (heuristic strategy, ThreadripperStation)
+### Orchestration Results (heuristic strategy, ThreadripperStation, v0.9.0)
 
 | Scenario | Expected Tasks | Got | Latency | Status |
 |----------|---------------|-----|---------|--------|
 | Single agent routing | 1 | 1 | <1ms | PASS |
 | Sequential 2-agent plan | 2 | 2 | <1ms | PASS |
 | Parallel 2-agent plan | 2 | 2 | <1ms | PASS |
-| 4-agent memory pipeline | 4 | 3 | <1ms | PARTIAL |
+| 4-agent memory pipeline | 4 | 4 | <1ms | PASS |
 
-Heuristic gets 3/4 correct instantly. The `auto` strategy (Gemini/local LLM) handles the 4-agent pipeline correctly.
+All 4 orchestration scenarios pass with the improved heuristic.
 
 ## How to Reproduce
 
@@ -211,14 +229,16 @@ Results are saved to `benchmarks/results-YYYYMMDD-HHMMSS.json`.
 The benchmark script tests these models by default (skips any not downloaded):
 
 ```
-microsoft/phi-4-mini-reasoning        3B   - fast, great for simple tasks
-nvidia/nemotron-3-nano-4b             4B   - NVIDIA Nemotron (arch: nemotron_h, needs llama.cpp update)
 qwen/qwen3.5-9b                       9B   - strong multilingual reasoning
 deepseek/deepseek-r1-0528-qwen3-8b    8B   - DeepSeek reasoning distilled
-mistralai/ministral-3-14b-reasoning   14B  - Mistral reasoning (arch: mistral3, needs llama.cpp update)
 microsoft/phi-4-reasoning-plus        15B  - quality reasoning
 openai/gpt-oss-20b                    20B  - OpenAI open-source, fastest on GPU
+microsoft/phi-4-mini-reasoning        3B   - fast, great for simple tasks (loaded last)
 ```
+
+Models excluded from benchmarks:
+- `nvidia/nemotron-3-nano-4b` (nemotron_h architecture unsupported by llama.cpp 2.8)
+- `mistralai/ministral-3-14b-reasoning` (mistral3 architecture unsupported, 9 GB RAM, slow to load)
 
 ## Community Contributions
 
@@ -241,7 +261,7 @@ benchmarks/results/
 | Platform | Runtime | Status |
 |----------|---------|--------|
 | AMD RX 9070 XT Elite (16 GB) | ROCm llama.cpp 2.8 | **Reference (this repo)** |
-| AMD RX 9070 XT Elite (16 GB) | Vulkan | Wanted |
+| AMD RX 9070 XT Elite (16 GB) | Vulkan | **Done (this repo)** |
 | NVIDIA RTX 4090 | CUDA | Wanted |
 | NVIDIA RTX 3080 | CUDA | Wanted |
 | Apple M3 Max | Metal | Wanted |
@@ -252,8 +272,10 @@ benchmarks/results/
 
 ## Roadmap
 
-- [ ] Add `tokens_per_second` column to all results
-- [ ] Vulkan vs ROCm comparison table
+- [x] Add `tokens_per_second` column to all results
+- [x] Vulkan vs ROCm comparison table
+- [x] prompt_split heuristic accuracy 100% (v0.8.0)
 - [ ] Automated CI benchmark job (self-hosted runner)
 - [ ] prompt_split accuracy results for gemini and local strategies
 - [ ] Context length scaling benchmarks (8k / 32k / 128k)
+- [ ] NVIDIA CUDA comparison (community contribution)

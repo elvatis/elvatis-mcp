@@ -1,0 +1,263 @@
+[
+
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 6235,
+    "total_tokens": 299,
+    "completion_tokens": 256,
+    "tokens_per_sec": "41.1",
+    "runs_ms": [6235, 5644, 6256]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 3977,
+    "total_tokens": 219,
+    "completion_tokens": 173,
+    "tokens_per_sec": "43.5",
+    "runs_ms": [10892, 3977, 3964]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 8359,
+    "total_tokens": 548,
+    "completion_tokens": 512,
+    "tokens_per_sec": "61.3",
+    "runs_ms": [6565, 10864, 8359]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 7192,
+    "total_tokens": 371,
+    "completion_tokens": 331,
+    "tokens_per_sec": "46.0",
+    "runs_ms": [7934, 7192, 7158]
+  }
+,
+  {
+    "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+    "loaded_id": "deepseek-deepseek-r1-0528-qwen3-8b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 2954,
+    "total_tokens": 239,
+    "completion_tokens": 209,
+    "tokens_per_sec": "70.8",
+    "runs_ms": [3016, 2954, 2934]
+  }
+,
+  {
+    "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+    "loaded_id": "deepseek-deepseek-r1-0528-qwen3-8b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 6529,
+    "total_tokens": 493,
+    "completion_tokens": 460,
+    "tokens_per_sec": "70.5",
+    "runs_ms": [6557, 6529, 6495]
+  }
+,
+  {
+    "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+    "loaded_id": "deepseek-deepseek-r1-0528-qwen3-8b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 7225,
+    "total_tokens": 540,
+    "completion_tokens": 512,
+    "tokens_per_sec": "70.9",
+    "runs_ms": [7387, 7225, 7211]
+  }
+,
+  {
+    "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+    "loaded_id": "deepseek-deepseek-r1-0528-qwen3-8b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 7359,
+    "total_tokens": 539,
+    "completion_tokens": 512,
+    "tokens_per_sec": "69.6",
+    "runs_ms": [7359, 7346, 7416]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 375,
+    "total_tokens": 268,
+    "completion_tokens": 2,
+    "tokens_per_sec": "5.3",
+    "runs_ms": [1579, 375, 374]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 9662,
+    "total_tokens": 767,
+    "completion_tokens": 499,
+    "tokens_per_sec": "51.6",
+    "runs_ms": [9674, 9662, 9530]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 3545,
+    "total_tokens": 439,
+    "completion_tokens": 176,
+    "tokens_per_sec": "49.6",
+    "runs_ms": [3670, 3545, 3543]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 9943,
+    "total_tokens": 774,
+    "completion_tokens": 512,
+    "tokens_per_sec": "51.5",
+    "runs_ms": [9943, 9859, 14871]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 593,
+    "total_tokens": 131,
+    "completion_tokens": 29,
+    "tokens_per_sec": "48.9",
+    "runs_ms": [1707, 593, 591]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 641,
+    "total_tokens": 139,
+    "completion_tokens": 35,
+    "tokens_per_sec": "54.6",
+    "runs_ms": [721, 633, 641]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 640,
+    "total_tokens": 127,
+    "completion_tokens": 35,
+    "tokens_per_sec": "54.7",
+    "runs_ms": [969, 634, 640]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 1860,
+    "total_tokens": 270,
+    "completion_tokens": 171,
+    "tokens_per_sec": "91.9",
+    "runs_ms": [2352, 1845, 1860]
+  }
+,
+  {
+    "model": "microsoft/phi-4-mini-reasoning",
+    "loaded_id": "microsoft-phi-4-mini-reasoning",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 2607,
+    "total_tokens": 322,
+    "completion_tokens": 276,
+    "tokens_per_sec": "105.9",
+    "runs_ms": [2678, 2607, 2591]
+  }
+,
+  {
+    "model": "microsoft/phi-4-mini-reasoning",
+    "loaded_id": "microsoft-phi-4-mini-reasoning",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 1857,
+    "total_tokens": 237,
+    "completion_tokens": 189,
+    "tokens_per_sec": "101.8",
+    "runs_ms": [1857, 1861, 1842]
+  }
+,
+  {
+    "model": "microsoft/phi-4-mini-reasoning",
+    "loaded_id": "microsoft-phi-4-mini-reasoning",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 4709,
+    "total_tokens": 555,
+    "completion_tokens": 512,
+    "tokens_per_sec": "108.7",
+    "runs_ms": [4693, 4709, 4714]
+  }
+,
+  {
+    "model": "microsoft/phi-4-mini-reasoning",
+    "loaded_id": "microsoft-phi-4-mini-reasoning",
+    "runtime": "vulkan",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 4790,
+    "total_tokens": 555,
+    "completion_tokens": 512,
+    "tokens_per_sec": "106.9",
+    "runs_ms": [4790, 4791, 4694]
+  }
+
+]

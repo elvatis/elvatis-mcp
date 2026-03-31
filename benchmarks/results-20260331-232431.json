@@ -1,0 +1,157 @@
+[
+
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 4945,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [31294, 4945, 296]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 288,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [296, 288, 285]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 282,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [278, 282, 285]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 277,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [275, 277, 287]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 622,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [1832, 622, 608]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 290,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [11142, 284, 290]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 285,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [285, 285, 290]
+  }
+,
+  {
+    "model": "microsoft/phi-4-reasoning-plus",
+    "loaded_id": "microsoft-phi-4-reasoning-plus",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 284,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [289, 282, 284]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 349,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [320, 349, 359]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 358,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [297, 400, 358]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 423,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [423, 423, 366]
+  }
+,
+  {
+    "model": "openai/gpt-oss-20b",
+    "loaded_id": "openai-gpt-oss-20b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 283,
+    "total_tokens": 0,
+    "completion_tokens": 0,
+    "tokens_per_sec": "?",
+    "runs_ms": [283, 287, 278]
+  }

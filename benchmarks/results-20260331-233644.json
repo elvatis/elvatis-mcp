@@ -1,0 +1,53 @@
+[
+
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "classify",
+    "median_ms": 3364,
+    "total_tokens": 255,
+    "completion_tokens": 212,
+    "tokens_per_sec": "?",
+    "runs_ms": [3364, 3743, 3305]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "extract",
+    "median_ms": 7575,
+    "total_tokens": 558,
+    "completion_tokens": 512,
+    "tokens_per_sec": "?",
+    "runs_ms": [7575, 8274, 7521]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "reason",
+    "median_ms": 4534,
+    "total_tokens": 328,
+    "completion_tokens": 292,
+    "tokens_per_sec": "?",
+    "runs_ms": [4477, 4917, 4534]
+  }
+,
+  {
+    "model": "qwen/qwen3.5-9b",
+    "loaded_id": "qwen-qwen3.5-9b",
+    "runtime": "rocm",
+    "gpu": "max",
+    "test": "code",
+    "median_ms": 7695,
+    "total_tokens": 552,
+    "completion_tokens": 512,
+    "tokens_per_sec": "?",
+    "runs_ms": [7642, 8410, 7695]
+  }
