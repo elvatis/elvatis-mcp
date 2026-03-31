@@ -245,6 +245,15 @@ Median of 3 runs, `max_tokens=512`. Tasks: classify (1-word sentiment), extract 
 
 **GPU speedup vs CPU (Deepseek R1 8B):** classify 8.4x faster, extract 3.2x faster.
 
+### Sub-Agent Comparison (same task, different backends)
+
+| Agent | Backend | Avg Latency | Cost | Notes |
+|-------|---------|-------------|------|-------|
+| **local_llm_run** | GPT-OSS 20B (ROCm GPU) | **1.3s** | Free | 3x faster than Codex, 5x faster than Claude |
+| codex_run | OpenAI Codex CLI | 4.1s | Pay-per-use | Best for coding tasks |
+| claude_run | Claude Sonnet 4.6 | 6.3s | Pay-per-use | Best for complex reasoning |
+| gemini_run | Gemini 2.5 Flash | 34.0s | Free tier | CLI startup overhead, best for long context |
+
 ### Service Latency (system_status)
 
 | Service | Latency | Notes |

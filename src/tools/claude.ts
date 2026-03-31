@@ -39,7 +39,6 @@ export async function handleClaudeRun(
   const cliArgs = [
     '-p', args.prompt,
     '--output-format', 'json',
-    '--bare',           // skip hooks, LSP, auto-memory (clean sub-agent call)
     '--max-turns', '1', // single turn, no tool use loops
   ];
   if (args.model) cliArgs.push('--model', args.model);
