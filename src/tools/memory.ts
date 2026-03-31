@@ -66,11 +66,12 @@ export async function handleMemoryReadToday(_args: Record<string, never>, config
 export async function handleMemorySearch(args: { query: string; days: number }, config: Config) {
   const cfg = toSshCfg(config);
 
-  // List recent memory files
+  // List recent memory files. Let SSH errors propagate so the caller sees a real error
+  // instead of silently returning empty results when the connection is down.
   const listing = await sshExec(
     cfg,
     `ls ${MEMORY_DIR}/*.md 2>/dev/null | sort -r | head -${args.days}`,
-  ).catch(() => '');
+  );
 
   const files = listing.trim().split('\n').filter(Boolean);
   if (files.length === 0) return { results: [], query: args.query };
@@ -79,8 +80,9 @@ export async function handleMemorySearch(args: { query: string; days: number }, 
 
   for (const file of files) {
     const date = file.replace(/.*\//, '').replace('.md', '');
-    // grep: case-insensitive, first match only, 2 lines context
-    // Exit code 1 means no match (not an error), use || true to keep exit 0
+    // grep: case-insensitive, first match only, 2 lines context.
+    // Exit code 1 means no match (not an error), use || true to keep exit 0.
+    // SSH errors here are per-file; if one file fails we skip it rather than aborting.
     const match = await sshExec(
       cfg,
       `grep -i -m1 -A2 -B1 '${args.query.replace(/'/g, "'\\''")}' ${file} 2>/dev/null || true`,

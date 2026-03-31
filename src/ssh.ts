@@ -2,6 +2,8 @@
  * SSH exec helper — runs shell commands on the OpenClaw server.
  * Uses the system `ssh` binary (OpenSSH, available on Windows 10+, macOS, Linux).
  * No additional npm dependencies required.
+ *
+ * Set SSH_DEBUG=1 in your environment to enable verbose SSH output (-vvv).
  */
 
 import { spawn } from 'child_process';
@@ -22,6 +24,7 @@ export interface SshConfig {
 export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Promise<string> {
   return new Promise((resolve, reject) => {
     const keyPath = cfg.keyPath.replace(/^~/, os.homedir());
+    const debug = process.env['SSH_DEBUG'] === '1';
 
     const args = [
       '-i', keyPath,
@@ -29,11 +32,17 @@ export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Pr
       '-o', 'BatchMode=yes',           // never prompt for password
       '-o', 'ConnectTimeout=8',
       '-p', String(cfg.port),
-      `${cfg.username}@${cfg.host}`,
-      command,
     ];
 
-    const proc = spawn('ssh', args);
+    if (debug) {
+      args.push('-vvv');
+    }
+
+    args.push(`${cfg.username}@${cfg.host}`, command);
+
+    // On Windows, spawn without shell — PATH must contain the ssh binary.
+    // Pass stdio explicitly so both stdout and stderr are always piped.
+    const proc = spawn('ssh', args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
 
@@ -42,13 +51,21 @@ export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Pr
 
     const timer = setTimeout(() => {
       proc.kill();
-      reject(new Error(`SSH command timed out after ${timeoutMs}ms`));
+      reject(new Error(
+        `SSH timed out after ${timeoutMs}ms (host: ${cfg.host}:${cfg.port}, user: ${cfg.username}, key: ${keyPath})`,
+      ));
     }, timeoutMs);
 
     proc.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
-        reject(new Error(`SSH command failed (exit ${code}): ${stderr.trim() || stdout.trim() || 'no output'}`));
+        // Build a helpful error that includes connection details and any output.
+        // Exit 255 = SSH connection-level failure (wrong key, unreachable host, etc.)
+        const detail = stderr.trim() || stdout.trim() || 'no output from ssh';
+        const hint = code === 255
+          ? ` | Tip: verify SSH_HOST (${cfg.host}), SSH_USER (${cfg.username}), SSH_KEY_PATH (${keyPath}) in your .env. Set SSH_DEBUG=1 for verbose logs.`
+          : '';
+        reject(new Error(`SSH failed (exit ${code}) connecting to ${cfg.username}@${cfg.host}:${cfg.port}: ${detail}${hint}`));
       } else {
         resolve(stdout);
       }
@@ -57,7 +74,11 @@ export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Pr
     proc.on('error', (err: NodeJS.ErrnoException) => {
       clearTimeout(timer);
       if (err.code === 'ENOENT') {
-        reject(new Error('ssh binary not found. Install OpenSSH client (Windows: Settings > Optional Features > OpenSSH Client)'));
+        reject(new Error(
+          'ssh binary not found in PATH. ' +
+          'Windows: Settings > Optional Features > OpenSSH Client. ' +
+          'macOS/Linux: should be pre-installed.',
+        ));
       } else {
         reject(err);
       }

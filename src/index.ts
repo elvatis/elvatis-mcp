@@ -15,12 +15,14 @@
  *   MCP_TRANSPORT=http MCP_HTTP_PORT=3333 npx @elvatis_com/elvatis-mcp
  */
 
-// Load .env from the project root (one level up from dist/).
-// Using __dirname (available in CommonJS) so the path is correct
-// regardless of the cwd when Claude Desktop launches the server.
+// Load .env — try multiple locations so it works regardless of cwd or client:
+//   1. <project-root>/.env  — resolved via __dirname from dist/index.js (most reliable)
+//   2. cwd/.env             — fallback for local dev (`node dist/index.js` from repo root)
+// dotenv.config() is a no-op if the file doesn't exist, so ordering is safe.
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config(); // cwd fallback — only loads vars not already set above
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';

@@ -75,6 +75,18 @@ openclaw agents send --message "<prompt>" --local --timeout <seconds>
 ```
 The `--local` flag bypasses the OpenClaw WebSocket gateway and runs the agent turn inline.
 
+**SSH Debugging:** Set `SSH_DEBUG=1` in your `.env` to add `-vvv` to all SSH calls. Error messages always include host, port, and key path for quick diagnosis.
+
+**Key rules for Windows:** Use full absolute paths for `SSH_KEY_PATH` (e.g. `C:/Users/root/.ssh/your_key`). Tilde (`~`) is expanded by the server but absolute paths avoid any ambiguity across client contexts (Claude Desktop vs Claude Code).
+
+## After Code Changes
+Because `dist/` is gitignored, always rebuild after pulling changes:
+```bash
+npm install   # runs prepare script which triggers npm run build automatically
+# OR
+npm run build
+```
+
 ## Adding a New Tool Domain
 1. Create `src/tools/<domain>.ts` — define schemas (Zod) and handler functions
 2. Import and register in `src/index.ts` using `registerTool()` (never `server.tool()` directly)
