@@ -124,7 +124,13 @@ function toText(result: unknown): string {
 // TS2589 (47M+ type instantiations). We cast to a single-signature function
 // so TypeScript resolves the call in constant time.
 // Rule: Never call server.tool() directly. Always use registerTool().
-type ToolHandler = (args: Record<string, unknown>, extra: unknown) =>
+export type ToolExtra = {
+  signal?: AbortSignal;
+  _meta?: { progressToken?: string | number };
+  sendNotification?: (notification: { method: string; params: Record<string, unknown> }) => Promise<void>;
+};
+
+type ToolHandler = (args: Record<string, unknown>, extra: ToolExtra) =>
   Promise<{ content: Array<{ type: string; text: string }> }>;
 
 function registerTool(
@@ -270,9 +276,9 @@ async function main() {
   // --- Local LLM sub-agent ---
 
   registerTool(server, 'local_llm_run',
-    'Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp, or any OpenAI-compatible server). Free, private, no API key needed. Best for simple tasks: classify, format, extract, rewrite, proofread.',
+    'Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp, or any OpenAI-compatible server). Free, private, no API key needed. Best for simple tasks: classify, format, extract, rewrite, proofread. Set stream=true for token-by-token progress.',
     localLlmRunSchema.shape,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleLocalLlmRun(args as any, config)) }] })
+    async (args, extra) => ({ content: [{ type: 'text', text: toText(await handleLocalLlmRun(args as any, config, extra)) }] })
   );
 
   // --- Routing and orchestration ---
