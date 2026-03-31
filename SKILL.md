@@ -30,6 +30,7 @@ Control Philips Hue lights, Tado thermostats, Roborock vacuum, and read environm
 | `home_scene` | Activate Hue scenes by room |
 | `home_vacuum` | Control Roborock (start, stop, dock, status) |
 | `home_sensors` | Read all environmental sensors |
+| `home_automation` | Natural language home commands via OpenClaw agent |
 
 ### OpenClaw Memory (`openclaw_memory_*`)
 Daily markdown memory logs on the OpenClaw server, accessed via SSH.
@@ -48,6 +49,10 @@ Manage scheduled jobs on the OpenClaw server.
 | `openclaw_cron_list` | List all scheduled cron jobs |
 | `openclaw_cron_run` | Trigger a cron job immediately by ID |
 | `openclaw_cron_status` | Get scheduler status overview |
+| `openclaw_cron_create` | Create a new scheduled cron job |
+| `openclaw_cron_edit` | Edit an existing cron job |
+| `openclaw_cron_delete` | Delete a cron job by ID |
+| `openclaw_cron_history` | View execution history for a cron job |
 
 ### OpenClaw Agent (`openclaw_*`)
 Delegate tasks to the OpenClaw AI agent via SSH.
@@ -57,15 +62,26 @@ Delegate tasks to the OpenClaw AI agent via SSH.
 | `openclaw_run` | Send a prompt to the OpenClaw agent |
 | `openclaw_status` | Check if the OpenClaw daemon is running |
 | `openclaw_plugins` | List installed OpenClaw plugins |
+| `openclaw_notify` | Send notifications via WhatsApp/Telegram |
+| `openclaw_logs` | Tail OpenClaw server logs |
 
-### Sub-Agents (`gemini_run`, `codex_run`, `local_llm_run`)
+### Sub-Agents (`claude_run`, `gemini_run`, `codex_run`, `local_llm_run`)
 Local sub-agents for delegating tasks to different AI backends.
 
 | Tool | Description |
 |---|---|
+| `claude_run` | Send a prompt to Claude via the claude CLI (for non-Claude MCP clients) |
 | `gemini_run` | Send a prompt to Google Gemini via the gemini CLI |
-| `codex_run` | Send a task to OpenAI Codex via the codex CLI |
+| `codex_run` | Send a task to OpenAI Codex via the codex CLI (full-auto mode) |
 | `local_llm_run` | Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp). Free, private, no API key. |
+| `local_llm_models` | List available models on the local LLM server |
+| `llama_server` | Start/stop a llama.cpp inference server |
+
+### System and Utilities
+| Tool | Description |
+|---|---|
+| `system_status` | Check host system health (CPU, RAM, disk, GPU) |
+| `file_transfer` | Upload/download files to/from OpenClaw server via SCP |
 
 ### Routing and Orchestration (`mcp_help`, `prompt_split`)
 | Tool | Description |
@@ -81,4 +97,4 @@ Local sub-agents for delegating tasks to different AI backends.
 
 See `README.md` for full configuration reference and client setup instructions.
 
-**Version:** 0.1.0
+**Version:** 0.8.0

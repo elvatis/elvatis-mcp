@@ -14,8 +14,8 @@ export const ROUTING_RULES: RoutingRule[] = [
   {
     tool: 'claude_run',
     keywords: [
-      'claude', 'anthropic', 'reason', 'think', 'complex', 'nuanced',
-      'creative', 'write', 'essay', 'strategy', 'plan', 'review',
+      'claude', 'anthropic', 'complex', 'nuanced',
+      'creative', 'essay', 'strategy', 'plan',
       'cross-check', 'second opinion', 'verify',
     ],
     reason: 'Claude excels at complex reasoning, nuanced writing, strategic planning, and code review. Essential when the MCP client is not Claude itself.',
@@ -34,7 +34,7 @@ export const ROUTING_RULES: RoutingRule[] = [
     keywords: [
       'summarize', 'explain', 'analyze', 'what is', 'describe', 'translate',
       'image', 'photo', 'screenshot', 'long', 'document', 'pdf', 'compare',
-      'research', 'overview', 'draft', 'write an email', 'second opinion',
+      'research', 'overview', 'draft', 'write an email', 'proofread',
     ],
     reason: 'Gemini excels at analysis, long-context tasks (1M tokens), and multimodal input.',
   },
@@ -42,8 +42,7 @@ export const ROUTING_RULES: RoutingRule[] = [
     tool: 'openclaw_run',
     keywords: [
       'trade', 'trading', 'portfolio', 'stock', 'position', 'pnl', 'market',
-      'plugin', 'automation', 'workflow', 'whatsapp',
-      'telegram', 'notify', 'alert', 'openclaw',
+      'plugin', 'automation', 'workflow', 'openclaw',
     ],
     reason: 'OpenClaw has all trading plugins and custom workflows installed.',
   },
@@ -52,43 +51,109 @@ export const ROUTING_RULES: RoutingRule[] = [
     keywords: [
       'quick', 'simple', 'local', 'offline', 'private', 'classify', 'label',
       'rewrite', 'format', 'short answer', 'yes or no', 'extract', 'parse',
-      'convert', 'json', 'csv', 'rephrase', 'proofread', 'grammar',
+      'convert', 'json', 'csv', 'rephrase', 'grammar', 'markdown',
+      'positive', 'negative', 'neutral', 'sentiment',
+      'local model', 'locally',
     ],
     reason: 'Local LLM is free, fast, and private. Best for simple classification, formatting, and extraction tasks.',
   },
+  // --- Home automation: split into individual tools for better routing ---
   {
-    tool: 'home_light / home_scene / home_sensors / home_climate / home_vacuum',
+    tool: 'home_sensors',
     keywords: [
-      'light', 'lamp', 'bright', 'scene', 'temperature', 'thermostat',
-      'vacuum', 'sensor', 'humidity', 'co2', 'room', 'living room', 'bedroom',
-      'kitchen', 'home assistant', 'smart home',
+      'sensor', 'sensors', 'humidity', 'co2', 'temperature reading',
+      'read all sensor', 'sensor data', 'air quality',
     ],
-    reason: 'Home tools connect directly to Home Assistant.',
+    reason: 'Read sensor values from Home Assistant.',
   },
   {
-    tool: 'openclaw_memory_write / openclaw_memory_read_today / openclaw_memory_search',
+    tool: 'home_light',
     keywords: [
-      'remember', 'note', 'memory', 'log', 'record', 'save this', 'remind',
-      'what did i', 'yesterday', 'last week', 'wrote down',
+      'light', 'lamp', 'bright', 'dim', 'turn on', 'turn off',
+      'bedroom light', 'living room light', 'kitchen light',
     ],
-    reason: 'Memory tools read and write the daily log on the OpenClaw server.',
+    reason: 'Control lights via Home Assistant.',
+  },
+  {
+    tool: 'home_climate',
+    keywords: [
+      'thermostat', 'heating', 'cooling', 'hvac', 'ventilation',
+      'set temperature', 'climate', 'degrees',
+    ],
+    reason: 'Control climate/HVAC via Home Assistant.',
+  },
+  {
+    tool: 'home_scene',
+    keywords: ['scene', 'mood', 'ambiance'],
+    reason: 'Activate Hue scenes via Home Assistant.',
+  },
+  {
+    tool: 'home_vacuum',
+    keywords: ['vacuum', 'robot vacuum', 'roomba', 'clean'],
+    reason: 'Control robot vacuum via Home Assistant.',
+  },
+  // --- Memory: split into read vs write for better routing ---
+  {
+    tool: 'openclaw_memory_search',
+    keywords: [
+      'search memory', 'search my memory', 'find in memory',
+      'what did i', 'yesterday', 'last week', 'wrote down', 'look up',
+    ],
+    reason: 'Search across past daily memory logs.',
+  },
+  {
+    tool: 'openclaw_memory_write',
+    keywords: [
+      'remember', 'note', 'save this', 'save to memory', 'write to memory',
+      'remind', 'log this', 'record this',
+    ],
+    reason: 'Write a note to today\'s memory log.',
+  },
+  {
+    tool: 'openclaw_memory_read_today',
+    keywords: ['today memory', 'today log', 'read today', 'today notes'],
+    reason: 'Read today\'s memory log.',
+  },
+  {
+    tool: 'openclaw_notify',
+    keywords: [
+      'whatsapp', 'telegram', 'notify', 'notification', 'send message',
+      'send results', 'alert user', 'send via',
+    ],
+    reason: 'Send notifications via WhatsApp/Telegram through OpenClaw.',
   },
   {
     tool: 'openclaw_cron_list / openclaw_cron_run / openclaw_cron_status',
     keywords: [
-      'cron', 'scheduled', 'job', 'task', 'trigger', 'run now', 'schedule',
+      'cron', 'scheduled', 'job', 'trigger', 'run now', 'schedule',
     ],
     reason: 'Cron tools manage and trigger OpenClaw scheduled jobs.',
   },
 ];
 
-/** Score routing rules against a text. Returns matches sorted by score (highest first). */
+/**
+ * Score routing rules against a text using word boundary matching.
+ * Returns matches sorted by score (highest first).
+ *
+ * Uses \\b word boundaries to prevent partial matches like "reviews" matching "review".
+ * Multi-word keywords use includes() since they act as phrase matches.
+ */
 export function matchRules(text: string): Array<{ tool: string; reason: string; score: number }> {
   const lower = text.toLowerCase();
   const matches: Array<{ tool: string; reason: string; score: number }> = [];
 
   for (const rule of ROUTING_RULES) {
-    const score = rule.keywords.filter(kw => lower.includes(kw)).length;
+    let score = 0;
+    for (const kw of rule.keywords) {
+      if (kw.includes(' ')) {
+        // Multi-word keyword: use phrase matching (includes)
+        if (lower.includes(kw)) score++;
+      } else {
+        // Single-word keyword: use word boundary regex to avoid partial matches
+        const re = new RegExp(`\\b${kw}\\b`, 'i');
+        if (re.test(lower)) score++;
+      }
+    }
     if (score > 0) {
       matches.push({ tool: rule.tool, reason: rule.reason, score });
     }
@@ -105,7 +170,7 @@ export const KNOWN_AGENTS = new Set([
   'home_vacuum', 'home_get_state', 'home_automation',
   'openclaw_memory_write', 'openclaw_memory_read_today', 'openclaw_memory_search',
   'openclaw_cron_list', 'openclaw_cron_run', 'openclaw_cron_status',
-  'openclaw_logs', 'system_status', 'local_llm_models', 'file_transfer',
+  'openclaw_notify', 'openclaw_logs', 'system_status', 'local_llm_models', 'file_transfer',
 ]);
 
 export const ROUTING_GUIDE = `

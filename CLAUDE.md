@@ -32,18 +32,30 @@ MCP SDK `server.tool()` has 6 overloads that caused 47M+ type instantiations and
 ## Project Layout
 ```
 src/
-  index.ts        <- MCP server entry, tool registration, transport setup
-  config.ts       <- env var config (loads from .env, all values required or optional)
-  ssh.ts          <- SSH exec helper for remote commands (child_process.spawn, no extra deps)
-  spawn.ts        <- Local process spawner for gemini and codex CLI subprocesses
+  index.ts            <- MCP server entry, tool registration (registerTool wrapper), transport setup
+  config.ts           <- env var config (loads from .env, all values required or optional)
+  ssh.ts              <- SSH exec helper for remote commands (child_process.spawn, no extra deps)
+  spawn.ts            <- Local process spawner for gemini, codex, and claude CLI subprocesses
   tools/
-    home.ts       <- Home Assistant: light, climate, scene, vacuum, sensors, get_state
-    memory.ts     <- Daily memory log: write, read_today, search (SSH to server)
-    cron.ts       <- OpenClaw cron: list, run, status (SSH to server)
-    openclaw.ts   <- Sub-agent orchestration via SSH: run, status, plugins
-    gemini.ts     <- Google Gemini sub-agent via local gemini CLI (headless mode)
-    codex.ts      <- OpenAI Codex sub-agent via local codex CLI (exec mode)
-    help.ts       <- mcp_help routing guide and task-to-tool recommender
+    home.ts           <- Home Assistant: light, climate, scene, vacuum, sensors, get_state
+    home-automation.ts <- home_automation: natural language HA commands via OpenClaw
+    memory.ts         <- Daily memory log: write, read_today, search (SSH to server)
+    cron.ts           <- OpenClaw cron: list, run, status (SSH to server)
+    cron-manage.ts    <- OpenClaw cron management: create, edit, delete, history
+    openclaw.ts       <- Sub-agent orchestration via SSH: run, status, plugins
+    openclaw-logs.ts  <- openclaw_logs: tail OpenClaw server logs via SSH
+    notify.ts         <- openclaw_notify: send notifications via WhatsApp/Telegram
+    gemini.ts         <- Google Gemini sub-agent via local gemini CLI (headless mode)
+    codex.ts          <- OpenAI Codex sub-agent via local codex CLI (full-auto + JSONL)
+    claude.ts         <- Claude sub-agent via local claude CLI (JSON output)
+    local-llm.ts      <- Local LLM sub-agent via OpenAI-compatible API (Ollama, LM Studio)
+    local-llm-models.ts <- local_llm_models: list available models from local LLM server
+    llama-server.ts   <- llama_server: start/stop llama.cpp server for local inference
+    splitter.ts       <- prompt_split: analyze complex prompts, split into sub-tasks with agent routing
+    routing-rules.ts  <- Shared routing rules, keyword matching, agent constants (used by help + splitter)
+    help.ts           <- mcp_help routing guide and task-to-tool recommender
+    system-status.ts  <- system_status: check host system health (CPU, RAM, disk, GPU)
+    file-transfer.ts  <- file_transfer: upload/download files to/from OpenClaw server via SCP
 ```
 
 ## Client Support
@@ -71,7 +83,7 @@ Cron, memory, and openclaw tools all communicate with the OpenClaw server via SS
 
 Sub-agent orchestration uses:
 ```
-openclaw agents send --message "<prompt>" --local --timeout <seconds>
+openclaw agent -m "<prompt>" --agent <name> --local --timeout <seconds>
 ```
 The `--local` flag bypasses the OpenClaw WebSocket gateway and runs the agent turn inline.
 
@@ -93,10 +105,11 @@ npm run build
 3. Add entries to `.ai/handoff/DASHBOARD.md` tool table
 4. Update README.md tool table
 
-## Testing Locally
+## Testing
 ```bash
-npm run build
-node dist/index.js  # starts in stdio mode (waits for MCP client — correct)
+npm test                  # unit tests (33 tests, no external services needed)
+npm run test:integration  # integration tests (requires .env, SSH, LM Studio)
+npm run build && node dist/index.js  # manual: starts in stdio mode (waits for MCP client)
 ```
 
 ## Handoff Files

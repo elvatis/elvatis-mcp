@@ -244,12 +244,56 @@ const SEQUENTIAL_MARKERS = /\b(then|after that|next|finally|once done|when that'
 // Patterns that signal parallel/independent tasks
 const PARALLEL_MARKERS = /\b(also|and also|additionally|plus|meanwhile|at the same time|separately)\b/i;
 
-function splitViaHeuristic(prompt: string): Subtask[] {
-  // Split on sentence boundaries that follow logical connectors
-  const fragments = prompt
+/**
+ * Split prompt into fragments using multi-pass approach:
+ * 1. Split on sentence boundaries (.!?)
+ * 2. Split on sequential/parallel connectors (then, also, additionally...)
+ * 3. Split on commas between independent clauses (each clause must route to a different agent)
+ * 4. Handle conditional logic ("if X then Y" keeps condition with the first action)
+ */
+function splitIntoFragments(prompt: string): string[] {
+  // Phase 1: Split on sentence boundaries and major connectors
+  let fragments = prompt
     .split(/(?<=[.!?])\s+|(?:,?\s*(?:then|after that|next|finally|also|additionally|and then|plus)\s+)/i)
     .map(f => f.trim())
     .filter(f => f.length > 5);
+
+  // Phase 2: Further split comma-separated clauses that target different agents.
+  // "debug the test with Codex, have Claude review, use local model to format"
+  // Each clause between commas gets checked: if it matches a different agent, split it.
+  const refined: string[] = [];
+  for (const frag of fragments) {
+    const commaClauses = frag
+      .split(/,\s*(?:and\s+)?/)
+      .map(c => c.trim())
+      .filter(c => c.length > 5);
+
+    if (commaClauses.length <= 1) {
+      refined.push(frag);
+      continue;
+    }
+
+    // Check if the comma-separated parts route to different agents
+    const agents = commaClauses.map(c => {
+      const m = matchRules(c);
+      return m[0]?.tool ?? null;
+    });
+
+    const uniqueAgents = new Set(agents.filter(Boolean));
+    if (uniqueAgents.size > 1) {
+      // Different agents detected, split them
+      refined.push(...commaClauses);
+    } else {
+      // Same agent for all clauses, keep as one fragment
+      refined.push(frag);
+    }
+  }
+
+  return refined;
+}
+
+function splitViaHeuristic(prompt: string): Subtask[] {
+  const fragments = splitIntoFragments(prompt);
 
   if (fragments.length <= 1) {
     // Single task, pick best agent
@@ -276,7 +320,8 @@ function splitViaHeuristic(prompt: string): Subtask[] {
     const agent = matches[0]?.tool.split(' / ')[0] ?? 'gemini_run';
 
     // Check if this fragment follows a sequential marker in the original prompt
-    const beforeFrag = prompt.substring(0, prompt.indexOf(frag));
+    const fragIdx = prompt.indexOf(frag);
+    const beforeFrag = fragIdx >= 0 ? prompt.substring(0, fragIdx) : '';
     const isSequential = SEQUENTIAL_MARKERS.test(beforeFrag.slice(-50));
     const isParallel = PARALLEL_MARKERS.test(beforeFrag.slice(-50));
 

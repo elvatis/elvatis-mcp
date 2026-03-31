@@ -1,6 +1,6 @@
 {
   "name": "@elvatis_com/elvatis-mcp",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "MCP server for OpenClaw — expose smart home, memory, cron, and more to Claude Desktop, Cursor, Windsurf, and any MCP client",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,6 +11,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
+    "test": "npm run build && npx tsx --test tests/unit.test.ts",
+    "test:integration": "npx tsx tests/integration.test.ts",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run build"
