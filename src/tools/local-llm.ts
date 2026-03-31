@@ -145,7 +145,12 @@ export async function handleLocalLlmRun(
     };
   }
 
-  const content = data.choices?.[0]?.message?.content ?? '';
+  let content = data.choices?.[0]?.message?.content ?? '';
+
+  // Reasoning models (Deepseek R1, Phi 4 Reasoning, etc.) wrap their chain-of-thought
+  // in <think>...</think> tags. Strip those to get the actual answer.
+  content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
   if (!content) {
     return {
       success: false,

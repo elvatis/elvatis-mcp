@@ -170,6 +170,9 @@ function parseSubtasksFromJson(raw: string): Subtask[] | null {
     // Not a Gemini envelope, use raw text
   }
 
+  // Strip <think>...</think> blocks from reasoning models (Deepseek R1, Phi 4 Reasoning, etc.)
+  text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
   // Strip markdown fences
   text = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```$/m, '').trim();
 

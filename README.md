@@ -1,17 +1,87 @@
 # elvatis-mcp
 
-**MCP server for OpenClaw** — expose your smart home, memory, cron automation, and AI sub-agent orchestration directly to Claude Desktop, Cursor, Windsurf, and any MCP-compatible AI client.
+**MCP server for OpenClaw** -- expose your smart home, memory, cron automation, and AI sub-agent orchestration to Claude Desktop, Cursor, Windsurf, and any MCP-compatible AI client.
 
 [![npm](https://img.shields.io/npm/v/@elvatis_com/elvatis-mcp)](https://www.npmjs.com/package/@elvatis_com/elvatis-mcp)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-11%2F11%20passed-brightgreen)](#test-results)
+
+## What is this?
+
+elvatis-mcp connects Claude (or any MCP client) to your infrastructure:
+
+- **Smart home** control via Home Assistant (lights, thermostats, vacuum, sensors)
+- **Memory** system with daily logs stored on your OpenClaw server
+- **Cron** job management and triggering
+- **Multi-LLM orchestration** through 4 AI backends: OpenClaw, Google Gemini, OpenAI Codex, and local LLMs
+- **Smart prompt splitting** that analyzes complex requests and routes sub-tasks to the right AI
+
+The key idea: Claude is the orchestrator, but it can delegate specialized work to other AI models. Coding tasks go to Codex. Research goes to Gemini. Simple formatting goes to your local LLM (free, private). Trading and automation go to OpenClaw. And `prompt_split` figures out the routing automatically.
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io) is an open standard by Anthropic that lets AI clients (Claude Desktop, Cursor, Windsurf, Zed, etc.) connect to external tool servers. Once configured, Claude can directly call your tools without you copy-pasting anything.
+[Model Context Protocol](https://modelcontextprotocol.io) is an open standard by Anthropic that lets AI clients connect to external tool servers. Once configured, Claude can directly call your tools without copy-pasting.
 
-## Available Tools
+---
 
-### Home Assistant
+## Multi-LLM Architecture
+
+```
+                         You (Claude Desktop / Code / Cursor)
+                                      |
+                              MCP Protocol (stdio/HTTP)
+                                      |
+                              elvatis-mcp server
+                                      |
+              +-----------+-----------+-----------+-----------+
+              |           |           |           |           |
+         OpenClaw     Gemini      Codex     Local LLM    Home Asst.
+          (SSH)       (CLI)       (CLI)     (HTTP API)   (REST API)
+              |           |           |           |           |
+         Plugins     1M context   Coding    LM Studio    Lights
+         Trading     Multimodal   Files     Ollama       Climate
+         Automation  Analysis     Debug     llama.cpp    Vacuum
+         Workflows   Research     Shell     (free!)      Sensors
+```
+
+### Sub-Agent Comparison
+
+| Tool | Backend | Transport | Auth | Best for | Cost |
+|---|---|---|---|---|---|
+| `openclaw_run` | OpenClaw (plugins) | SSH | SSH key | Trading, automations, multi-step workflows | Self-hosted |
+| `gemini_run` | Google Gemini | Local CLI | Google login | Long context (1M tokens), multimodal, research | API usage |
+| `codex_run` | OpenAI Codex | Local CLI | OpenAI login | Coding, debugging, file editing, shell scripts | API usage |
+| `local_llm_run` | LM Studio / Ollama / llama.cpp | HTTP | None | Classification, formatting, extraction, rewriting | **Free** |
+
+### Smart Prompt Splitting
+
+The `prompt_split` tool analyzes complex prompts and breaks them into sub-tasks:
+
+```
+User: "Search my memory for TurboQuant notes, summarize with Gemini,
+       reformat as JSON locally, then save a summary to memory"
+
+prompt_split returns:
+  t1: openclaw_memory_search  -- "Search memory for TurboQuant"        (parallel)
+  t3: local_llm_run           -- "Reformat raw notes as clean JSON"    (parallel)
+  t2: gemini_run              -- "Summarize the key findings"          (after t1)
+  t4: openclaw_memory_write   -- "Save summary to today's log"        (after t2, t3)
+```
+
+Claude then executes the plan, calling tools in the right order and running parallel tasks concurrently. Three analysis strategies:
+
+| Strategy | Speed | Quality | Uses |
+|---|---|---|---|
+| `heuristic` | Instant | Good for clear prompts | Keyword matching, no LLM call |
+| `local` | 5-30s | Better reasoning | Your local LLM analyzes the prompt |
+| `gemini` | 5-15s | Best quality | Gemini-flash analyzes the prompt |
+| `auto` (default) | Varies | Best available | Short-circuits simple prompts, then tries gemini -> local -> heuristic |
+
+---
+
+## Available Tools (20 total)
+
+### Home Assistant (6 tools)
 | Tool | Description |
 |---|---|
 | `home_get_state` | Read any Home Assistant entity state |
@@ -21,48 +91,125 @@
 | `home_vacuum` | Control Roborock vacuum: start, stop, dock, status |
 | `home_sensors` | Read all temperature, humidity, and CO2 sensors |
 
-### Memory (stored on your OpenClaw server)
+### Memory (3 tools)
 | Tool | Description |
 |---|---|
 | `openclaw_memory_write` | Write a note to today's daily log |
 | `openclaw_memory_read_today` | Read today's memory log |
 | `openclaw_memory_search` | Search memory files across the last N days |
 
-### Cron Automation
+### Cron Automation (3 tools)
 | Tool | Description |
 |---|---|
 | `openclaw_cron_list` | List all scheduled OpenClaw cron jobs |
 | `openclaw_cron_run` | Trigger a cron job immediately by ID |
 | `openclaw_cron_status` | Get scheduler status and recent run history |
 
-### OpenClaw Sub-Agent Orchestration
+### OpenClaw Agent (3 tools)
 | Tool | Description |
 |---|---|
-| `openclaw_run` | Send a prompt to the OpenClaw AI agent (runs with all installed plugins) |
-| `openclaw_status` | Check if the OpenClaw daemon is running and get version info |
-| `openclaw_plugins` | List all plugins installed on the OpenClaw server |
+| `openclaw_run` | Send a prompt to the OpenClaw AI agent (all plugins available) |
+| `openclaw_status` | Check if the OpenClaw daemon is running |
+| `openclaw_plugins` | List all installed plugins |
 
-### Gemini Sub-Agent
+### AI Sub-Agents (3 tools)
 | Tool | Description |
 |---|---|
-| `gemini_run` | Send a prompt to Google Gemini via the local `gemini` CLI. Uses cached Google auth. |
+| `gemini_run` | Send a prompt to Google Gemini via the local CLI. 1M token context. |
+| `codex_run` | Send a coding task to OpenAI Codex via the local CLI. |
+| `local_llm_run` | Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp). Free, private. |
 
-### Codex Sub-Agent
+### Routing and Orchestration (2 tools)
 | Tool | Description |
 |---|---|
-| `codex_run` | Send a task to OpenAI Codex via the local `codex` CLI. Specializes in coding tasks. Uses cached OpenAI auth. |
+| `mcp_help` | Show routing guide. Pass a task to get a specific tool recommendation. |
+| `prompt_split` | Analyze a complex prompt, split into sub-tasks with agent assignments. |
 
-### Routing
-| Tool | Description |
-|---|---|
-| `mcp_help` | Show available tools and routing guide. Optionally pass a task description to get a specific tool recommendation. |
+---
+
+## Test Results
+
+All tests run against live services (LM Studio with Deepseek R1 Qwen3 8B, OpenClaw server via SSH).
+
+```
+  elvatis-mcp integration tests
+
+  Local LLM (local_llm_run)
+
+        Model: deepseek/deepseek-r1-0528-qwen3-8b
+        Response: "negative"
+        Tokens: 401 (prompt: 39, completion: 362)
+  PASS  local_llm_run: simple classification (21000ms)
+        Extracted: {"name":"John Smith","age":34}
+  PASS  local_llm_run: JSON extraction (24879ms)
+        Error: Could not connect to local LLM at http://localhost:19999/v1/chat/completions
+  PASS  local_llm_run: connection error handling (4ms)
+
+  Prompt Splitter (prompt_split)
+
+        Strategy: heuristic
+        Agent: codex_run
+        Summary: Fix the authentication bug in the login handler
+  PASS  prompt_split: single-domain coding prompt routes to codex (1ms)
+        Strategy: heuristic
+        Subtasks: 3
+          t1: codex_run -- "Refactor the auth module"
+          t2: openclaw_run -- "check my portfolio performance and"
+          t3: home_light -- "turn on the living room lights"
+        Parallel groups: [["t1","t3"],["t2"]]
+        Estimated time: 90s
+  PASS  prompt_split: heuristic multi-agent splitting (0ms)
+        Subtasks: 4, Agents: openclaw_memory_write, gemini_run, local_llm_run
+        Parallel groups: [["t1","t3","t4"],["t2"]]
+  PASS  prompt_split: cross-domain with dependencies (1ms)
+        Strategy: local->heuristic (fallback)
+        Subtasks: 1
+  PASS  prompt_split: local LLM strategy (with fallback) (60007ms)
+
+  Routing Guide (mcp_help)
+
+        Guide length: 2418 chars
+  PASS  mcp_help: returns guide without task (0ms)
+        Recommendation: local_llm_run (formatting task)
+  PASS  mcp_help: routes formatting task to local_llm_run (0ms)
+        Recommendation: codex_run (coding task)
+  PASS  mcp_help: routes coding task to codex_run (0ms)
+
+  Memory Search via SSH (openclaw_memory_search)
+
+        Query: "trading", Results: 5
+  PASS  openclaw_memory_search: finds existing notes (208ms)
+
+  -----------------------------------------------------------
+  11 passed, 0 failed, 0 skipped
+  -----------------------------------------------------------
+```
+
+Run the tests yourself:
+```bash
+npx tsx tests/integration.test.ts
+```
+
+Prerequisites: `.env` configured, local LLM server running, OpenClaw server reachable via SSH.
+
+---
 
 ## Requirements
 
 - Node.js 18 or later
+- OpenSSH client (built-in on Windows 10+, macOS, Linux)
 - A running [OpenClaw](https://openclaw.ai) instance accessible via SSH
 - A [Home Assistant](https://www.home-assistant.io) instance with a long-lived access token
-- OpenSSH client (built-in on Windows 10+, macOS, and Linux)
+
+**Optional (for sub-agents):**
+- `gemini_run`: `npm install -g @google/gemini-cli` and `gemini auth login`
+- `codex_run`: `npm install -g @openai/codex` and `codex login`
+- `local_llm_run`: any OpenAI-compatible local server:
+  - [LM Studio](https://lmstudio.ai) (recommended, GUI, default port 1234)
+  - [Ollama](https://ollama.ai) (`ollama serve`, port 11434)
+  - [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`, any port)
+
+---
 
 ## Installation
 
@@ -76,9 +223,11 @@ Or use directly via npx (no install required):
 npx @elvatis_com/elvatis-mcp
 ```
 
+---
+
 ## Where Can I Use It?
 
-elvatis-mcp works in every MCP-compatible client. Each client uses its own config file — they do not share configuration.
+elvatis-mcp works in every MCP-compatible client. Each client uses its own config file.
 
 | Client | Transport | Config file |
 |--------|-----------|-------------|
@@ -88,15 +237,13 @@ elvatis-mcp works in every MCP-compatible client. Each client uses its own confi
 | **Claude Code** (this project only) | stdio | `.mcp.json` in repo root (already included) |
 | **Cursor / Windsurf / other** | stdio or HTTP | See app documentation |
 
-> Claude Desktop and Cowork share the same config file. Claude Code is a separate system with its own config.
+> Claude Desktop and Cowork share the same config file. Claude Code is a separate system.
 
 ---
 
 ## Configuration
 
 ### 1. Create your `.env` file
-
-Copy `.env.example` to `.env` in the project root and fill in your values:
 
 ```bash
 cp .env.example .env
@@ -106,13 +253,18 @@ cp .env.example .env
 # Required
 HA_URL=http://your-home-assistant:8123
 HA_TOKEN=your_long_lived_ha_token
-
 SSH_HOST=your-openclaw-server-ip
 SSH_USER=your-ssh-username
 SSH_KEY_PATH=~/.ssh/your_key
-```
 
-> The `.env` file is gitignored and never committed. See `.env.example` for all available options.
+# Optional: Local LLM
+LOCAL_LLM_ENDPOINT=http://localhost:1234/v1    # LM Studio default
+LOCAL_LLM_MODEL=deepseek-r1-0528-qwen3-8b     # or omit to use loaded model
+
+# Optional: Sub-agent models
+GEMINI_MODEL=gemini-2.5-flash
+CODEX_MODEL=o3
+```
 
 ### 2. Configure your MCP client
 
@@ -137,8 +289,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-#### Claude Desktop (Windows — MSIX install)
-The MSIX package reads config from a sandboxed path. Open this file (create it if it does not exist):
+#### Claude Desktop (Windows MSIX)
+Open this file (create it if needed):
 ```
 %LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json
 ```
@@ -161,32 +313,15 @@ The MSIX package reads config from a sandboxed path. Open this file (create it i
 }
 ```
 
-> **Note:** On Windows, always use full absolute paths — the MSIX sandbox does not resolve `~` or relative paths.
+> On Windows, always use full absolute paths. The MSIX sandbox does not resolve `~` or relative paths.
 
 #### Claude Code (this project)
-`.mcp.json` is already included in the repo root. It loads the built server automatically:
-```json
-{
-  "mcpServers": {
-    "elvatis-mcp": {
-      "command": "node",
-      "args": ["./dist/index.js"]
-    }
-  }
-}
-```
-Make sure `.env` exists in the project root (copy `.env.example`). Claude Code will prompt for approval the first time.
+`.mcp.json` is already included. Copy `.env.example` to `.env` and fill in your values.
 
-#### Claude Code (global, all projects)
-To make elvatis-mcp available in every Claude Code session, add it to `~/.claude.json`:
+#### Claude Code (global)
 ```bash
-# Using the Claude Code CLI (easiest):
 claude mcp add --scope user elvatis-mcp -- node /path/to/elvatis-mcp/dist/index.js
 ```
-Or add it manually to `~/.claude.json` under the `mcpServers` key.
-
-#### Cursor / Windsurf
-Same JSON format. Refer to your app's MCP documentation for the config file location.
 
 #### HTTP Transport (remote clients)
 ```bash
@@ -204,87 +339,86 @@ Connect your client to `http://your-server:3333/mcp`.
 | `HA_URL` | Home Assistant base URL, e.g. `http://192.168.x.x:8123` |
 | `SSH_HOST` | OpenClaw server hostname or IP |
 
-### Optional (have sensible defaults)
+### Optional
 | Variable | Default | Description |
 |---|---|---|
-| `HA_TOKEN` | — | Home Assistant long-lived access token |
+| `HA_TOKEN` | -- | Home Assistant long-lived access token |
 | `SSH_PORT` | `22` | SSH port |
-| `SSH_USER` | `chef-linux` | SSH username on the OpenClaw server |
+| `SSH_USER` | `chef-linux` | SSH username |
 | `SSH_KEY_PATH` | `~/.ssh/openclaw_tunnel` | Path to SSH private key |
-| `OPENCLAW_GATEWAY_URL` | `http://localhost:18789` | OpenClaw Gateway URL (WebSocket tunnel) |
-| `OPENCLAW_GATEWAY_TOKEN` | — | Optional Gateway API token |
-| `OPENCLAW_DEFAULT_AGENT` | — | Named agent for `openclaw_run` (omit for default) |
+| `OPENCLAW_GATEWAY_URL` | `http://localhost:18789` | OpenClaw Gateway URL |
+| `OPENCLAW_GATEWAY_TOKEN` | -- | Optional Gateway API token |
+| `OPENCLAW_DEFAULT_AGENT` | -- | Named agent for `openclaw_run` |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Default model for `gemini_run` |
-| `CODEX_MODEL` | — | Default model for `codex_run` (uses Codex default if omitted) |
+| `CODEX_MODEL` | -- | Default model for `codex_run` |
+| `LOCAL_LLM_ENDPOINT` | `http://localhost:1234/v1` | Local LLM server URL (LM Studio default) |
+| `LOCAL_LLM_MODEL` | -- | Default local model (omit to use server's loaded model) |
 | `MCP_TRANSPORT` | `stdio` | Transport mode: `stdio` or `http` |
-| `MCP_HTTP_PORT` | `3333` | HTTP port (only used when `MCP_TRANSPORT=http`) |
+| `MCP_HTTP_PORT` | `3333` | HTTP port |
+| `SSH_DEBUG` | -- | Set to `1` for verbose SSH output |
+
+---
+
+## Local LLM Setup
+
+elvatis-mcp works with any OpenAI-compatible local server. Three popular options:
+
+### LM Studio (recommended for desktop)
+1. Download from [lmstudio.ai](https://lmstudio.ai)
+2. Load a model (e.g. Deepseek R1 Qwen3 8B, Phi 4 Mini)
+3. Click "Local Server" in the sidebar and enable it
+4. Server runs at `http://localhost:1234/v1` (the default)
+
+### Ollama
+```bash
+ollama serve                    # starts server on port 11434
+ollama run llama3.2             # downloads and loads model
+```
+Set `LOCAL_LLM_ENDPOINT=http://localhost:11434/v1` in your `.env`.
+
+### llama.cpp
+```bash
+llama-server -m model.gguf --port 8080
+```
+Set `LOCAL_LLM_ENDPOINT=http://localhost:8080/v1` in your `.env`.
+
+### Recommended models by task
+
+| Model | Size | Best for |
+|---|---|---|
+| Phi 4 Mini | 3B | Fast classification, formatting, extraction |
+| Deepseek R1 Qwen3 | 8B | Reasoning, analysis, prompt splitting |
+| Phi 4 Reasoning Plus | 15B | Complex reasoning with quality |
+| GPT-OSS | 20B | General purpose, longer responses |
+
+> Reasoning models (Deepseek R1, Phi 4 Reasoning) wrap their chain-of-thought in `<think>` tags. elvatis-mcp strips these automatically to give you clean responses.
 
 ---
 
 ## SSH Setup
 
-The cron, memory, and OpenClaw tools communicate with your server via SSH. The server must be reachable at `SSH_HOST` with the key at `SSH_KEY_PATH`.
+The cron, memory, and OpenClaw tools communicate with your server via SSH.
 
-To verify connectivity:
 ```bash
-ssh -i ~/.ssh/your_key your-username@your-openclaw-server "openclaw --version"
+# Verify connectivity
+ssh -i ~/.ssh/your_key your-username@your-server "openclaw --version"
+
+# Optional: SSH tunnel for OpenClaw WebSocket gateway
+ssh -i ~/.ssh/your_key -L 18789:127.0.0.1:18789 -N your-username@your-server
 ```
 
-If you are using an SSH tunnel for the OpenClaw WebSocket gateway, keep it running in the background:
-```bash
-ssh -i ~/.ssh/your_key -L 18789:127.0.0.1:18789 -N your-username@your-openclaw-server
-```
-
----
-
-## OpenClaw Sub-Agent: How It Works
-
-`openclaw_run` sends a prompt to your OpenClaw AI agent via SSH and returns the response synchronously:
-
-```
-Claude Desktop  ->  elvatis-mcp  ->  SSH  ->  openclaw agents send --message "..." --local --timeout 60
-                                                  -> runs with all installed plugins
-                                                  -> returns response on stdout
-```
-
-The `--local` flag bypasses the WebSocket gateway and runs the agent turn inline, so no gateway connection is required. This means all OpenClaw plugins (trading, home automation, custom workflows, etc.) are available to the agent without any additional configuration.
+On Windows, elvatis-mcp automatically resolves the SSH binary to `C:\Windows\System32\OpenSSH\ssh.exe` and retries on transient connection failures. Set `SSH_DEBUG=1` for verbose output.
 
 ---
 
 ## `/mcp-help` Slash Command
 
-When you open this project in Claude Code, the `/project:mcp-help` slash command is available:
+In Claude Code, the `/project:mcp-help` slash command is available:
 
 ```
 /project:mcp-help
-# or with a task for a specific recommendation:
 /project:mcp-help analyze this trading strategy for risk
 ```
-
-Claude will call the `mcp_help` tool and return a routing recommendation. You can also call the tool directly in any client:
-
-> "Use mcp_help to figure out which tool to use for reviewing a large codebase"
-
-The `mcp_help` tool is also useful for **automatic task splitting**: if Claude receives a complex request (e.g., "debug this code and then summarize the findings"), it can use `mcp_help` to confirm the routing before spawning the right sub-agents in sequence.
-
----
-
-## Multi-LLM Sub-Agent Architecture
-
-elvatis-mcp exposes three distinct sub-agent patterns, each with different strengths:
-
-| Tool | Backend | Transport | Auth | Best for |
-|---|---|---|---|---|
-| `openclaw_run` | OpenClaw (claude/gpt/gemini + plugins) | SSH | SSH key | Tasks needing plugins (trading, automations, etc.) |
-| `gemini_run` | Google Gemini | Local spawn | Google login | Fast queries, long-context (1M tokens), multimodal |
-| `codex_run` | OpenAI Codex | Local spawn | OpenAI login | Coding tasks, file editing, technical analysis |
-
-All three run asynchronously and return the final response as plain text to Claude Desktop. Claude can call them in sequence or use one as a cross-check on another.
-
-**Setup requirements:**
-- `openclaw_run`: OpenClaw server reachable via SSH
-- `gemini_run`: `npm install -g @google/gemini-cli` and `gemini auth login`
-- `codex_run`: `npm install -g @openai/codex` and `codex login`
 
 ---
 
@@ -293,10 +427,9 @@ All three run asynchronously and return the final response as plain text to Clau
 ```bash
 git clone https://github.com/elvatis/elvatis-mcp
 cd elvatis-mcp
-npm install
-cp .env.example .env   # fill in your values
-npm run build
-node dist/index.js     # starts in stdio mode, waits for MCP client
+npm install          # builds automatically via prepare script
+cp .env.example .env # fill in your values
+node dist/index.js   # starts in stdio mode, waits for MCP client
 ```
 
 Build watch mode:
@@ -304,8 +437,35 @@ Build watch mode:
 npm run dev
 ```
 
+Run integration tests:
+```bash
+npx tsx tests/integration.test.ts
+```
+
+### Project layout
+```
+src/
+  index.ts              MCP server entry, tool registration, transport
+  config.ts             Environment variable configuration
+  ssh.ts                SSH exec helper (Windows/macOS/Linux)
+  spawn.ts              Local process spawner for CLI sub-agents
+  tools/
+    home.ts             Home Assistant: light, climate, scene, vacuum, sensors
+    memory.ts           Daily memory log: write, read, search (SSH)
+    cron.ts             OpenClaw cron: list, run, status (SSH)
+    openclaw.ts         OpenClaw agent orchestration (SSH)
+    gemini.ts           Google Gemini sub-agent (local CLI)
+    codex.ts            OpenAI Codex sub-agent (local CLI)
+    local-llm.ts        Local LLM sub-agent (OpenAI-compatible HTTP)
+    splitter.ts         Smart prompt splitter (multi-strategy)
+    help.ts             Routing guide and task recommender
+    routing-rules.ts    Shared routing rules and keyword matching
+tests/
+  integration.test.ts   Live integration tests
+```
+
 ---
 
 ## License
 
-Apache-2.0 — Copyright 2026 [Elvatis](https://elvatis.com)
+Apache-2.0 -- Copyright 2026 [Elvatis](https://elvatis.com)
