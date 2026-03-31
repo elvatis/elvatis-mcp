@@ -235,7 +235,12 @@ async function main() {
   );
 
   registerTool(server, 'prompt_split',
-    'Analyze a complex prompt and split it into sub-tasks with agent assignments. Returns a structured plan showing which sub-agent (gemini, codex, openclaw, local LLM) handles each part, dependency ordering, and the actual prompts to send. Strategy: "auto" (default), "gemini", "local", or "heuristic".',
+    'Analyze a complex prompt and split it into sub-tasks with agent assignments. '
+    + 'Returns a structured plan showing which sub-agent (gemini, codex, openclaw, local LLM) handles each part, '
+    + 'dependency ordering, and the actual prompts to send. '
+    + 'Each subtask includes a suggested model that the user can override before execution. '
+    + 'IMPORTANT: Always present the plan to the user for review before executing. '
+    + 'Strategy: "auto" (default), "gemini", "local", or "heuristic".',
     promptSplitSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handlePromptSplit(args as any, config)) }] })
   );

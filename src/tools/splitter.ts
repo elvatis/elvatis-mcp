@@ -38,6 +38,8 @@ export interface Subtask {
   id: string;
   summary: string;
   agent: string;
+  /** Suggested model for this subtask. User can override before execution. */
+  model: string;
   prompt: string;
   depends_on: string[];
   reason: string;
@@ -49,8 +51,29 @@ export interface SplitPlan {
   parallelizable_groups: string[][];
   estimated_total_seconds: number;
   strategy_used: string;
+  /** Instructions for the LLM client on how to present and execute this plan. */
   note: string;
 }
+
+/** Default model suggestions per agent. The user can override any of these. */
+const DEFAULT_MODELS: Record<string, string> = {
+  codex_run: 'gpt-5-codex',
+  gemini_run: 'gemini-2.5-flash',
+  openclaw_run: 'default (server-side)',
+  local_llm_run: 'currently loaded model',
+  home_light: 'n/a (direct API call)',
+  home_scene: 'n/a (direct API call)',
+  home_climate: 'n/a (direct API call)',
+  home_vacuum: 'n/a (direct API call)',
+  home_sensors: 'n/a (direct API call)',
+  home_get_state: 'n/a (direct API call)',
+  openclaw_memory_write: 'n/a (direct SSH call)',
+  openclaw_memory_read_today: 'n/a (direct SSH call)',
+  openclaw_memory_search: 'n/a (direct SSH call)',
+  openclaw_cron_list: 'n/a (direct SSH call)',
+  openclaw_cron_run: 'n/a (direct SSH call)',
+  openclaw_cron_status: 'n/a (direct SSH call)',
+};
 
 // --- LLM analysis prompt ---
 
@@ -71,6 +94,12 @@ Rules:
 - Use local_llm_run for simple formatting, extraction, or classification
 - Use codex_run for coding tasks, gemini_run for analysis, openclaw_run for trading/automation
 
+Available models per agent:
+- codex_run: gpt-5-codex, gpt-5.4, o3
+- gemini_run: gemini-2.5-flash, gemini-2.5-pro, gemini-3-pro
+- local_llm_run: phi-4-mini (fast/simple), deepseek-r1-0528-qwen3-8b (reasoning), phi-4-reasoning-plus (quality)
+- openclaw_run: default (uses server-side model selection)
+
 Respond with ONLY valid JSON (no markdown fences, no explanation):
 {
   "subtasks": [
@@ -78,9 +107,10 @@ Respond with ONLY valid JSON (no markdown fences, no explanation):
       "id": "t1",
       "summary": "short description",
       "agent": "agent_name",
+      "model": "suggested model name",
       "prompt": "the actual prompt to send to this agent",
       "depends_on": [],
-      "reason": "why this agent"
+      "reason": "why this agent and model"
     }
   ]
 }
@@ -191,6 +221,8 @@ function parseSubtasksFromJson(raw: string): Subtask[] | null {
         task.reason = (task.reason || '') + ' (agent remapped: original not recognized)';
       }
       if (!Array.isArray(task.depends_on)) task.depends_on = [];
+      // Ensure model field exists
+      if (!task.model) task.model = DEFAULT_MODELS[task.agent] ?? 'default';
     }
 
     // Validate dependency references
@@ -227,6 +259,7 @@ function splitViaHeuristic(prompt: string): Subtask[] {
       id: 't1',
       summary: prompt.substring(0, 80),
       agent,
+      model: DEFAULT_MODELS[agent] ?? 'default',
       prompt,
       depends_on: [],
       reason: matches[0]?.reason ?? 'Default to Gemini for general tasks.',
@@ -256,6 +289,7 @@ function splitViaHeuristic(prompt: string): Subtask[] {
       id,
       summary: frag.substring(0, 80),
       agent,
+      model: DEFAULT_MODELS[agent] ?? 'default',
       prompt: frag,
       depends_on,
       reason: matches[0]?.reason ?? 'Default to Gemini for general tasks.',
@@ -364,6 +398,7 @@ export async function handlePromptSplit(
           id: 't1',
           summary: prompt.substring(0, 80),
           agent,
+          model: DEFAULT_MODELS[agent] ?? 'default',
           prompt,
           depends_on: [],
           reason: matches[0]!.reason,
@@ -398,9 +433,14 @@ export async function handlePromptSplit(
   }
 
   const note = subtasks.length === 1
-    ? 'This prompt maps to a single agent. No splitting required. Call the suggested agent directly.'
-    : 'Execute sub-tasks in dependency order. Tasks in the same parallelizable_group can be called concurrently. '
-      + 'Review the plan with the user before executing if the prompt is ambiguous.';
+    ? 'This prompt maps to a single agent. No splitting required. '
+      + 'Present the suggested agent and model to the user. They can confirm, change the model, or pick a different agent before you execute.'
+    : 'IMPORTANT: Present this plan to the user BEFORE executing. Show each subtask with its agent and model. '
+      + 'The user may want to: (1) change the model for a specific task (e.g. "use gemini-2.5-pro for t2 instead of flash"), '
+      + '(2) swap the agent entirely (e.g. "use local_llm_run for t3 instead of gemini"), '
+      + '(3) skip or remove a subtask, (4) adjust dependencies or ordering. '
+      + 'Once the user approves (or modifies) the plan, execute sub-tasks in dependency order. '
+      + 'Tasks in the same parallelizable_group can be called concurrently.';
 
   return buildPlan(prompt, subtasks, strategyUsed, note);
 }
