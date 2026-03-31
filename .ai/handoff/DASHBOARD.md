@@ -11,7 +11,7 @@
 | ID | Task | Status |
 |---|---|---|
 | T-001 | Initial skeleton | ✅ Done |
-| T-002 | Build on Threadripper | ✅ Done (TS2589 fixed, 0.85s build) |
+| T-002 | Fix TS2589 build error | ✅ Done (registerTool() wrapper, 0.85s build) |
 | T-003 | Claude Desktop smoke test | ✅ Done (2026-03-31, MSIX path fix required) |
 | T-003b | SSH transport + sub-agent architecture | ✅ Done (2026-03-31) |
 | T-003c | Gemini + Codex local sub-agent tools | ✅ Done (2026-03-31) |
@@ -31,12 +31,12 @@
 | `home_scene` | HA REST | ✅ | ❌ |
 | `home_vacuum` | HA REST | ✅ | ❌ |
 | `home_sensors` | HA REST | ✅ | ✅ |
-| `memory_write` | SSH | ✅ | ❌ needs retest |
-| `memory_read_today` | SSH | ✅ | ❌ needs retest |
-| `memory_search` | SSH | ✅ | ❌ needs retest |
-| `cron_list` | SSH | ✅ | ❌ needs retest |
-| `cron_run` | SSH + CLI | ✅ | ❌ needs retest |
-| `cron_status` | SSH | ✅ | ❌ needs retest |
+| `openclaw_memory_write` | SSH | ✅ | ❌ needs retest |
+| `openclaw_memory_read_today` | SSH | ✅ | ❌ needs retest |
+| `openclaw_memory_search` | SSH | ✅ | ❌ needs retest |
+| `openclaw_cron_list` | SSH | ✅ | ❌ needs retest |
+| `openclaw_cron_run` | SSH + CLI | ✅ | ❌ needs retest |
+| `openclaw_cron_status` | SSH | ✅ | ❌ needs retest |
 | `openclaw_run` | SSH + CLI | ✅ | ❌ needs test |
 | `openclaw_status` | SSH | ✅ | ❌ needs test |
 | `openclaw_plugins` | SSH | ✅ | ❌ needs test |

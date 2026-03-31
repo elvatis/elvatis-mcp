@@ -68,7 +68,7 @@ const ROUTING_RULES: RoutingRule[] = [
     reason: 'Home tools connect directly to Home Assistant.',
   },
   {
-    tool: 'memory_write / memory_read_today / memory_search',
+    tool: 'openclaw_memory_write / openclaw_memory_read_today / openclaw_memory_search',
     keywords: [
       'remember', 'note', 'memory', 'log', 'record', 'save this', 'remind',
       'what did i', 'yesterday', 'last week', 'wrote down',
@@ -76,7 +76,7 @@ const ROUTING_RULES: RoutingRule[] = [
     reason: 'Memory tools read and write the daily log on the OpenClaw server.',
   },
   {
-    tool: 'cron_list / cron_run / cron_status',
+    tool: 'openclaw_cron_list / openclaw_cron_run / openclaw_cron_status',
     keywords: [
       'cron', 'scheduled', 'job', 'task', 'trigger', 'run now', 'schedule',
     ],
@@ -110,17 +110,17 @@ const ROUTING_GUIDE = `
 
 | Tool | What it does |
 |------|-------------|
-| \`memory_write\` | Write a note to today's log |
-| \`memory_read_today\` | Read today's memory log |
-| \`memory_search\` | Search memory across past N days |
+| \`openclaw_memory_write\` | Write a note to today's log |
+| \`openclaw_memory_read_today\` | Read today's memory log |
+| \`openclaw_memory_search\` | Search memory across past N days |
 
 ## Cron Tools (OpenClaw server)
 
 | Tool | What it does |
 |------|-------------|
-| \`cron_list\` | List all scheduled cron jobs |
-| \`cron_run\` | Trigger a job immediately |
-| \`cron_status\` | Get scheduler status and recent runs |
+| \`openclaw_cron_list\` | List all scheduled cron jobs |
+| \`openclaw_cron_run\` | Trigger a job immediately |
+| \`openclaw_cron_status\` | Get scheduler status and recent runs |
 
 ## Decision Guide
 

@@ -134,19 +134,19 @@ async function main() {
 
   // --- Memory tools (SSH to OpenClaw server) ---
 
-  registerTool(server, 'memory_write',
+  registerTool(server, 'openclaw_memory_write',
     'Write a note to today\'s daily memory log on the OpenClaw server. Use for capturing important context, decisions, or things to remember.',
     memoryWriteSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleMemoryWrite(args as any, config)) }] })
   );
 
-  registerTool(server, 'memory_read_today',
+  registerTool(server, 'openclaw_memory_read_today',
     'Read today\'s memory log from the OpenClaw server',
     memoryReadTodaySchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleMemoryReadToday(args as any, config)) }] })
   );
 
-  registerTool(server, 'memory_search',
+  registerTool(server, 'openclaw_memory_search',
     'Search across daily memory files on the OpenClaw server for a keyword (default: last 14 days)',
     memorySearchSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleMemorySearch(args as any, config)) }] })
@@ -154,19 +154,19 @@ async function main() {
 
   // --- Cron tools (SSH to OpenClaw server) ---
 
-  registerTool(server, 'cron_list',
+  registerTool(server, 'openclaw_cron_list',
     'List all scheduled OpenClaw cron jobs',
     cronListSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleCronList(args as any, config)) }] })
   );
 
-  registerTool(server, 'cron_run',
+  registerTool(server, 'openclaw_cron_run',
     'Trigger an OpenClaw cron job immediately by its ID',
     cronRunSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleCronRun(args as any, config)) }] })
   );
 
-  registerTool(server, 'cron_status',
+  registerTool(server, 'openclaw_cron_status',
     'Get OpenClaw cron scheduler status and overview',
     cronStatusSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleCronStatus(args as any, config)) }] })

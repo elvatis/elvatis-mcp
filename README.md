@@ -24,16 +24,16 @@
 ### Memory (stored on your OpenClaw server)
 | Tool | Description |
 |---|---|
-| `memory_write` | Write a note to today's daily log |
-| `memory_read_today` | Read today's memory log |
-| `memory_search` | Search memory files across the last N days |
+| `openclaw_memory_write` | Write a note to today's daily log |
+| `openclaw_memory_read_today` | Read today's memory log |
+| `openclaw_memory_search` | Search memory files across the last N days |
 
 ### Cron Automation
 | Tool | Description |
 |---|---|
-| `cron_list` | List all scheduled OpenClaw cron jobs |
-| `cron_run` | Trigger a cron job immediately by ID |
-| `cron_status` | Get scheduler status and recent run history |
+| `openclaw_cron_list` | List all scheduled OpenClaw cron jobs |
+| `openclaw_cron_run` | Trigger a cron job immediately by ID |
+| `openclaw_cron_status` | Get scheduler status and recent run history |
 
 ### OpenClaw Sub-Agent Orchestration
 | Tool | Description |
