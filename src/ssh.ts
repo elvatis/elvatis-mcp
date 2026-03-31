@@ -7,7 +7,6 @@
  */
 
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -25,28 +24,24 @@ export interface SshConfig {
  * user's interactive shell. We try known locations explicitly so we don't
  * depend on PATH resolution inside a sandboxed child process.
  */
-let _sshBinaryCache: string | undefined;
-function sshBinary(): string {
-  if (_sshBinaryCache) return _sshBinaryCache;
+/**
+ * Build a PATH that guarantees the Windows native OpenSSH directory is included.
+ * Claude Desktop (MSIX) and Claude Code may strip PATH entries, so we add
+ * the known SSH locations explicitly.
+ */
+function sshEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, HOME: os.homedir() };
   if (process.platform === 'win32') {
     const root = process.env['SystemRoot'] || 'C:\\Windows';
-    // On 64-bit Windows, 32-bit processes see System32 redirected to SysWOW64
-    // (which has no ssh.exe). Sysnative bypasses the redirect.
-    const candidates = [
-      path.join(root, 'Sysnative', 'OpenSSH', 'ssh.exe'),
-      path.join(root, 'System32', 'OpenSSH', 'ssh.exe'),
+    const sshDirs = [
+      path.join(root, 'System32', 'OpenSSH'),
+      path.join(root, 'Sysnative', 'OpenSSH'),
     ];
-    for (const p of candidates) {
-      if (existsSync(p)) {
-        // Use forward slashes: with shell:true on Windows, cmd.exe eats backslashes
-        _sshBinaryCache = normalizePath(p);
-        return _sshBinaryCache;
-      }
-    }
+    const currentPath = env['PATH'] || env['Path'] || '';
+    // Prepend SSH directories so they are found first
+    env['PATH'] = sshDirs.join(';') + ';' + currentPath;
   }
-  // Fallback: let PATH resolve it (works on macOS/Linux and if Windows SSH is on PATH)
-  _sshBinaryCache = 'ssh';
-  return 'ssh';
+  return env;
 }
 
 /** Normalize a file path to forward slashes (SSH on Windows needs this). */
@@ -98,18 +93,13 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
 
     args.push(`${cfg.username}@${cfg.host}`, command);
 
-    const bin = sshBinary();
-    const isWin = process.platform === 'win32';
-    const proc = spawn(bin, args, {
+    // Use plain 'ssh' and rely on PATH (augmented with known SSH dirs via sshEnv).
+    // No shell: true, no full path resolution. This avoids cmd.exe backslash escaping
+    // issues and WoW64 System32 redirection problems on Windows.
+    const proc = spawn('ssh', args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
-      // On Windows, shell: true lets cmd.exe handle binary resolution and inherits
-      // the full environment context (ssh-agent named pipe, PATH, etc.).
-      // Without it, CreateProcessW sometimes fails to find or authenticate SSH
-      // when spawned from sandboxed parent processes (Claude Desktop MSIX, Claude Code).
-      shell: isWin,
-      // Explicitly pass HOME so SSH finds config/known_hosts in the right place.
-      env: { ...process.env, HOME: os.homedir() },
+      env: sshEnv(),
     });
     let stdout = '';
     let stderr = '';
@@ -141,7 +131,7 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
       clearTimeout(timer);
       if (err.code === 'ENOENT') {
         reject(new Error(
-          `ssh binary not found at "${bin}". ` +
+          'ssh binary not found on PATH. ' +
           'Windows: Settings > Optional Features > OpenSSH Client. ' +
           'macOS/Linux: should be pre-installed.',
         ));
