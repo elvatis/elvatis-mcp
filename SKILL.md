@@ -1,6 +1,6 @@
 ---
 name: elvatis-mcp
-description: MCP server exposing OpenClaw tools (smart home, memory, cron, sub-agent orchestration) to Claude Desktop, Cursor, Windsurf, and any MCP client. Includes Gemini and Codex CLI sub-agents.
+description: MCP server exposing OpenClaw tools (smart home, memory, cron, sub-agent orchestration) to Claude Desktop, Cursor, Windsurf, and any MCP client. Includes Gemini, Codex, and local LLM sub-agents plus smart prompt splitting.
 homepage: https://github.com/elvatis/elvatis-mcp
 metadata:
   {
@@ -58,18 +58,20 @@ Delegate tasks to the OpenClaw AI agent via SSH.
 | `openclaw_status` | Check if the OpenClaw daemon is running |
 | `openclaw_plugins` | List installed OpenClaw plugins |
 
-### Sub-Agents (`gemini_run`, `codex_run`)
-Local CLI sub-agents using cached authentication (no API keys needed).
+### Sub-Agents (`gemini_run`, `codex_run`, `local_llm_run`)
+Local sub-agents for delegating tasks to different AI backends.
 
 | Tool | Description |
 |---|---|
 | `gemini_run` | Send a prompt to Google Gemini via the gemini CLI |
 | `codex_run` | Send a task to OpenAI Codex via the codex CLI |
+| `local_llm_run` | Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp). Free, private, no API key. |
 
-### Routing (`mcp_help`)
+### Routing and Orchestration (`mcp_help`, `prompt_split`)
 | Tool | Description |
 |---|---|
 | `mcp_help` | List all tools with routing guide and task recommendations |
+| `prompt_split` | Analyze a complex prompt, split into sub-tasks with agent assignments and dependency ordering |
 
 ## Setup
 

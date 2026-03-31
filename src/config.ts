@@ -44,6 +44,11 @@ export interface Config {
   // --- Codex CLI (local, uses `codex` binary + cached OpenAI auth) ---
   /** Default Codex model, e.g. "o3" or "gpt-5-codex" */
   codexModel?: string;
+  // --- Local LLM (LM Studio, Ollama, llama.cpp, any OpenAI-compatible server) ---
+  /** Base URL for the local LLM server, e.g. "http://localhost:1234/v1" */
+  localLlmEndpoint?: string;
+  /** Default model identifier for the local LLM (as shown in LM Studio / Ollama) */
+  localLlmModel?: string;
 }
 
 export function loadConfig(): Config {
@@ -68,5 +73,8 @@ export function loadConfig(): Config {
     geminiModel: optional('GEMINI_MODEL'),
     // Codex CLI
     codexModel: optional('CODEX_MODEL'),
+    // Local LLM (LM Studio default port: 1234, Ollama: 11434, llama.cpp: 8080)
+    localLlmEndpoint: optional('LOCAL_LLM_ENDPOINT'),
+    localLlmModel: optional('LOCAL_LLM_MODEL'),
   };
 }

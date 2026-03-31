@@ -67,6 +67,14 @@ import {
   mcpHelpSchema, handleMcpHelp,
 } from './tools/help.js';
 
+import {
+  localLlmRunSchema, handleLocalLlmRun,
+} from './tools/local-llm.js';
+
+import {
+  promptSplitSchema, handlePromptSplit,
+} from './tools/splitter.js';
+
 function toText(result: unknown): string {
   return JSON.stringify(result, null, 2);
 }
@@ -210,12 +218,26 @@ async function main() {
     async (args) => ({ content: [{ type: 'text', text: toText(await handleCodexRun(args as any, config)) }] })
   );
 
-  // --- Routing help ---
+  // --- Local LLM sub-agent ---
+
+  registerTool(server, 'local_llm_run',
+    'Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp, or any OpenAI-compatible server). Free, private, no API key needed. Best for simple tasks: classify, format, extract, rewrite, proofread.',
+    localLlmRunSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleLocalLlmRun(args as any, config)) }] })
+  );
+
+  // --- Routing and orchestration ---
 
   registerTool(server, 'mcp_help',
-    'List all available elvatis-mcp tools with a routing guide. Optionally provide a task description to get a specific recommendation for which sub-agent (openclaw_run, gemini_run, codex_run) or tool to use.',
+    'List all available elvatis-mcp tools with a routing guide. Optionally provide a task description to get a specific recommendation for which sub-agent (openclaw_run, gemini_run, codex_run, local_llm_run) or tool to use.',
     mcpHelpSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleMcpHelp(args as any)) }] })
+  );
+
+  registerTool(server, 'prompt_split',
+    'Analyze a complex prompt and split it into sub-tasks with agent assignments. Returns a structured plan showing which sub-agent (gemini, codex, openclaw, local LLM) handles each part, dependency ordering, and the actual prompts to send. Strategy: "auto" (default), "gemini", "local", or "heuristic".',
+    promptSplitSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handlePromptSplit(args as any, config)) }] })
   );
 
   // --- Transport ---
