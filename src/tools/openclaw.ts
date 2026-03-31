@@ -70,7 +70,7 @@ export async function handleOpenclawRun(
   const safePrompt = args.prompt.replace(/"/g, '\\"');
   const agentName = args.agent ?? config.openclawDefaultAgent;
   const agentFlag = agentName ? ` --agent ${agentName}` : '';
-  const cmd = `openclaw agents send --message "${safePrompt}"${agentFlag} --local --timeout ${args.timeout_seconds}`;
+  const cmd = `openclaw agent -m "${safePrompt}"${agentFlag} --local --timeout ${args.timeout_seconds}`;
 
   try {
     const output = await sshExec(cfg, cmd, (args.timeout_seconds + 10) * 1000);
