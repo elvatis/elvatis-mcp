@@ -93,11 +93,16 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
     args.push(`${cfg.username}@${cfg.host}`, command);
 
     const bin = sshBinary();
+    const isWin = process.platform === 'win32';
     const proc = spawn(bin, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
-      // Explicitly pass HOME so SSH finds config/known_hosts in the right place,
-      // even when the MCP server is spawned from a sandboxed parent (Claude Desktop MSIX).
+      // On Windows, shell: true lets cmd.exe handle binary resolution and inherits
+      // the full environment context (ssh-agent named pipe, PATH, etc.).
+      // Without it, CreateProcessW sometimes fails to find or authenticate SSH
+      // when spawned from sandboxed parent processes (Claude Desktop MSIX, Claude Code).
+      shell: isWin,
+      // Explicitly pass HOME so SSH finds config/known_hosts in the right place.
       env: { ...process.env, HOME: os.homedir() },
     });
     let stdout = '';
