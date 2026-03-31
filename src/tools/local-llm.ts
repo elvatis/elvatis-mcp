@@ -18,6 +18,7 @@
 
 import { z } from 'zod';
 import { Config } from '../config.js';
+import type { ToolExtra } from '../index.js';
 
 // --- Schema ---
 
@@ -41,6 +42,10 @@ export const localLlmRunSchema = z.object({
   ),
   max_tokens: z.number().min(1).max(32768).optional().describe(
     'Maximum tokens to generate. Default: server default.',
+  ),
+  stream: z.boolean().default(false).describe(
+    'Stream response token-by-token via MCP progress notifications. '
+    + 'The client sees partial content in real time. Final result is still returned as a complete response.',
   ),
   timeout_seconds: z.number().min(5).max(300).default(60).describe(
     'Max seconds to wait for a response.',
@@ -73,9 +78,11 @@ export async function handleLocalLlmRun(
     endpoint?: string;
     temperature?: number;
     max_tokens?: number;
+    stream?: boolean;
     timeout_seconds: number;
   },
   config: Config,
+  extra?: ToolExtra,
 ) {
   const endpoint = args.endpoint
     ?? config.localLlmEndpoint
@@ -89,10 +96,15 @@ export async function handleLocalLlmRun(
   }
   messages.push({ role: 'user', content: args.prompt });
 
+  // Only stream if requested AND the client supports progress notifications
+  const progressToken = extra?._meta?.progressToken;
+  const useStream = args.stream === true && progressToken !== undefined && extra?.sendNotification;
+
   const body: Record<string, unknown> = { messages };
   if (model) body['model'] = model;
   if (args.temperature !== undefined) body['temperature'] = args.temperature;
   if (args.max_tokens !== undefined) body['max_tokens'] = args.max_tokens;
+  if (useStream) body['stream'] = true;
 
   let response: Response;
   try {
@@ -135,6 +147,12 @@ export async function handleLocalLlmRun(
     };
   }
 
+  // --- Streaming path: parse SSE chunks and send progress notifications ---
+  if (useStream && response.body) {
+    return handleStreamingResponse(response, endpoint, model, progressToken, extra!.sendNotification!);
+  }
+
+  // --- Non-streaming path: parse JSON response ---
   let data: ChatCompletionResponse;
   try {
     data = (await response.json()) as ChatCompletionResponse;
@@ -146,10 +164,7 @@ export async function handleLocalLlmRun(
   }
 
   let content = data.choices?.[0]?.message?.content ?? '';
-
-  // Reasoning models (Deepseek R1, Phi 4 Reasoning, etc.) wrap their chain-of-thought
-  // in <think>...</think> tags. Strip those to get the actual answer.
-  content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  content = stripThinkTags(content);
 
   if (!content) {
     return {
@@ -166,5 +181,119 @@ export async function handleLocalLlmRun(
     endpoint,
     finish_reason: data.choices[0]?.finish_reason,
     usage: data.usage,
+  };
+}
+
+// --- Streaming helpers ---
+
+/**
+ * Reasoning models (Deepseek R1, Phi 4 Reasoning, etc.) wrap chain-of-thought
+ * in <think>...</think> tags. Strip those to get the actual answer.
+ */
+function stripThinkTags(content: string): string {
+  return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
+/**
+ * Parse an SSE stream from an OpenAI-compatible API and send MCP progress
+ * notifications for each token chunk. Returns the final aggregated result.
+ *
+ * SSE format:
+ *   data: {"choices":[{"delta":{"content":"token"},"finish_reason":null}]}
+ *   data: [DONE]
+ */
+async function handleStreamingResponse(
+  response: Response,
+  endpoint: string,
+  model: string,
+  progressToken: string | number,
+  sendNotification: (notification: { method: string; params: Record<string, unknown> }) => Promise<void>,
+) {
+  let fullContent = '';
+  let tokenCount = 0;
+  let responseModel = model;
+  let finishReason = '';
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process complete SSE lines from the buffer
+      const lines = buffer.split('\n');
+      // Keep the last potentially incomplete line in the buffer
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(':')) continue; // skip empty lines and comments
+        if (!trimmed.startsWith('data: ')) continue;
+
+        const data = trimmed.slice(6); // strip "data: "
+        if (data === '[DONE]') continue;
+
+        try {
+          const chunk = JSON.parse(data) as {
+            model?: string;
+            choices?: Array<{
+              delta?: { content?: string };
+              finish_reason?: string | null;
+            }>;
+          };
+
+          if (chunk.model) responseModel = chunk.model;
+
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullContent += delta;
+            tokenCount++;
+
+            // Send progress notification with accumulated content
+            await sendNotification({
+              method: 'notifications/progress',
+              params: {
+                progressToken,
+                progress: tokenCount,
+                total: 0, // unknown total for streaming
+                message: fullContent,
+              },
+            });
+          }
+
+          if (chunk.choices?.[0]?.finish_reason) {
+            finishReason = chunk.choices[0].finish_reason;
+          }
+        } catch {
+          // Skip malformed JSON chunks
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const content = stripThinkTags(fullContent);
+
+  if (!content) {
+    return {
+      success: false,
+      error: 'Local LLM returned an empty streamed response.',
+    };
+  }
+
+  return {
+    success: true,
+    response: content,
+    model: responseModel || 'unknown',
+    endpoint,
+    streamed: true,
+    tokens_streamed: tokenCount,
+    finish_reason: finishReason,
   };
 }
