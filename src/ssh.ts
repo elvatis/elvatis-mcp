@@ -29,16 +29,21 @@ let _sshBinaryCache: string | undefined;
 function sshBinary(): string {
   if (_sshBinaryCache) return _sshBinaryCache;
   if (process.platform === 'win32') {
-    // Windows native OpenSSH (standard on Win10+, most reliable)
-    const native = path.join(
-      process.env['SystemRoot'] || 'C:\\Windows',
-      'System32', 'OpenSSH', 'ssh.exe',
-    );
-    if (existsSync(native)) {
-      _sshBinaryCache = native;
-      return native;
+    const root = process.env['SystemRoot'] || 'C:\\Windows';
+    // On 64-bit Windows, 32-bit processes see System32 redirected to SysWOW64
+    // (which has no ssh.exe). Sysnative bypasses the redirect.
+    const candidates = [
+      path.join(root, 'Sysnative', 'OpenSSH', 'ssh.exe'),
+      path.join(root, 'System32', 'OpenSSH', 'ssh.exe'),
+    ];
+    for (const p of candidates) {
+      if (existsSync(p)) {
+        _sshBinaryCache = p;
+        return p;
+      }
     }
   }
+  // Fallback: let PATH resolve it (works on macOS/Linux and if Windows SSH is on PATH)
   _sshBinaryCache = 'ssh';
   return 'ssh';
 }
