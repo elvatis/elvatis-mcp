@@ -1,0 +1,234 @@
+{
+  "timestamp": "2026-03-31T18:55:34.558Z",
+  "agents_tested": [
+    "gemini",
+    "codex",
+    "claude"
+  ],
+  "config": {
+    "localLlmEndpoint": "http://localhost:1234/v1",
+    "geminiModel": "gemini-2.5-flash"
+  },
+  "task_results": [
+    {
+      "agent": "gemini",
+      "task_id": "classify",
+      "latency_ms": 4922,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"gemini\" exited with code 1: Cannot use both a positional prompt and the --prompt (-p) flag together\nUsage: gemini [options] [command]\n\nGemini CLI - Defaults to interactive mode. Use -p/--prompt for non-interactive (headless) mode.\n\nCommands:\n  gemini [query..]             Launch Gemini CLI  [default]\n  gemini mcp                   Manage MCP servers\n  gemini extensions <command>  Manage Gemini CLI extensions.  [aliases: extension]\n  gemini skills <command>      Manage agent skills.  [aliases: skill]\n  gemini hooks <command"
+    },
+    {
+      "agent": "codex",
+      "task_id": "classify",
+      "latency_ms": 121,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"codex\" exited with code 2: error: unexpected argument 'with' found\n\nUsage: codex exec [OPTIONS] [PROMPT] [COMMAND]\n\nFor more information, try '--help'."
+    },
+    {
+      "agent": "claude",
+      "task_id": "classify",
+      "latency_ms": 22036,
+      "success": true,
+      "response_preview": "Ready. What do you need?",
+      "quality_score": 0
+    },
+    {
+      "agent": "gemini",
+      "task_id": "extract",
+      "latency_ms": 4840,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"gemini\" exited with code 1: Cannot use both a positional prompt and the --prompt (-p) flag together\nUsage: gemini [options] [command]\n\nGemini CLI - Defaults to interactive mode. Use -p/--prompt for non-interactive (headless) mode.\n\nCommands:\n  gemini [query..]             Launch Gemini CLI  [default]\n  gemini mcp                   Manage MCP servers\n  gemini extensions <command>  Manage Gemini CLI extensions.  [aliases: extension]\n  gemini skills <command>      Manage agent skills.  [aliases: skill]\n  gemini hooks <command"
+    },
+    {
+      "agent": "codex",
+      "task_id": "extract",
+      "latency_ms": 123,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"codex\" exited with code 2: error: unexpected argument 'with' found\n\nUsage: codex exec [OPTIONS] [PROMPT] [COMMAND]\n\nFor more information, try '--help'."
+    },
+    {
+      "agent": "claude",
+      "task_id": "extract",
+      "latency_ms": 14573,
+      "success": true,
+      "response_preview": "Ready. What do you need?",
+      "quality_score": 0
+    },
+    {
+      "agent": "gemini",
+      "task_id": "reason",
+      "latency_ms": 4779,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"gemini\" exited with code 1: Cannot use both a positional prompt and the --prompt (-p) flag together\nUsage: gemini [options] [command]\n\nGemini CLI - Defaults to interactive mode. Use -p/--prompt for non-interactive (headless) mode.\n\nCommands:\n  gemini [query..]             Launch Gemini CLI  [default]\n  gemini mcp                   Manage MCP servers\n  gemini extensions <command>  Manage Gemini CLI extensions.  [aliases: extension]\n  gemini skills <command>      Manage agent skills.  [aliases: skill]\n  gemini hooks <command"
+    },
+    {
+      "agent": "codex",
+      "task_id": "reason",
+      "latency_ms": 123,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"codex\" exited with code 2: error: unexpected argument 'farmer' found\n\nUsage: codex exec [OPTIONS] [PROMPT] [COMMAND]\n\nFor more information, try '--help'."
+    },
+    {
+      "agent": "claude",
+      "task_id": "reason",
+      "latency_ms": 4311,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"claude\" exited with code 1: Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+    },
+    {
+      "agent": "gemini",
+      "task_id": "code",
+      "latency_ms": 4791,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"gemini\" exited with code 1: Cannot use both a positional prompt and the --prompt (-p) flag together\nUsage: gemini [options] [command]\n\nGemini CLI - Defaults to interactive mode. Use -p/--prompt for non-interactive (headless) mode.\n\nCommands:\n  gemini [query..]             Launch Gemini CLI  [default]\n  gemini mcp                   Manage MCP servers\n  gemini extensions <command>  Manage Gemini CLI extensions.  [aliases: extension]\n  gemini skills <command>      Manage agent skills.  [aliases: skill]\n  gemini hooks <command"
+    },
+    {
+      "agent": "codex",
+      "task_id": "code",
+      "latency_ms": 120,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"codex\" exited with code 2: error: unexpected argument 'with' found\n\nUsage: codex exec [OPTIONS] [PROMPT] [COMMAND]\n\nFor more information, try '--help'."
+    },
+    {
+      "agent": "claude",
+      "task_id": "code",
+      "latency_ms": 15870,
+      "success": true,
+      "response_preview": "Ready. What do you need?",
+      "quality_score": 0
+    },
+    {
+      "agent": "gemini",
+      "task_id": "analysis",
+      "latency_ms": 4795,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"gemini\" exited with code 1: Cannot use both a positional prompt and the --prompt (-p) flag together\nUsage: gemini [options] [command]\n\nGemini CLI - Defaults to interactive mode. Use -p/--prompt for non-interactive (headless) mode.\n\nCommands:\n  gemini [query..]             Launch Gemini CLI  [default]\n  gemini mcp                   Manage MCP servers\n  gemini extensions <command>  Manage Gemini CLI extensions.  [aliases: extension]\n  gemini skills <command>      Manage agent skills.  [aliases: skill]\n  gemini hooks <command"
+    },
+    {
+      "agent": "codex",
+      "task_id": "analysis",
+      "latency_ms": 122,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"codex\" exited with code 2: error: unexpected argument '2' found\n\nUsage: codex exec [OPTIONS] [PROMPT] [COMMAND]\n\nFor more information, try '--help'."
+    },
+    {
+      "agent": "claude",
+      "task_id": "analysis",
+      "latency_ms": 4295,
+      "success": false,
+      "response_preview": "",
+      "quality_score": 0,
+      "error": "Error: \"claude\" exited with code 1: Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer."
+    }
+  ],
+  "orchestration_results": [
+    {
+      "id": "orch-single",
+      "name": "Single agent routing",
+      "strategy": "heuristic",
+      "latency_ms": 1,
+      "expected_tasks": 1,
+      "actual_tasks": 1,
+      "passed": true,
+      "groups": [
+        [
+          "t1"
+        ]
+      ]
+    },
+    {
+      "id": "orch-sequential",
+      "name": "Sequential 2-agent plan",
+      "strategy": "heuristic",
+      "latency_ms": 0,
+      "expected_tasks": 2,
+      "actual_tasks": 2,
+      "passed": true,
+      "groups": [
+        [
+          "t1"
+        ],
+        [
+          "t2"
+        ]
+      ]
+    },
+    {
+      "id": "orch-parallel",
+      "name": "Parallel 2-agent plan",
+      "strategy": "heuristic",
+      "latency_ms": 0,
+      "expected_tasks": 2,
+      "actual_tasks": 2,
+      "passed": true,
+      "groups": [
+        [
+          "t1",
+          "t2"
+        ]
+      ]
+    },
+    {
+      "id": "orch-pipeline",
+      "name": "4-agent pipeline (heuristic)",
+      "strategy": "heuristic",
+      "latency_ms": 0,
+      "expected_tasks": 4,
+      "actual_tasks": 3,
+      "passed": false,
+      "groups": [
+        [
+          "t1"
+        ],
+        [
+          "t2"
+        ],
+        [
+          "t3"
+        ]
+      ]
+    }
+  ],
+  "summary": {
+    "gemini": {
+      "tasks": 5,
+      "success_rate": 0,
+      "avg_latency_ms": 4825,
+      "avg_quality": 0
+    },
+    "codex": {
+      "tasks": 5,
+      "success_rate": 0,
+      "avg_latency_ms": 122,
+      "avg_quality": 0
+    },
+    "claude": {
+      "tasks": 5,
+      "success_rate": 0.6,
+      "avg_latency_ms": 12217,
+      "avg_quality": 0
+    }
+  }
+}

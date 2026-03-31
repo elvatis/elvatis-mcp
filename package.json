@@ -1,6 +1,6 @@
 {
   "name": "@elvatis_com/elvatis-mcp",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "MCP server for OpenClaw — expose smart home, memory, cron, and more to Claude Desktop, Cursor, Windsurf, and any MCP client",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

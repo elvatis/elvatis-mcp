@@ -1,0 +1,76 @@
+{
+  "description": "Example prompts for testing prompt_split across cloud and local models",
+  "version": "1.0.0",
+  "examples": [
+    {
+      "id": "single-coding",
+      "prompt": "Fix the authentication bug in the login handler",
+      "expected_tasks": 1,
+      "expected_agents": ["codex_run"],
+      "category": "single-domain"
+    },
+    {
+      "id": "single-analysis",
+      "prompt": "Summarize this 50-page research paper on quantum computing",
+      "expected_tasks": 1,
+      "expected_agents": ["gemini_run"],
+      "category": "single-domain"
+    },
+    {
+      "id": "single-local",
+      "prompt": "Classify these 20 customer reviews as positive, negative, or neutral",
+      "expected_tasks": 1,
+      "expected_agents": ["local_llm_run"],
+      "category": "single-domain"
+    },
+    {
+      "id": "dual-code-review",
+      "prompt": "Refactor the auth module, then ask Gemini to review the changes",
+      "expected_tasks": 2,
+      "expected_agents": ["codex_run", "gemini_run"],
+      "category": "multi-domain-sequential"
+    },
+    {
+      "id": "dual-parallel",
+      "prompt": "Check my portfolio performance and also turn on the living room lights",
+      "expected_tasks": 2,
+      "expected_agents": ["openclaw_run", "home_light"],
+      "category": "multi-domain-parallel"
+    },
+    {
+      "id": "triple-mixed",
+      "prompt": "Refactor the auth module, then check my portfolio performance and also turn on the living room lights",
+      "expected_tasks": 3,
+      "expected_agents": ["codex_run", "openclaw_run", "home_light"],
+      "category": "multi-domain-mixed"
+    },
+    {
+      "id": "quad-pipeline",
+      "prompt": "Search my memory for TurboQuant notes, then summarize them with Gemini, and reformat the data as JSON locally. After that save a summary to memory.",
+      "expected_tasks": 4,
+      "expected_agents": ["openclaw_memory_search", "gemini_run", "local_llm_run", "openclaw_memory_write"],
+      "category": "multi-domain-pipeline"
+    },
+    {
+      "id": "five-way-orchestration",
+      "prompt": "Check the server status via OpenClaw, debug the failing test with Codex, have Claude review the fix, use the local model to format the report as markdown, and send the results via WhatsApp",
+      "expected_tasks": 5,
+      "expected_agents": ["openclaw_run", "codex_run", "claude_run", "local_llm_run", "openclaw_notify"],
+      "category": "full-orchestration"
+    },
+    {
+      "id": "cloud-vs-local-tradeoff",
+      "prompt": "Translate this technical document to German using the local model, then have Gemini proofread it for accuracy, and finally use Claude to write a professional cover email",
+      "expected_tasks": 3,
+      "expected_agents": ["local_llm_run", "gemini_run", "claude_run"],
+      "category": "cost-optimization"
+    },
+    {
+      "id": "home-automation-chain",
+      "prompt": "Read all sensor data, then if CO2 is above 1000ppm turn on the ventilation, dim the bedroom lights to 20%, and set the thermostat to 19 degrees",
+      "expected_tasks": 4,
+      "expected_agents": ["home_sensors", "home_light", "home_light", "home_climate"],
+      "category": "home-automation"
+    }
+  ]
+}
