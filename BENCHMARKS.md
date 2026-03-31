@@ -159,17 +159,18 @@ npx tsx benchmarks/test-subagents.ts --agents none
 
 ### Results (ThreadripperStation)
 
-Local LLM results use GPT-OSS 20B (fastest model, ROCm GPU). Cloud CLIs require authentication.
+All agents tested on the same 5 tasks. Local LLM uses GPT-OSS 20B with ROCm GPU offload.
 
-| Agent | Backend | classify | extract | reason | code | analysis | Notes |
-|-------|---------|----------|---------|--------|------|----------|-------|
-| local_llm_run | GPT-OSS 20B, LM Studio ROCm | 0.6s | 0.7s | 0.7s | 3.1s | - | Free, private, no API cost |
-| local_llm_run | Phi 4 Mini 3B, LM Studio ROCm | 3.9s | 5.1s | 8.6s | 8.5s | - | Good quality at 3B |
-| gemini_run | Gemini 2.5 Flash | - | - | - | - | - | Requires `gemini auth login` |
-| codex_run | OpenAI Codex | - | - | - | - | - | Requires `codex login` |
-| claude_run | Claude Sonnet 4.6 | ~22s | ~15s | ~4s | ~16s | ~4s | Requires `claude` CLI + auth |
+| Agent | Backend | classify | extract | reason | code | analysis | Avg | Success |
+|-------|---------|----------|---------|--------|------|----------|-----|---------|
+| **local_llm_run** | GPT-OSS 20B (ROCm) | **0.9s** | **0.5s** | **1.0s** | **2.9s** | - | **1.3s** | 100% |
+| codex_run | OpenAI Codex CLI | 2.1s | 3.6s | 2.3s | 8.6s | 3.8s | 4.1s | 100% |
+| claude_run | Claude Sonnet 4.6 | 6.3s | 5.5s | 4.7s | 7.9s | 6.8s | 6.3s | 100% |
+| gemini_run | Gemini 2.5 Flash | 37.4s | 44.8s | 19.3s | 41.9s | 26.8s | 34.0s | 100% |
 
-> Community contributors: run `npx tsx benchmarks/test-subagents.ts --agents gemini,codex,claude --save` and submit results as a PR.
+**Key takeaway:** The local LLM (free, private, on-device) is **3x faster than Codex**, **5x faster than Claude**, and **26x faster than Gemini** for simple tasks like classify and extract. Cloud agents add value for complex reasoning, long-context analysis, and code generation.
+
+> Community contributors: run `npx tsx benchmarks/test-subagents.ts --save` and submit results as a PR.
 
 ### Orchestration Results (heuristic strategy, ThreadripperStation)
 

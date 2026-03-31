@@ -1,0 +1,265 @@
+{
+  "timestamp": "2026-03-31T19:49:57.513Z",
+  "agents_tested": [
+    "local",
+    "gemini",
+    "codex",
+    "claude"
+  ],
+  "config": {
+    "localLlmEndpoint": "http://localhost:1234/v1",
+    "geminiModel": "gemini-2.5-flash"
+  },
+  "task_results": [
+    {
+      "agent": "local",
+      "task_id": "classify",
+      "latency_ms": 948,
+      "success": true,
+      "response_preview": "negative",
+      "quality_score": 1,
+      "tokens": 132
+    },
+    {
+      "agent": "gemini",
+      "task_id": "classify",
+      "latency_ms": 37351,
+      "success": true,
+      "response_preview": "positive",
+      "quality_score": 0
+    },
+    {
+      "agent": "codex",
+      "task_id": "classify",
+      "latency_ms": 2127,
+      "success": true,
+      "response_preview": "neutral",
+      "quality_score": 0
+    },
+    {
+      "agent": "claude",
+      "task_id": "classify",
+      "latency_ms": 6300,
+      "success": true,
+      "response_preview": "neutral",
+      "quality_score": 0
+    },
+    {
+      "agent": "local",
+      "task_id": "extract",
+      "latency_ms": 451,
+      "success": true,
+      "response_preview": "<|channel|>final <|constrain|>JSON<|message|>{\"name\":\"John Smith\",\"age\":34,\"city\":\"Berlin\"}",
+      "quality_score": 1,
+      "tokens": 143
+    },
+    {
+      "agent": "gemini",
+      "task_id": "extract",
+      "latency_ms": 44794,
+      "success": true,
+      "response_preview": "(empty response)",
+      "quality_score": 0
+    },
+    {
+      "agent": "codex",
+      "task_id": "extract",
+      "latency_ms": 3575,
+      "success": true,
+      "response_preview": "{}",
+      "quality_score": 0
+    },
+    {
+      "agent": "claude",
+      "task_id": "extract",
+      "latency_ms": 5539,
+      "success": true,
+      "response_preview": "```json\n{}\n```",
+      "quality_score": 0
+    },
+    {
+      "agent": "local",
+      "task_id": "reason",
+      "latency_ms": 1038,
+      "success": true,
+      "response_preview": "9",
+      "quality_score": 1,
+      "tokens": 127
+    },
+    {
+      "agent": "gemini",
+      "task_id": "reason",
+      "latency_ms": 19271,
+      "success": true,
+      "response_preview": "9",
+      "quality_score": 1
+    },
+    {
+      "agent": "codex",
+      "task_id": "reason",
+      "latency_ms": 2348,
+      "success": true,
+      "response_preview": "{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":11087,\"cached_input_tokens\":9728,\"output_tokens\":5}}",
+      "quality_score": 1
+    },
+    {
+      "agent": "claude",
+      "task_id": "reason",
+      "latency_ms": 4739,
+      "success": true,
+      "response_preview": "9",
+      "quality_score": 1
+    },
+    {
+      "agent": "local",
+      "task_id": "code",
+      "latency_ms": 2908,
+      "success": true,
+      "response_preview": "```python\nimport re\n\ndef is_valid_ipv4(address: str) -> bool:\n    \"\"\"\n    Returns True if the given string is a valid IP",
+      "quality_score": 1,
+      "tokens": 277
+    },
+    {
+      "agent": "gemini",
+      "task_id": "code",
+      "latency_ms": 41932,
+      "success": true,
+      "response_preview": "```typescript\n#!/usr/bin/env node\n/**\n * elvatis-mcp — MCP server exposing OpenClaw tools to Claude Desktop, Cursor, Win",
+      "quality_score": 0.5
+    },
+    {
+      "agent": "codex",
+      "task_id": "code",
+      "latency_ms": 8561,
+      "success": true,
+      "response_preview": "pass",
+      "quality_score": 0
+    },
+    {
+      "agent": "claude",
+      "task_id": "code",
+      "latency_ms": 7925,
+      "success": true,
+      "response_preview": "What code do you need?",
+      "quality_score": 0
+    },
+    {
+      "agent": "gemini",
+      "task_id": "analysis",
+      "latency_ms": 26782,
+      "success": true,
+      "response_preview": "The Model Context Protocol (MCP) is a system within this project that acts as a server, exposing various specialized too",
+      "quality_score": 1
+    },
+    {
+      "agent": "codex",
+      "task_id": "analysis",
+      "latency_ms": 3822,
+      "success": true,
+      "response_preview": "{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":11086,\"cached_input_tokens\":9728,\"output_tokens\":100}}",
+      "quality_score": 0
+    },
+    {
+      "agent": "claude",
+      "task_id": "analysis",
+      "latency_ms": 6839,
+      "success": true,
+      "response_preview": "MCP is a standardized protocol that lets AI models communicate with external tools, data sources, and services through a",
+      "quality_score": 1
+    }
+  ],
+  "orchestration_results": [
+    {
+      "id": "orch-single",
+      "name": "Single agent routing",
+      "strategy": "heuristic",
+      "latency_ms": 1,
+      "expected_tasks": 1,
+      "actual_tasks": 1,
+      "passed": true,
+      "groups": [
+        [
+          "t1"
+        ]
+      ]
+    },
+    {
+      "id": "orch-sequential",
+      "name": "Sequential 2-agent plan",
+      "strategy": "heuristic",
+      "latency_ms": 0,
+      "expected_tasks": 2,
+      "actual_tasks": 2,
+      "passed": true,
+      "groups": [
+        [
+          "t1"
+        ],
+        [
+          "t2"
+        ]
+      ]
+    },
+    {
+      "id": "orch-parallel",
+      "name": "Parallel 2-agent plan",
+      "strategy": "heuristic",
+      "latency_ms": 0,
+      "expected_tasks": 2,
+      "actual_tasks": 2,
+      "passed": true,
+      "groups": [
+        [
+          "t1",
+          "t2"
+        ]
+      ]
+    },
+    {
+      "id": "orch-pipeline",
+      "name": "4-agent pipeline (heuristic)",
+      "strategy": "heuristic",
+      "latency_ms": 0,
+      "expected_tasks": 4,
+      "actual_tasks": 3,
+      "passed": false,
+      "groups": [
+        [
+          "t1"
+        ],
+        [
+          "t2"
+        ],
+        [
+          "t3"
+        ]
+      ]
+    }
+  ],
+  "summary": {
+    "local": {
+      "tasks": 4,
+      "success_rate": 1,
+      "avg_latency_ms": 1336,
+      "avg_quality": 1
+    },
+    "gemini": {
+      "tasks": 5,
+      "success_rate": 1,
+      "avg_latency_ms": 34026,
+      "avg_quality": 0.5
+    },
+    "codex": {
+      "tasks": 5,
+      "success_rate": 1,
+      "avg_latency_ms": 4087,
+      "avg_quality": 0.2
+    },
+    "claude": {
+      "tasks": 5,
+      "success_rate": 1,
+      "avg_latency_ms": 6268,
+      "avg_quality": 0.4
+    }
+  }
+}
