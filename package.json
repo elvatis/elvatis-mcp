@@ -1,0 +1,39 @@
+{
+  "name": "@elvatis_com/elvatis-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for OpenClaw — expose smart home, memory, cron, and more to Claude Desktop, Cursor, Windsurf, and any MCP client",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "elvatis-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "openclaw",
+    "elvatis",
+    "home-assistant",
+    "ai",
+    "claude"
+  ],
+  "author": "Elvatis <emre.kohler@elvatis.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
