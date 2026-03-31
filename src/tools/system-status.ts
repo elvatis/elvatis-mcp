@@ -66,6 +66,12 @@ export async function handleSystemStatus(_args: Record<string, never>, config: C
       return `${models.length} model(s) loaded: ${models.join(', ')}`;
     }),
 
+    // Claude CLI
+    checkService('claude_cli', async () => {
+      const out = await spawnLocal('claude', ['--version'], 5000);
+      return out.trim();
+    }),
+
     // Gemini CLI
     checkService('gemini_cli', async () => {
       const out = await spawnLocal('gemini', ['--version'], 5000);
