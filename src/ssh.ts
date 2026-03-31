@@ -38,8 +38,9 @@ function sshBinary(): string {
     ];
     for (const p of candidates) {
       if (existsSync(p)) {
-        _sshBinaryCache = p;
-        return p;
+        // Use forward slashes: with shell:true on Windows, cmd.exe eats backslashes
+        _sshBinaryCache = normalizePath(p);
+        return _sshBinaryCache;
       }
     }
   }
