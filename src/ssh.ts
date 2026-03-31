@@ -7,7 +7,9 @@
  */
 
 import { spawn } from 'child_process';
+import { existsSync } from 'fs';
 import * as os from 'os';
+import * as path from 'path';
 
 export interface SshConfig {
   host: string;
@@ -18,19 +20,69 @@ export interface SshConfig {
 }
 
 /**
+ * Resolve the SSH binary to a full path on Windows.
+ * Claude Desktop (MSIX) and Claude Code may have a different PATH than the
+ * user's interactive shell. We try known locations explicitly so we don't
+ * depend on PATH resolution inside a sandboxed child process.
+ */
+let _sshBinaryCache: string | undefined;
+function sshBinary(): string {
+  if (_sshBinaryCache) return _sshBinaryCache;
+  if (process.platform === 'win32') {
+    // Windows native OpenSSH (standard on Win10+, most reliable)
+    const native = path.join(
+      process.env['SystemRoot'] || 'C:\\Windows',
+      'System32', 'OpenSSH', 'ssh.exe',
+    );
+    if (existsSync(native)) {
+      _sshBinaryCache = native;
+      return native;
+    }
+  }
+  _sshBinaryCache = 'ssh';
+  return 'ssh';
+}
+
+/** Normalize a file path to forward slashes (SSH on Windows needs this). */
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/');
+}
+
+/**
  * Execute a shell command on the remote host and return stdout as a string.
  * Throws if the command exits with a non-zero code or times out.
+ * On transient failures (exit 255), retries once after a short delay.
  */
-export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Promise<string> {
+export async function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Promise<string> {
+  try {
+    return await sshExecOnce(cfg, command, timeoutMs);
+  } catch (err: unknown) {
+    // Retry once on exit 255 (connection-level failure, often transient on Windows)
+    const msg = err instanceof Error ? err.message : '';
+    if (msg.includes('exit 255')) {
+      await new Promise(r => setTimeout(r, 1000));
+      return sshExecOnce(cfg, command, timeoutMs);
+    }
+    throw err;
+  }
+}
+
+function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const keyPath = cfg.keyPath.replace(/^~/, os.homedir());
+    // Expand ~ and normalize to forward slashes for cross-platform SSH compatibility
+    const keyPath = normalizePath(
+      cfg.keyPath.replace(/^~/, os.homedir()),
+    );
     const debug = process.env['SSH_DEBUG'] === '1';
 
     const args = [
       '-i', keyPath,
       '-o', 'StrictHostKeyChecking=no',
-      '-o', 'BatchMode=yes',           // never prompt for password
-      '-o', 'ConnectTimeout=8',
+      '-o', 'UserKnownHostsFile=/dev/null',  // prevent known_hosts divergence across SSH clients
+      '-o', 'BatchMode=yes',
+      '-o', 'ConnectTimeout=10',
+      '-o', 'ServerAliveInterval=5',          // detect dead connections faster
+      '-o', 'ServerAliveCountMax=2',
       '-p', String(cfg.port),
     ];
 
@@ -40,9 +92,14 @@ export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Pr
 
     args.push(`${cfg.username}@${cfg.host}`, command);
 
-    // On Windows, spawn without shell — PATH must contain the ssh binary.
-    // Pass stdio explicitly so both stdout and stderr are always piped.
-    const proc = spawn('ssh', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const bin = sshBinary();
+    const proc = spawn(bin, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      // Explicitly pass HOME so SSH finds config/known_hosts in the right place,
+      // even when the MCP server is spawned from a sandboxed parent (Claude Desktop MSIX).
+      env: { ...process.env, HOME: os.homedir() },
+    });
     let stdout = '';
     let stderr = '';
 
@@ -59,8 +116,6 @@ export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Pr
     proc.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
-        // Build a helpful error that includes connection details and any output.
-        // Exit 255 = SSH connection-level failure (wrong key, unreachable host, etc.)
         const detail = stderr.trim() || stdout.trim() || 'no output from ssh';
         const hint = code === 255
           ? ` | Tip: verify SSH_HOST (${cfg.host}), SSH_USER (${cfg.username}), SSH_KEY_PATH (${keyPath}) in your .env. Set SSH_DEBUG=1 for verbose logs.`
@@ -75,7 +130,7 @@ export function sshExec(cfg: SshConfig, command: string, timeoutMs = 15_000): Pr
       clearTimeout(timer);
       if (err.code === 'ENOENT') {
         reject(new Error(
-          'ssh binary not found in PATH. ' +
+          `ssh binary not found at "${bin}". ` +
           'Windows: Settings > Optional Features > OpenSSH Client. ' +
           'macOS/Linux: should be pre-installed.',
         ));

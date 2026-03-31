@@ -65,31 +65,39 @@ export async function handleMemoryReadToday(_args: Record<string, never>, config
 
 export async function handleMemorySearch(args: { query: string; days: number }, config: Config) {
   const cfg = toSshCfg(config);
+  const escaped = args.query.replace(/'/g, "'\\''");
 
-  // List recent memory files. Let SSH errors propagate so the caller sees a real error
-  // instead of silently returning empty results when the connection is down.
-  const listing = await sshExec(
+  // Single SSH call: list recent files, grep all of them at once, and format
+  // output with filenames so we can extract date + excerpt per file.
+  // This avoids N+1 SSH connections (which was the main reliability issue).
+  const output = await sshExec(
     cfg,
-    `ls ${MEMORY_DIR}/*.md 2>/dev/null | sort -r | head -${args.days}`,
+    `files=$(ls ${MEMORY_DIR}/*.md 2>/dev/null | sort -r | head -${args.days}) && `
+    + `[ -n "$files" ] && grep -i -H -m1 -A2 -B1 '${escaped}' $files 2>/dev/null || true`,
+    20_000,
   );
 
-  const files = listing.trim().split('\n').filter(Boolean);
-  if (files.length === 0) return { results: [], query: args.query };
+  if (!output.trim()) return { results: [], query: args.query };
 
+  // Parse grep -H output: each block is separated by "--" lines,
+  // lines are prefixed with "filepath:content" or "filepath-content" (context lines).
   const results: Array<{ date: string; excerpt: string }> = [];
+  const blocks = output.split(/^--$/m);
 
-  for (const file of files) {
-    const date = file.replace(/.*\//, '').replace('.md', '');
-    // grep: case-insensitive, first match only, 2 lines context.
-    // Exit code 1 means no match (not an error), use || true to keep exit 0.
-    // SSH errors here are per-file; if one file fails we skip it rather than aborting.
-    const match = await sshExec(
-      cfg,
-      `grep -i -m1 -A2 -B1 '${args.query.replace(/'/g, "'\\''")}' ${file} 2>/dev/null || true`,
-    ).catch(() => '');
-
-    if (match.trim()) {
-      results.push({ date, excerpt: match.trim() });
+  for (const block of blocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    // Extract date from first line's file path (e.g. /path/2026-03-30.md:...)
+    const dateMatch = trimmed.match(/(\d{4}-\d{2}-\d{2})\.md[:\-]/);
+    if (!dateMatch) continue;
+    // Strip file path prefixes from each line for clean excerpt
+    const excerpt = trimmed
+      .split('\n')
+      .map(line => line.replace(/^.*\.md[:\-]/, ''))
+      .join('\n')
+      .trim();
+    if (excerpt) {
+      results.push({ date: dateMatch[1]!, excerpt });
     }
   }
 
