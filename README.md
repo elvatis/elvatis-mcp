@@ -219,17 +219,31 @@ Prerequisites: `.env` configured, local LLM server running, OpenClaw server reac
 
 ## Benchmarks
 
-All benchmarks measured on a local development machine. Results will vary based on hardware, model size, and network latency.
+See [BENCHMARKS.md](BENCHMARKS.md) for the full benchmark suite, methodology, and community contribution guide.
 
-### Test Hardware
+### Reference Hardware
 
 | Component | Spec |
 |---|---|
-| CPU | AMD Threadripper 3960X (24 cores / 48 threads, 3.8 GHz base) |
+| CPU | AMD Threadripper 3960X (24 cores / 48 threads) |
 | GPU | AMD Radeon RX 9070 XT Elite (16 GB GDDR6) |
-| RAM | 128 GB DDR4 ECC |
+| RAM | 128 GB DDR4 |
 | OS | Windows 11 Pro |
-| LLM Server | LM Studio 0.3.x (llama.cpp backend) |
+| Runtime | LM Studio + ROCm (`llama.cpp-win-x86_64-amd-rocm-avx2@2.8.0`) |
+
+### Local LLM Inference (LM Studio, ROCm GPU, `--gpu max`)
+
+Median of 3 runs, `max_tokens=512`. Tasks: classify (1-word sentiment), extract (JSON), reason (arithmetic), code (Python function).
+
+| Model | Params | classify | extract | reason | code |
+|-------|--------|----------|---------|--------|------|
+| Phi 4 Mini Reasoning | 3B | 3.9s | 5.1s | 8.6s | 8.5s |
+| Deepseek R1 0528 Qwen3 | 8B | 2.5s | 7.7s | 13.3s | 7.3s |
+| Qwen 3.5 9B | 9B | 4.9s | 11.2s | 6.6s | 11.4s |
+| Phi 4 Reasoning Plus | 15B | 0.4s | 17.4s | 4.5s | 17.3s |
+| **GPT-OSS 20B** | **20B** | **0.6s** | **0.7s** | **0.7s** | **3.1s** |
+
+**GPU speedup vs CPU (Deepseek R1 8B):** classify 8.4x faster, extract 3.2x faster.
 
 ### Service Latency (system_status)
 
@@ -242,49 +256,18 @@ All benchmarks measured on a local development machine. Results will vary based 
 | Codex CLI (version check) | 131-136 ms | CLI startup overhead |
 | Gemini CLI (version check) | 4,700-4,900 ms | CLI startup + auth check |
 
-### Local LLM Inference (LM Studio, CPU-only)
+### prompt_split Accuracy (heuristic strategy)
 
-| Model | Task | Tokens | Time | Notes |
-|---|---|---|---|---|
-| Deepseek R1 Qwen3 8B | Sentiment classification | 343 (303 reasoning) | ~21s | Reasoning model, <think> tags stripped |
-| Deepseek R1 Qwen3 8B | JSON extraction | ~400 | ~25s | Structured output from natural language |
-| Deepseek R1 Qwen3 8B | Simple greeting | 151 (145 reasoning) | ~18s | Reasoning overhead even for trivial tasks |
+| Metric | Result |
+|--------|--------|
+| Pass rate | 6/10 (60%) |
+| Task count accuracy | 7/10 (70%) |
+| Avg agent match | 70% |
+| Latency | <1ms (no LLM call) |
 
-### Prompt Splitting (prompt_split)
+The `auto` strategy (Gemini or local LLM) handles complex multi-step prompts with higher accuracy. See [BENCHMARKS.md](BENCHMARKS.md) for details.
 
-| Strategy | Latency | Notes |
-|---|---|---|
-| Heuristic (keyword) | <1 ms | Instant, no LLM call |
-| Short-circuit (single domain) | <1 ms | Auto-detected, no LLM call |
-| Local LLM | 60s (fallback) | Deepseek R1 struggles with structured JSON output, falls back to heuristic |
-| Gemini | 5-15s | Best quality splitting (requires Gemini CLI) |
-
-### Tool Operations
-
-| Operation | Latency | Notes |
-|---|---|---|
-| Memory search (SSH, single call) | 208-391 ms | grep across 90 days of daily logs |
-| Home light on/off | 48-84 ms | Direct HA REST API |
-| Cron job listing | ~300 ms | SSH + openclaw CLI |
-| File listing (SSH) | ~300 ms | Remote directory listing |
-
-### Notes on Hardware
-
-This setup runs all local inference on **CPU only** (Threadripper 3960X, 48 threads). The Radeon RX 9070 XT is not yet utilized for LLM inference because:
-
-- LM Studio uses llama.cpp which requires ROCm or Vulkan for AMD GPUs
-- ROCm support for RDNA 4 (RX 9070 series) is still maturing
-- A Vulkan backend for llama.cpp is in development
-
-On newer or GPU-accelerated hardware, local LLM inference times would be significantly faster (likely 2-5x for the 8B model). Contributions benchmarking on different hardware are very welcome:
-
-- Apple Silicon (M2/M3/M4) with Metal acceleration
-- NVIDIA GPUs (RTX 3090/4090) with CUDA
-- AMD GPUs with ROCm (RDNA 3, MI300X)
-- Intel Arc GPUs with SYCL
-- ARM servers (Graviton, Ampere Altra)
-
-If you run benchmarks on your hardware, please open an issue or PR at [github.com/elvatis/elvatis-mcp](https://github.com/elvatis/elvatis-mcp) with your results.
+> Want to contribute benchmarks from your hardware? See [BENCHMARKS.md](BENCHMARKS.md#community-contributions).
 
 ---
 

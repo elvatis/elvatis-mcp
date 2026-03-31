@@ -1,0 +1,218 @@
+{
+  "strategy": "heuristic",
+  "timestamp": "2026-03-31T18:09:05.112Z",
+  "summary": {
+    "passed": 6,
+    "total": 10,
+    "avgLatency": 0,
+    "avgAgentScore": 0.6950000000000001,
+    "taskCountCorrect": 7
+  },
+  "results": [
+    {
+      "id": "single-coding",
+      "category": "single-domain",
+      "prompt": "Fix the authentication bug in the login handler",
+      "expected_tasks": 1,
+      "expected_agents": [
+        "codex_run"
+      ],
+      "actual_tasks": 1,
+      "actual_agents": [
+        "codex_run"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": true,
+      "agent_overlap_score": 1,
+      "passed": true
+    },
+    {
+      "id": "single-analysis",
+      "category": "single-domain",
+      "prompt": "Summarize this 50-page research paper on quantum computing",
+      "expected_tasks": 1,
+      "expected_agents": [
+        "gemini_run"
+      ],
+      "actual_tasks": 1,
+      "actual_agents": [
+        "gemini_run"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": true,
+      "agent_overlap_score": 1,
+      "passed": true
+    },
+    {
+      "id": "single-local",
+      "category": "single-domain",
+      "prompt": "Classify these 20 customer reviews as positive, negative, or neutral",
+      "expected_tasks": 1,
+      "expected_agents": [
+        "local_llm_run"
+      ],
+      "actual_tasks": 1,
+      "actual_agents": [
+        "claude_run"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": true,
+      "agent_overlap_score": 0,
+      "passed": false
+    },
+    {
+      "id": "dual-code-review",
+      "category": "multi-domain-sequential",
+      "prompt": "Refactor the auth module, then ask Gemini to review the changes",
+      "expected_tasks": 2,
+      "expected_agents": [
+        "codex_run",
+        "gemini_run"
+      ],
+      "actual_tasks": 2,
+      "actual_agents": [
+        "codex_run",
+        "claude_run"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 1,
+      "task_count_correct": true,
+      "agent_overlap_score": 0.5,
+      "passed": true
+    },
+    {
+      "id": "dual-parallel",
+      "category": "multi-domain-parallel",
+      "prompt": "Check my portfolio performance and also turn on the living room lights",
+      "expected_tasks": 2,
+      "expected_agents": [
+        "openclaw_run",
+        "home_light"
+      ],
+      "actual_tasks": 2,
+      "actual_agents": [
+        "openclaw_run",
+        "home_light"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": true,
+      "agent_overlap_score": 1,
+      "passed": true
+    },
+    {
+      "id": "triple-mixed",
+      "category": "multi-domain-mixed",
+      "prompt": "Refactor the auth module, then check my portfolio performance and also turn on the living room lights",
+      "expected_tasks": 3,
+      "expected_agents": [
+        "codex_run",
+        "openclaw_run",
+        "home_light"
+      ],
+      "actual_tasks": 3,
+      "actual_agents": [
+        "codex_run",
+        "openclaw_run",
+        "home_light"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": true,
+      "agent_overlap_score": 1,
+      "passed": true
+    },
+    {
+      "id": "quad-pipeline",
+      "category": "multi-domain-pipeline",
+      "prompt": "Search my memory for TurboQuant notes, then summarize them with Gemini, and reformat the data as JSON locally. After that save a summary to memory.",
+      "expected_tasks": 4,
+      "expected_agents": [
+        "openclaw_memory_search",
+        "gemini_run",
+        "local_llm_run",
+        "openclaw_memory_write"
+      ],
+      "actual_tasks": 3,
+      "actual_agents": [
+        "openclaw_memory_write",
+        "local_llm_run",
+        "openclaw_memory_write"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": false,
+      "agent_overlap_score": 0.75,
+      "passed": false
+    },
+    {
+      "id": "five-way-orchestration",
+      "category": "full-orchestration",
+      "prompt": "Check the server status via OpenClaw, debug the failing test with Codex, have Claude review the fix, use the local model to format the report as markdown, and send the results via WhatsApp",
+      "expected_tasks": 5,
+      "expected_agents": [
+        "openclaw_run",
+        "codex_run",
+        "claude_run",
+        "local_llm_run",
+        "openclaw_notify"
+      ],
+      "actual_tasks": 1,
+      "actual_agents": [
+        "codex_run"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": false,
+      "agent_overlap_score": 0.2,
+      "passed": false
+    },
+    {
+      "id": "cloud-vs-local-tradeoff",
+      "category": "cost-optimization",
+      "prompt": "Translate this technical document to German using the local model, then have Gemini proofread it for accuracy, and finally use Claude to write a professional cover email",
+      "expected_tasks": 3,
+      "expected_agents": [
+        "local_llm_run",
+        "gemini_run",
+        "claude_run"
+      ],
+      "actual_tasks": 3,
+      "actual_agents": [
+        "gemini_run",
+        "local_llm_run",
+        "claude_run"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": true,
+      "agent_overlap_score": 1,
+      "passed": true
+    },
+    {
+      "id": "home-automation-chain",
+      "category": "home-automation",
+      "prompt": "Read all sensor data, then if CO2 is above 1000ppm turn on the ventilation, dim the bedroom lights to 20%, and set the thermostat to 19 degrees",
+      "expected_tasks": 4,
+      "expected_agents": [
+        "home_sensors",
+        "home_light",
+        "home_light",
+        "home_climate"
+      ],
+      "actual_tasks": 2,
+      "actual_agents": [
+        "home_light",
+        "home_light"
+      ],
+      "strategy_used": "heuristic",
+      "latency_ms": 0,
+      "task_count_correct": false,
+      "agent_overlap_score": 0.5,
+      "passed": false
+    }
+  ]
+}
