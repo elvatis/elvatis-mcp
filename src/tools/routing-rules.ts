@@ -93,9 +93,10 @@ export function matchRules(text: string): Array<{ tool: string; reason: string; 
 export const KNOWN_AGENTS = new Set([
   'codex_run', 'gemini_run', 'openclaw_run', 'local_llm_run',
   'home_light', 'home_scene', 'home_sensors', 'home_climate',
-  'home_vacuum', 'home_get_state',
+  'home_vacuum', 'home_get_state', 'home_automation',
   'openclaw_memory_write', 'openclaw_memory_read_today', 'openclaw_memory_search',
   'openclaw_cron_list', 'openclaw_cron_run', 'openclaw_cron_status',
+  'openclaw_logs', 'system_status', 'local_llm_models', 'file_transfer',
 ]);
 
 export const ROUTING_GUIDE = `
