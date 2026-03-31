@@ -406,6 +406,13 @@ async function main() {
         res.end('Not found');
       }
     });
+    dashServer.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        process.stderr.write(`[elvatis-mcp] Dashboard port ${dashPort} in use, skipping (MCP tools still work)\n`);
+      } else {
+        process.stderr.write(`[elvatis-mcp] Dashboard error: ${err.message}\n`);
+      }
+    });
     dashServer.listen(dashPort, () => {
       process.stderr.write(`[elvatis-mcp] Dashboard at http://localhost:${dashPort}/status\n`);
     });
