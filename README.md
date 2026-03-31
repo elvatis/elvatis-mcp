@@ -217,6 +217,77 @@ Prerequisites: `.env` configured, local LLM server running, OpenClaw server reac
 
 ---
 
+## Benchmarks
+
+All benchmarks measured on a local development machine. Results will vary based on hardware, model size, and network latency.
+
+### Test Hardware
+
+| Component | Spec |
+|---|---|
+| CPU | AMD Threadripper 3960X (24 cores / 48 threads, 3.8 GHz base) |
+| GPU | AMD Radeon RX 9070 XT Elite (16 GB GDDR6) |
+| RAM | 128 GB DDR4 ECC |
+| OS | Windows 11 Pro |
+| LLM Server | LM Studio 0.3.x (llama.cpp backend) |
+
+### Service Latency (system_status)
+
+| Service | Latency | Notes |
+|---|---|---|
+| Home Assistant (REST API) | 48-84 ms | Local network, direct HTTP |
+| OpenClaw SSH | 273-299 ms | LAN SSH + command execution |
+| Local LLM (model list) | 19-38 ms | LM Studio localhost API |
+| Claude CLI (version check) | 472-478 ms | CLI startup overhead |
+| Codex CLI (version check) | 131-136 ms | CLI startup overhead |
+| Gemini CLI (version check) | 4,700-4,900 ms | CLI startup + auth check |
+
+### Local LLM Inference (LM Studio, CPU-only)
+
+| Model | Task | Tokens | Time | Notes |
+|---|---|---|---|---|
+| Deepseek R1 Qwen3 8B | Sentiment classification | 343 (303 reasoning) | ~21s | Reasoning model, <think> tags stripped |
+| Deepseek R1 Qwen3 8B | JSON extraction | ~400 | ~25s | Structured output from natural language |
+| Deepseek R1 Qwen3 8B | Simple greeting | 151 (145 reasoning) | ~18s | Reasoning overhead even for trivial tasks |
+
+### Prompt Splitting (prompt_split)
+
+| Strategy | Latency | Notes |
+|---|---|---|
+| Heuristic (keyword) | <1 ms | Instant, no LLM call |
+| Short-circuit (single domain) | <1 ms | Auto-detected, no LLM call |
+| Local LLM | 60s (fallback) | Deepseek R1 struggles with structured JSON output, falls back to heuristic |
+| Gemini | 5-15s | Best quality splitting (requires Gemini CLI) |
+
+### Tool Operations
+
+| Operation | Latency | Notes |
+|---|---|---|
+| Memory search (SSH, single call) | 208-391 ms | grep across 90 days of daily logs |
+| Home light on/off | 48-84 ms | Direct HA REST API |
+| Cron job listing | ~300 ms | SSH + openclaw CLI |
+| File listing (SSH) | ~300 ms | Remote directory listing |
+
+### Notes on Hardware
+
+This setup runs all local inference on **CPU only** (Threadripper 3960X, 48 threads). The Radeon RX 9070 XT is not yet utilized for LLM inference because:
+
+- LM Studio uses llama.cpp which requires ROCm or Vulkan for AMD GPUs
+- ROCm support for RDNA 4 (RX 9070 series) is still maturing
+- A Vulkan backend for llama.cpp is in development
+
+On newer or GPU-accelerated hardware, local LLM inference times would be significantly faster (likely 2-5x for the 8B model). Contributions benchmarking on different hardware are very welcome:
+
+- Apple Silicon (M2/M3/M4) with Metal acceleration
+- NVIDIA GPUs (RTX 3090/4090) with CUDA
+- AMD GPUs with ROCm (RDNA 3, MI300X)
+- Intel Arc GPUs with SYCL
+- ARM servers (Graviton, Ampere Altra)
+
+If you run benchmarks on your hardware, please open an issue or PR at [github.com/elvatis/elvatis-mcp](https://github.com/elvatis/elvatis-mcp) with your results.
+
+---
+
 ## Requirements
 
 - Node.js 18 or later
