@@ -68,6 +68,26 @@ import {
 } from './tools/help.js';
 
 import {
+  systemStatusSchema, handleSystemStatus,
+} from './tools/system-status.js';
+
+import {
+  localLlmModelsSchema, handleLocalLlmModels,
+} from './tools/local-llm-models.js';
+
+import {
+  openclawLogsSchema, handleOpenclawLogs,
+} from './tools/openclaw-logs.js';
+
+import {
+  homeAutomationSchema, handleHomeAutomation,
+} from './tools/home-automation.js';
+
+import {
+  fileTransferSchema, handleFileTransfer,
+} from './tools/file-transfer.js';
+
+import {
   localLlmRunSchema, handleLocalLlmRun,
 } from './tools/local-llm.js';
 
@@ -243,6 +263,38 @@ async function main() {
     + 'Strategy: "auto" (default), "gemini", "local", or "heuristic".',
     promptSplitSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handlePromptSplit(args as any, config)) }] })
+  );
+
+  // --- System management ---
+
+  registerTool(server, 'system_status',
+    'Check health of all connected services at once: Home Assistant, OpenClaw (SSH), local LLM, Gemini CLI, Codex CLI. Returns a unified status overview with latency for each service.',
+    systemStatusSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleSystemStatus(args as any, config)) }] })
+  );
+
+  registerTool(server, 'local_llm_models',
+    'List, load, or unload models on the local LLM server. "list" shows available models. "load"/"unload" switches models in LM Studio without opening the GUI (LM Studio only).',
+    localLlmModelsSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleLocalLlmModels(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_logs',
+    'View recent logs from the OpenClaw server: gateway logs, agent execution logs, or system journal. Supports line count and keyword filtering.',
+    openclawLogsSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleOpenclawLogs(args as any, config)) }] })
+  );
+
+  registerTool(server, 'home_automation',
+    'List, trigger, enable, or disable Home Assistant automations. "list" shows all automations with their state and last trigger time.',
+    homeAutomationSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleHomeAutomation(args as any, config)) }] })
+  );
+
+  registerTool(server, 'file_transfer',
+    'Upload, download, or list files on the OpenClaw server via SSH. Supports text and binary files up to 10MB. "download" without local_path returns file content directly.',
+    fileTransferSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleFileTransfer(args as any, config)) }] })
   );
 
   // --- Transport ---
