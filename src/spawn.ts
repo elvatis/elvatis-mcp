@@ -40,27 +40,23 @@ function spawnEnv(): NodeJS.ProcessEnv {
 }
 
 /**
- * On Windows with shell:true, Node concatenates args with spaces but does NOT quote them.
- * This causes multi-word prompts like "Write a Python function..." to be word-split
- * by cmd.exe, each word becoming a separate positional argument.
- *
- * Fix: wrap every arg in double quotes and escape any inner double quotes.
- * This converts ['-p', 'hello world'] -> ['-p', '"hello world"'] before spawn.
+ * Escape a single argument for cmd.exe.
+ * Wraps in double quotes and escapes inner double quotes.
  */
-function quoteArgsForWindowsShell(args: string[]): string[] {
-  return args.map(arg => {
-    // Already quoted — leave as-is
-    if (arg.startsWith('"') && arg.endsWith('"')) return arg;
-    // Escape inner double quotes, then wrap the whole arg
-    const escaped = arg.replace(/"/g, '\\"');
-    return `"${escaped}"`;
-  });
+function escapeWinArg(arg: string): string {
+  // Already quoted
+  if (arg.startsWith('"') && arg.endsWith('"')) return arg;
+  const escaped = arg.replace(/"/g, '\\"');
+  return `"${escaped}"`;
 }
 
 /**
  * Spawn a local command and return stdout as a string.
  * Progress output on stderr is silently collected (not forwarded).
  * Throws if the process exits with a non-zero code or times out.
+ *
+ * On Windows, builds a single command string for cmd.exe to avoid
+ * DEP0190 (passing args to child_process with shell:true).
  */
 export function spawnLocal(
   cmd: string,
@@ -69,9 +65,16 @@ export function spawnLocal(
 ): Promise<string> {
   const isWin = process.platform === 'win32';
 
+  // On Windows we need shell:true so cmd.exe resolves .cmd/.ps1 wrappers
+  // (e.g. gemini.cmd, codex.cmd). To avoid DEP0190 we build a single
+  // command string and pass no args array.
+  const spawnCmd = isWin
+    ? `${cmd} ${args.map(escapeWinArg).join(' ')}`
+    : cmd;
+  const spawnArgs = isWin ? [] : args;
+
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, isWin ? quoteArgsForWindowsShell(args) : args, {
-      // shell: true on Windows so cmd.exe resolves .cmd/.ps1 wrappers (e.g. gemini.cmd, codex.cmd)
+    const proc = spawn(spawnCmd, spawnArgs, {
       shell: isWin,
       windowsHide: true,
       env: spawnEnv(),
