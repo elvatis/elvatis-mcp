@@ -72,9 +72,9 @@ export async function handleSystemStatus(_args: Record<string, never>, config: C
       return out.trim();
     }),
 
-    // Gemini CLI
+    // Gemini CLI (needs longer timeout: ~5s cold start on Windows)
     checkService('gemini_cli', async () => {
-      const out = await spawnLocal('gemini', ['--version'], 5000);
+      const out = await spawnLocal('gemini', ['--version'], 10000);
       return out.trim();
     }),
 
