@@ -51,7 +51,8 @@ export function spawnLocal(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd, args, {
-      shell: false,
+      // shell: true on Windows so cmd.exe resolves .cmd/.ps1 wrappers (e.g. gemini.cmd, codex.cmd)
+      shell: process.platform === 'win32',
       windowsHide: true,
       env: spawnEnv(),
     });
