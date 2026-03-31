@@ -1,7 +1,7 @@
 # elvatis-mcp: Current State of the Nation
 
-> Last updated: 2026-03-31 09:48 by Akido
-> Commit: b6d4c17 (initial skeleton)
+> Last updated: 2026-03-31 by Claude (Cowork session)
+> Commit: pending
 >
 > **Rule:** This file is rewritten (not appended) at the end of every session.
 
@@ -11,40 +11,38 @@
 
 | Check | Result | Notes |
 |-------|--------|-------|
-| `build` | ❌ Failing | TS2589: Type instantiation excessively deep — see blocker below |
-| `typecheck` | ❌ Failing | Same root cause |
+| `build` | ✅ Passing (prev session) | 0.85s, 148 MB, 30k instantiations |
+| `typecheck` | ⏳ Needs re-run | New files added this session (ssh.ts, openclaw.ts) |
 | `lint` | — | Not configured yet |
-| `integration test` | ⏳ Untested | Needs Claude Desktop + HA token |
+| `integration test` | ✅ Passing (prev session) | Claude Desktop smoke test passed (2026-03-31) |
 
-## 🚨 Active Blocker: TS2589 — Type instantiation excessively deep
+---
 
-**Error:** `TS2589: Type instantiation is excessively deep and possibly infinite` on every `server.tool()` call in `src/index.ts`.
+## Architecture Change (2026-03-31)
 
-**Root cause:** The MCP SDK's `server.tool()` has 6 overloads. TypeScript cannot resolve the correct overload when Zod schemas are passed as raw shape objects (`{ field: z.string() }`) because the union of all schema shapes across all tools creates an exponentially deep type instantiation chain (~42M instantiations observed).
+**Problem:** cron tools used REST (`/api/cron/jobs`) — OpenClaw has no REST API, only WebSocket. Memory tools read from local Windows filesystem — actual memory files are on the OpenClaw server.
 
-**What was tried:**
-1. Generic loop pattern (first attempt) — same error + union of all schema shapes
-2. Direct per-tool registration with raw shape schemas — same TS2589
+**Solution:** SSH-based transport layer.
 
-**Likely fix (not yet tried):**
-Pass schemas as `z.object({...})` instances instead of raw shapes:
-```typescript
-// WRONG (raw shape — causes TS2589):
-server.tool('home_light', 'desc', { entity_id: z.string(), action: z.enum([...]) }, handler)
+- New `src/ssh.ts`: SSH exec helper using `child_process.spawn('ssh', ...)`. No extra npm deps, uses built-in OpenSSH (available on Windows 10+, macOS, Linux).
+- `src/tools/cron.ts`: Rewritten to read `~/.openclaw/cron/jobs.json` via SSH.
+- `src/tools/memory.ts`: Rewritten to read/write `~/.openclaw/workspace/memory/` via SSH. Uses base64 encoding for safe writes.
+- New `src/tools/openclaw.ts`: Sub-agent orchestration — SSH-executes `openclaw agents send --message "<prompt>" --local --timeout <seconds>` and returns the response synchronously. Also: `openclaw_status`, `openclaw_plugins`.
+- `src/config.ts`: All IPs/hosts removed from hardcoded defaults. `SSH_HOST` and `HA_URL` are now required env vars. Dotenv loaded at startup.
+- New `.env.example`: Template for all required env vars.
 
-// LIKELY CORRECT (z.object instance):
-server.tool('home_light', 'desc', z.object({ entity_id: z.string(), action: z.enum([...]) }), handler)
-```
-The SDK's `ZodRawShapeCompat` type may require `z.object()` wrappers for complex schemas with enums, tuples, and optional fields.
+**Env vars required (must be set in .env or claude_desktop_config.json):**
+- `HA_URL`: Home Assistant URL
+- `SSH_HOST`: OpenClaw server IP/hostname
+- Optional (have defaults): `SSH_PORT`, `SSH_USER`, `SSH_KEY_PATH`, `OPENCLAW_GATEWAY_URL`, `OPENCLAW_CLI_CMD`
 
-**Alternative fix:** Downgrade to `@modelcontextprotocol/sdk@1.8.x` or earlier where the overload resolution was simpler.
+---
 
-**Environment:**
-- Node.js: v22.x, Windows 11
-- TypeScript: 5.8.x
-- @modelcontextprotocol/sdk: 1.10.2
-- Zod: 3.24.2
-- Machine: Threadripper 3960X, 128GB RAM (NODE_OPTIONS=--max-old-space-size=16384)
+## TS2589 Fix (resolved 2026-03-31)
+
+**Solution:** `registerTool()` wrapper in `index.ts` casts `server` to `any` before calling `.tool()`. Build: 0.85s, 148 MB, 30k instantiations.
+
+**Rule:** Never call `server.tool()` directly. Always use `registerTool()`.
 
 ---
 
@@ -52,12 +50,14 @@ The SDK's `ZodRawShapeCompat` type may require `z.object()` wrappers for complex
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| MCP Server (stdio) | ✅ Skeleton | index.ts wired up, StdioServerTransport |
-| MCP Server (HTTP) | ✅ Skeleton | StreamableHTTPServerTransport, MCP_TRANSPORT=http |
-| Config loader | ✅ Done | Env vars: HA_URL, HA_TOKEN, OPENCLAW_GATEWAY_URL, etc. |
-| Home tools (home.ts) | ✅ Skeleton | 6 tools: get_state, light, climate, scene, vacuum, sensors |
-| Memory tools (memory.ts) | ✅ Skeleton | 3 tools: write, read_today, search |
-| Cron tools (cron.ts) | ✅ Skeleton | 3 tools: list, run, status |
+| MCP Server (stdio) | ✅ Working | Claude Desktop tested 2026-03-31 |
+| MCP Server (HTTP) | ✅ Skeleton | StreamableHTTPServerTransport |
+| Config loader | ✅ Done | All secrets via env vars, dotenv support |
+| SSH helper | ✅ Done | src/ssh.ts, child_process.spawn, no extra deps |
+| Home tools (home.ts) | ✅ Working | 6 tools, HA REST API |
+| Memory tools (memory.ts) | ✅ SSH-based | Reads/writes OpenClaw server files |
+| Cron tools (cron.ts) | ✅ SSH-based | Reads ~/.openclaw/cron/jobs.json |
+| OpenClaw tools (openclaw.ts) | ✅ New | openclaw_run, openclaw_status, openclaw_plugins |
 | Trading tools | ⏳ Not started | T-005 |
 | Camera tools | ⏳ Not started | T-006 |
 | GitHub Actions CI | ⏳ Not started | T-004 |
@@ -70,25 +70,39 @@ The SDK's `ZodRawShapeCompat` type may require `z.object()` wrappers for complex
 |---|---|
 | GitHub (elvatis/elvatis-mcp) | ✅ Private repo, main branch |
 | npm (@elvatis_com/elvatis-mcp) | ⏳ Not published |
-| ClawHub | ⏳ Not published |
 
 ---
 
-## Current Focus
+## openclaw-cli-bridge-elvatis (Server Issue)
 
-Build and verify on dev machine (Threadripper 3960X + RX 9070 XT).
-Then Claude Desktop smoke test.
-Then npm publish v0.1.0.
+Plugin on the OpenClaw server crashes with `Cannot find module 'openclaw/plugin-sdk'`.
+This is a server-side npm dependency issue, not an elvatis-mcp issue.
+
+**To fix (SSH to server):**
+```bash
+# Find the plugin directory
+find ~/.openclaw -name "package.json" | xargs grep -l "cli-bridge" 2>/dev/null
+# cd into it and run:
+npm install
+# or check if the import path is wrong in the plugin's source
+```
+
+---
 
 ## Architecture
 
 ```
-Client (Claude Desktop / Cursor / Windsurf)
+Claude Desktop / Cursor / Windsurf
   └─ MCP Protocol (stdio or HTTP)
-       └─ elvatis-mcp server
-            ├─ home tools      → Home Assistant REST API
-            ├─ memory tools    → ~/.openclaw/workspace/memory/*.md
-            └─ cron tools      → OpenClaw Gateway REST API
+       └─ elvatis-mcp server (Windows/Linux)
+            ├─ home tools      ─────────────────────► Home Assistant REST API
+            ├─ memory tools    ──► SSH exec ────────► ~/.openclaw/workspace/memory/*.md
+            ├─ cron tools      ──► SSH exec ────────► ~/.openclaw/cron/jobs.json
+            └─ openclaw tools  ──► SSH exec ────────► openclaw CLI (all plugins)
+                                                            ├─ trading plugin
+                                                            ├─ home plugin
+                                                            ├─ custom workflows
+                                                            └─ LLM backends
 ```
 
 ## Key Files
@@ -96,8 +110,10 @@ Client (Claude Desktop / Cursor / Windsurf)
 | File | Purpose |
 |---|---|
 | `src/index.ts` | Entry point, MCP server + tool registration |
-| `src/config.ts` | Environment variable config |
-| `src/tools/home.ts` | Home Assistant tools |
-| `src/tools/memory.ts` | Memory read/write/search |
-| `src/tools/cron.ts` | OpenClaw cron management |
-| `README.md` | User-facing docs + Claude Desktop config snippet |
+| `src/config.ts` | Env var config (all secrets external) |
+| `src/ssh.ts` | SSH exec helper (child_process.spawn) |
+| `src/tools/home.ts` | Home Assistant tools (REST) |
+| `src/tools/memory.ts` | Memory read/write/search (SSH) |
+| `src/tools/cron.ts` | OpenClaw cron management (SSH) |
+| `src/tools/openclaw.ts` | Sub-agent orchestration + status (SSH) |
+| `.env.example` | Template — copy to .env and fill values |

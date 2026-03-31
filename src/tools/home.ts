@@ -17,34 +17,34 @@ async function haRequest(config: Config, method: 'GET' | 'POST', path: string, b
 
 // --- Schemas (exported so index.ts can use them directly) ---
 
-export const getStateSchema = {
+export const getStateSchema = z.object({
   entity_id: z.string().describe('Entity ID, e.g. light.wohnzimmer or climate.wohnzimmer'),
-};
+});
 
-export const lightSchema = {
+export const lightSchema = z.object({
   entity_id: z.string().describe('Light entity ID, e.g. light.wohnzimmer'),
   action: z.enum(['on', 'off', 'toggle']),
   brightness_pct: z.number().min(0).max(100).optional().describe('Brightness in percent (0-100)'),
   color_temp_kelvin: z.number().optional().describe('Color temperature in Kelvin (2000-6500)'),
   rgb_color: z.tuple([z.number(), z.number(), z.number()]).optional().describe('RGB color as [r, g, b]'),
-};
+});
 
-export const climateSchema = {
+export const climateSchema = z.object({
   entity_id: z.string().describe('Climate entity, e.g. climate.wohnzimmer'),
   temperature: z.number().min(5).max(30).optional().describe('Target temperature in °C'),
   hvac_mode: z.enum(['heat', 'auto', 'off']).optional().describe('HVAC mode'),
-};
+});
 
-export const sceneSchema = {
+export const sceneSchema = z.object({
   room: z.enum(['wohnzimmer', 'flur', 'kuche', 'schlafzimmer', 'home']).describe('Room name'),
   scene: z.string().describe('Scene name, e.g. entspannen, konzentrieren, lesen, nachtlicht, hell, gedimmt'),
-};
+});
 
-export const vacuumSchema = {
+export const vacuumSchema = z.object({
   action: z.enum(['start', 'stop', 'return_to_base', 'status']),
-};
+});
 
-export const sensorsSchema = {};
+export const sensorsSchema = z.object({});
 
 // --- Handlers ---
 

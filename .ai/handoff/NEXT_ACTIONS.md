@@ -1,79 +1,105 @@
 # elvatis-mcp: Next Actions
 
-> Updated: 2026-03-31 by Akido
+> Updated: 2026-03-31
 
-## 🚨 Immediate: Fix TS2589 build error
+## Completed
 
-**Task:** Fix `TS2589: Type instantiation excessively deep` in `src/index.ts`
-
-**Try in this order:**
-
-### Fix A — Use `z.object()` wrappers (most likely correct)
-In each tool file (`home.ts`, `memory.ts`, `cron.ts`), change schema exports from raw shapes to `z.object()`:
-```typescript
-// home.ts — change from:
-export const lightSchema = { entity_id: z.string(), action: z.enum([...]) }
-// to:
-export const lightSchema = z.object({ entity_id: z.string(), action: z.enum([...]) })
-```
-Then in `index.ts`, pass directly: `server.tool('home_light', 'desc', lightSchema, handler)`
-
-### Fix B — Downgrade SDK
-```bash
-npm install @modelcontextprotocol/sdk@1.8.0
-npm run build
-```
-If this compiles: the overload resolution changed in 1.9+ and 1.8.x is the workaround.
-
-### Fix C — skipLibCheck + ts-ignore (last resort)
-Add `"skipLibCheck": true` to tsconfig (already set) and add `// @ts-ignore` above each `server.tool()` call. Ugly but unblocks progress.
-
-### After fix is confirmed working:
-- Run `npm run build` clean
-- Update STATUS.md: mark build ✅
-- Update DASHBOARD.md: T-002 done
-- Proceed to T-003: Claude Desktop smoke test
+### T-002: TS2589 build error
+Fixed via `registerTool()` wrapper. See STATUS.md and CLAUDE.md for details.
 
 ### T-003: Claude Desktop smoke test
-1. Install Claude Desktop on dev machine
-2. Find config: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
-3. Add MCP server entry (copy from README.md)
-4. Set HA_URL + HA_TOKEN in the config env block
-5. Restart Claude Desktop
-6. Ask: "Turn off the Wohnzimmer light" — should work live
+MCP server connected and tools verified in Claude Desktop.
+
+Key finding: Claude Desktop on Windows (MSIX install) reads config from:
+`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`
+NOT from `%APPDATA%\Claude\` (that path is ignored by the MSIX sandbox).
+
+### T-003b: SSH transport layer + sub-agent architecture
+- `src/ssh.ts`: SSH exec helper (no extra npm deps, uses system OpenSSH)
+- `src/tools/cron.ts`: Reads `~/.openclaw/cron/jobs.json` directly via SSH
+- `src/tools/memory.ts`: Reads and writes OpenClaw server memory files via SSH
+- `src/tools/openclaw.ts`: Sub-agent orchestration via `openclaw agents send --local`
+- Config: all IPs/hosts in `.env`, no hardcoded values
+- `.env.example`: generic template, `.env` is gitignored
+
+---
+
+## Completed: Gemini + Codex + Routing
+
+- `src/spawn.ts`: local process spawner (no SSH)
+- `src/tools/gemini.ts`: `gemini_run` via `gemini -p "..." --output-format json`
+- `src/tools/codex.ts`: `codex_run` via `codex exec "..." --approval-mode never`
+- `src/tools/help.ts`: `mcp_help` routing guide + keyword-based task recommender
+- `.mcp.json`: project-level Claude Code config (included in repo)
+- `.claude/commands/mcp-help.md`: `/project:mcp-help` slash command for Claude Code
+- README updated: multi-client table, `/mcp-help` section, multi-LLM architecture table
+
+---
+
+## Immediate: Build + Test
+
+```bash
+cd /path/to/elvatis-mcp
+npm install          # picks up the new dotenv dependency
+npm run build        # should complete in ~1s
+```
+
+> Note: tsc can cause OOM on machines with limited RAM. Build on a machine with at least 8 GB free.
+
+Then test tools in Claude Desktop in this order:
+1. `mcp_help` — confirm routing guide loads
+2. `openclaw_status` — verify SSH connection and daemon
+3. `memory_read_today` — confirm SSH read from OpenClaw server
+4. `cron_list` — confirm SSH read of jobs.json
+5. `gemini_run` with a simple prompt — confirm gemini CLI headless mode
+6. `codex_run` with a simple prompt — confirm codex exec mode
+7. `openclaw_run` — verify `openclaw agents send --local` CLI syntax
+
+For Claude Code: open the project, approve the `.mcp.json` prompt, then try `/project:mcp-help`
+
+---
+
+## Server-Side: openclaw-cli-bridge fix
+
+Plugin crashes with `Cannot find module 'openclaw/plugin-sdk'`. Fix via SSH on the OpenClaw server:
+
+```bash
+# Locate the plugin
+find ~/.openclaw -name "package.json" | xargs grep -l "cli-bridge" 2>/dev/null
+
+# cd into the plugin directory, then:
+npm install
+```
+
+---
 
 ## Backlog
 
 ### T-004: GitHub Actions CI
 - `.github/workflows/ci.yml`
-- Trigger: push + PR to main
-- Steps: npm install, typecheck, build
-- No secrets needed for CI (no HA calls in CI)
+- Trigger: push and PR to main
+- Steps: install, typecheck, build
+- No secrets required in CI
 
 ### T-005: Trading tools
-- Read from trading bot output files in `workspace/trading/`
-- Tools: `trading_status`, `trading_positions`, `trading_daily_pnl`
-- No external API needed if reading from local files
+- `trading_status`, `trading_positions`, `trading_daily_pnl`
+- Read from OpenClaw server output files via SSH
 
 ### T-006: Camera snapshot tool
-- `home_camera_snapshot` — fetch JPEG from HA `/api/camera_proxy/{entity_id}`
-- Return as base64 image content block (MCP supports image content)
-- Entities: `camera.flur_live_ansicht`, `camera.wohnzimmer_live_ansicht`
+- `home_camera_snapshot` — fetch JPEG via HA `/api/camera_proxy/{entity_id}`
+- Return as base64 image content block
 
-### T-007: HTTP transport test
-- Start server: `MCP_TRANSPORT=http MCP_HTTP_PORT=3333 node dist/index.js`
-- Connect Cursor or Windsurf via HTTP MCP config
-- Test same tools over network
+### T-007: HTTP transport test (Cursor / Windsurf)
+- `MCP_TRANSPORT=http MCP_HTTP_PORT=3333 node dist/index.js`
 
 ### T-008: Publish v0.1.0
-After T-002 and T-003 pass:
-1. Version bump in package.json (stays 0.1.0 for first release)
-2. `git tag v0.1.0 && git push origin v0.1.0`
-3. `gh release create v0.1.0 --title "v0.1.0 — Initial release" --notes "..."`
-4. `npm publish --access public`
-5. ClawHub publish (if skill wrapper added)
+1. `git tag v0.1.0 && git push origin v0.1.0`
+2. `gh release create v0.1.0`
+3. `npm publish --access public`
+
+---
 
 ## Notes
-- TypeScript 5.8 causes OOM on server (i7-6700K). Always build on Threadripper.
 - MCP SDK v2 is pre-alpha — stay on v1.x until stable
-- HA_TOKEN: get from HA Settings > Long-Lived Access Tokens
+- On Windows: use full absolute paths in `claude_desktop_config.json` (e.g. `C:\\Users\\<username>\\.ssh\\key`). The dotenv `~` expansion works on Linux/macOS but not in the Windows MCP launcher context.
+- Sub-agent command: `openclaw agents send --message "<prompt>" --local --timeout <seconds>`

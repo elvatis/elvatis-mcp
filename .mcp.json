@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "elvatis-mcp": {
+      "command": "node",
+      "args": ["./dist/index.js"]
+    }
+  }
+}

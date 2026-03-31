@@ -1,75 +1,93 @@
+/**
+ * Memory tools — reads and writes daily memory logs on the OpenClaw server via SSH.
+ *
+ * Files live at: ~/.openclaw/workspace/memory/YYYY-MM-DD.md
+ * This replaces the previous local-filesystem implementation because the
+ * canonical memory store is on the OpenClaw server, not on the Windows client.
+ */
+
 import { z } from 'zod';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { Config } from '../config.js';
+import { sshExec, sshReadFile, sshAppendFile, SshConfig } from '../ssh.js';
 
-function getMemoryDir(): string {
-  return process.env.MEMORY_DIR ?? path.join(os.homedir(), '.openclaw', 'workspace', 'memory');
-}
-
-function getTodayFile(): string {
-  const today = new Date().toISOString().split('T')[0]!;
-  return path.join(getMemoryDir(), `${today}.md`);
-}
+const MEMORY_DIR = '~/.openclaw/workspace/memory';
 
 // --- Schemas ---
 
-export const memoryWriteSchema = {
+export const memoryWriteSchema = z.object({
   note: z.string().describe('The note to save'),
   category: z.string().optional().describe('Optional category/tag, e.g. "decision", "todo", "context"'),
-};
+});
 
-export const memoryReadTodaySchema = {};
+export const memoryReadTodaySchema = z.object({});
 
-export const memorySearchSchema = {
+export const memorySearchSchema = z.object({
   query: z.string().describe('Search term'),
   days: z.number().min(1).max(90).default(14).describe('How many days back to search (default: 14)'),
-};
+});
 
-// --- Handlers ---
+// --- Helpers ---
 
-export async function handleMemoryWrite(args: { note: string; category?: string }) {
-  const dir = getMemoryDir();
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const file = getTodayFile();
-  const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
-  const tag = args.category ? ` [${args.category}]` : '';
-  const entry = `\n## ${timestamp}${tag}\n${args.note}\n`;
-  fs.appendFileSync(file, entry, 'utf8');
-  return { success: true, file: path.basename(file) };
-}
-
-export async function handleMemoryReadToday(_args: Record<string, never>) {
-  const file = getTodayFile();
-  if (!fs.existsSync(file)) return { content: '(no entries today yet)', date: path.basename(file, '.md') };
+function toSshCfg(config: Config): SshConfig {
   return {
-    content: fs.readFileSync(file, 'utf8'),
-    date: path.basename(file, '.md'),
+    host: config.sshHost,
+    port: config.sshPort,
+    username: config.sshUser,
+    keyPath: config.sshKeyPath,
   };
 }
 
-export async function handleMemorySearch(args: { query: string; days: number }) {
-  const dir = getMemoryDir();
-  if (!fs.existsSync(dir)) return { results: [] };
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0]!;
+}
 
-  const files = fs.readdirSync(dir)
-    .filter(f => f.match(/^\d{4}-\d{2}-\d{2}\.md$/))
-    .sort()
-    .reverse()
-    .slice(0, args.days);
+// --- Handlers ---
+
+export async function handleMemoryWrite(args: { note: string; category?: string }, config: Config) {
+  const today = getTodayDate();
+  const file = `${MEMORY_DIR}/${today}.md`;
+  const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+  const tag = args.category ? ` [${args.category}]` : '';
+  const entry = `\n## ${timestamp}${tag}\n${args.note}\n`;
+  await sshAppendFile(toSshCfg(config), file, entry);
+  return { success: true, file: `${today}.md` };
+}
+
+export async function handleMemoryReadToday(_args: Record<string, never>, config: Config) {
+  const today = getTodayDate();
+  const file = `${MEMORY_DIR}/${today}.md`;
+  const content = await sshReadFile(toSshCfg(config), file);
+  return {
+    content: content.trim() || '(no entries today yet)',
+    date: today,
+  };
+}
+
+export async function handleMemorySearch(args: { query: string; days: number }, config: Config) {
+  const cfg = toSshCfg(config);
+
+  // List recent memory files
+  const listing = await sshExec(
+    cfg,
+    `ls ${MEMORY_DIR}/*.md 2>/dev/null | sort -r | head -${args.days}`,
+  ).catch(() => '');
+
+  const files = listing.trim().split('\n').filter(Boolean);
+  if (files.length === 0) return { results: [], query: args.query };
 
   const results: Array<{ date: string; excerpt: string }> = [];
-  const queryLower = args.query.toLowerCase();
 
   for (const file of files) {
-    const content = fs.readFileSync(path.join(dir, file), 'utf8');
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i]!.toLowerCase().includes(queryLower)) {
-        const excerpt = lines.slice(Math.max(0, i - 1), i + 3).join('\n').trim();
-        results.push({ date: file.replace('.md', ''), excerpt });
-        break;
-      }
+    const date = file.replace(/.*\//, '').replace('.md', '');
+    // grep: case-insensitive, first match only, 2 lines context
+    // Exit code 1 means no match (not an error), use || true to keep exit 0
+    const match = await sshExec(
+      cfg,
+      `grep -i -m1 -A2 -B1 '${args.query.replace(/'/g, "'\\''")}' ${file} 2>/dev/null || true`,
+    ).catch(() => '');
+
+    if (match.trim()) {
+      results.push({ date, excerpt: match.trim() });
     }
   }
 

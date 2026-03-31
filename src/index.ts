@@ -6,10 +6,21 @@
  *   stdio (default)  — for Claude Desktop / local clients
  *   http             — for remote clients (set MCP_TRANSPORT=http)
  *
+ * Configuration:
+ *   Copy .env.example to .env and fill in your values.
+ *   Or set env vars directly in claude_desktop_config.json.
+ *
  * Usage:
  *   npx @elvatis_com/elvatis-mcp
  *   MCP_TRANSPORT=http MCP_HTTP_PORT=3333 npx @elvatis_com/elvatis-mcp
  */
+
+// Load .env from the project root (one level up from dist/).
+// Using __dirname (available in CommonJS) so the path is correct
+// regardless of the cwd when Claude Desktop launches the server.
+import * as path from 'path';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -36,8 +47,43 @@ import {
   cronStatusSchema, handleCronStatus,
 } from './tools/cron.js';
 
+import {
+  openclawRunSchema, handleOpenclawRun,
+  openclawStatusSchema, handleOpenclawStatus,
+  openclawPluginsSchema, handleOpenclawPlugins,
+} from './tools/openclaw.js';
+
+import {
+  geminiRunSchema, handleGeminiRun,
+} from './tools/gemini.js';
+
+import {
+  codexRunSchema, handleCodexRun,
+} from './tools/codex.js';
+
+import {
+  mcpHelpSchema, handleMcpHelp,
+} from './tools/help.js';
+
 function toText(result: unknown): string {
   return JSON.stringify(result, null, 2);
+}
+
+// Typed wrapper to bypass McpServer.tool() 6-overload resolution that causes
+// TS2589 (47M+ type instantiations). We cast to a single-signature function
+// so TypeScript resolves the call in constant time.
+// Rule: Never call server.tool() directly. Always use registerTool().
+type ToolHandler = (args: Record<string, unknown>, extra: unknown) =>
+  Promise<{ content: Array<{ type: string; text: string }> }>;
+
+function registerTool(
+  server: McpServer,
+  name: string,
+  description: string,
+  schema: Record<string, unknown>,
+  handler: ToolHandler,
+): void {
+  (server as any).tool(name, description, schema, handler);
 }
 
 async function main() {
@@ -50,92 +96,124 @@ async function main() {
 
   // --- Home Assistant tools ---
 
-  server.tool(
-    'home_get_state',
+  registerTool(server, 'home_get_state',
     'Get the current state of a Home Assistant entity (light, climate, sensor, switch, vacuum, media_player, etc.)',
-    getStateSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleGetState(args, config)) }] })
+    getStateSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleGetState(args as any, config)) }] })
   );
 
-  server.tool(
-    'home_light',
+  registerTool(server, 'home_light',
     'Control a light: turn on/off/toggle, set brightness (0-100%), color temperature, or RGB color',
-    lightSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleLight(args, config)) }] })
+    lightSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleLight(args as any, config)) }] })
   );
 
-  server.tool(
-    'home_climate',
+  registerTool(server, 'home_climate',
     'Control Tado thermostats: set target temperature or HVAC mode (heat/auto/off)',
-    climateSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleClimate(args, config)) }] })
+    climateSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleClimate(args as any, config)) }] })
   );
 
-  server.tool(
-    'home_scene',
+  registerTool(server, 'home_scene',
     'Activate a Hue scene in a room (wohnzimmer, flur, kuche, schlafzimmer, home)',
-    sceneSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleScene(args, config)) }] })
+    sceneSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleScene(args as any, config)) }] })
   );
 
-  server.tool(
-    'home_vacuum',
+  registerTool(server, 'home_vacuum',
     'Control the Roborock vacuum: start full clean, stop, return to dock, or get status',
-    vacuumSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleVacuum(args, config)) }] })
+    vacuumSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleVacuum(args as any, config)) }] })
   );
 
-  server.tool(
-    'home_sensors',
+  registerTool(server, 'home_sensors',
     'Read all environmental sensors: temperature, humidity, CO2 for all rooms plus outside temperature',
-    sensorsSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleSensors(args, config)) }] })
+    sensorsSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleSensors(args as any, config)) }] })
   );
 
-  // --- Memory tools ---
+  // --- Memory tools (SSH to OpenClaw server) ---
 
-  server.tool(
-    'memory_write',
-    'Write a note to today\'s daily memory log. Use for capturing important context, decisions, or things to remember.',
-    memoryWriteSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleMemoryWrite(args)) }] })
+  registerTool(server, 'memory_write',
+    'Write a note to today\'s daily memory log on the OpenClaw server. Use for capturing important context, decisions, or things to remember.',
+    memoryWriteSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleMemoryWrite(args as any, config)) }] })
   );
 
-  server.tool(
-    'memory_read_today',
-    'Read today\'s memory log',
-    memoryReadTodaySchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleMemoryReadToday(args)) }] })
+  registerTool(server, 'memory_read_today',
+    'Read today\'s memory log from the OpenClaw server',
+    memoryReadTodaySchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleMemoryReadToday(args as any, config)) }] })
   );
 
-  server.tool(
-    'memory_search',
-    'Search across daily memory files for a keyword (default: last 14 days)',
-    memorySearchSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleMemorySearch(args)) }] })
+  registerTool(server, 'memory_search',
+    'Search across daily memory files on the OpenClaw server for a keyword (default: last 14 days)',
+    memorySearchSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleMemorySearch(args as any, config)) }] })
   );
 
-  // --- Cron tools ---
+  // --- Cron tools (SSH to OpenClaw server) ---
 
-  server.tool(
-    'cron_list',
+  registerTool(server, 'cron_list',
     'List all scheduled OpenClaw cron jobs',
-    cronListSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronList(args, config)) }] })
+    cronListSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronList(args as any, config)) }] })
   );
 
-  server.tool(
-    'cron_run',
+  registerTool(server, 'cron_run',
     'Trigger an OpenClaw cron job immediately by its ID',
-    cronRunSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronRun(args, config)) }] })
+    cronRunSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronRun(args as any, config)) }] })
   );
 
-  server.tool(
-    'cron_status',
+  registerTool(server, 'cron_status',
     'Get OpenClaw cron scheduler status and overview',
-    cronStatusSchema,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronStatus(args, config)) }] })
+    cronStatusSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronStatus(args as any, config)) }] })
+  );
+
+  // --- OpenClaw sub-agent tools (SSH orchestration) ---
+
+  registerTool(server, 'openclaw_run',
+    'Send a task or prompt to the OpenClaw AI agent via SSH. The agent has access to all installed plugins (trading, home automation, etc.) and multiple LLM backends. Use this to delegate complex tasks that OpenClaw already knows how to handle.',
+    openclawRunSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleOpenclawRun(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_status',
+    'Check if the OpenClaw daemon is running on the server and get version info',
+    openclawStatusSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleOpenclawStatus(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_plugins',
+    'List all plugins installed on the OpenClaw server',
+    openclawPluginsSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleOpenclawPlugins(args as any, config)) }] })
+  );
+
+  // --- Gemini sub-agent (local spawn) ---
+
+  registerTool(server, 'gemini_run',
+    'Send a prompt to Google Gemini via the local gemini CLI. Fast, direct LLM call with no OpenClaw overhead. Uses cached Google auth — no API key required.',
+    geminiRunSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleGeminiRun(args as any, config)) }] })
+  );
+
+  // --- Codex sub-agent (local spawn) ---
+
+  registerTool(server, 'codex_run',
+    'Send a task to OpenAI Codex via the local codex CLI. Specializes in coding tasks, file operations, and technical analysis. Uses cached OpenAI auth — no API key required.',
+    codexRunSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCodexRun(args as any, config)) }] })
+  );
+
+  // --- Routing help ---
+
+  registerTool(server, 'mcp_help',
+    'List all available elvatis-mcp tools with a routing guide. Optionally provide a task description to get a specific recommendation for which sub-agent (openclaw_run, gemini_run, codex_run) or tool to use.',
+    mcpHelpSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleMcpHelp(args as any)) }] })
   );
 
   // --- Transport ---
