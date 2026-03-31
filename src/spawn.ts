@@ -1,10 +1,43 @@
 /**
  * Local process spawner — runs a command on the same machine as the MCP server.
- * Used by gemini_run and codex_run tools.
+ * Used by gemini_run, codex_run, and system_status tools.
  * No SSH required: these CLIs authenticate via their own local credential stores.
  */
 
 import { spawn } from 'child_process';
+import * as os from 'os';
+import * as path from 'path';
+
+/**
+ * Build a PATH that includes common global npm binary locations.
+ * Claude Desktop (MSIX) and Claude Code may strip PATH entries,
+ * so we add known locations explicitly (same approach as ssh.ts sshEnv).
+ */
+function spawnEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, HOME: os.homedir() };
+
+  if (process.platform === 'win32') {
+    const home = os.homedir();
+    const extraDirs = [
+      path.join(home, 'AppData', 'Roaming', 'npm'),       // npm global (Windows)
+      path.join(home, 'AppData', 'Local', 'pnpm'),         // pnpm global
+      path.join(home, '.bun', 'bin'),                       // bun global
+    ];
+    const currentPath = env['PATH'] || env['Path'] || '';
+    env['PATH'] = extraDirs.join(';') + ';' + currentPath;
+  } else {
+    // macOS / Linux: add common global npm paths
+    const extraDirs = [
+      '/usr/local/bin',
+      path.join(os.homedir(), '.npm-global', 'bin'),
+      path.join(os.homedir(), '.bun', 'bin'),
+    ];
+    const currentPath = env['PATH'] || '';
+    env['PATH'] = extraDirs.join(':') + ':' + currentPath;
+  }
+
+  return env;
+}
 
 /**
  * Spawn a local command and return stdout as a string.
@@ -19,8 +52,8 @@ export function spawnLocal(
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd, args, {
       shell: false,
-      // Inherit the current environment so the CLI can find its auth credentials
-      env: process.env,
+      windowsHide: true,
+      env: spawnEnv(),
     });
 
     let stdout = '';

@@ -88,6 +88,17 @@ import {
 } from './tools/file-transfer.js';
 
 import {
+  openclawNotifySchema, handleOpenclawNotify,
+} from './tools/notify.js';
+
+import {
+  cronCreateSchema, handleCronCreate,
+  cronEditSchema, handleCronEdit,
+  cronDeleteSchema, handleCronDelete,
+  cronHistorySchema, handleCronHistory,
+} from './tools/cron-manage.js';
+
+import {
   localLlmRunSchema, handleLocalLlmRun,
 } from './tools/local-llm.js';
 
@@ -295,6 +306,40 @@ async function main() {
     'Upload, download, or list files on the OpenClaw server via SSH. Supports text and binary files up to 10MB. "download" without local_path returns file content directly.',
     fileTransferSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleFileTransfer(args as any, config)) }] })
+  );
+
+  // --- Notifications ---
+
+  registerTool(server, 'openclaw_notify',
+    'Send a notification via WhatsApp, Telegram, or the last-used channel. Uses OpenClaw message delivery.',
+    openclawNotifySchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleOpenclawNotify(args as any, config)) }] })
+  );
+
+  // --- Extended cron management ---
+
+  registerTool(server, 'openclaw_cron_create',
+    'Create a new cron job on the OpenClaw server. Supports cron expressions ("0 9 * * *"), intervals ("every 30m"), and one-shot ("at 2026-04-01T14:00" or "+20m"). Optionally deliver results via WhatsApp/Telegram.',
+    cronCreateSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronCreate(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_cron_edit',
+    'Edit an existing cron job. Change its name, message, schedule, or model.',
+    cronEditSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronEdit(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_cron_delete',
+    'Delete a cron job by its ID.',
+    cronDeleteSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronDelete(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_cron_history',
+    'Show recent execution history for cron jobs. Optionally filter by job ID.',
+    cronHistorySchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleCronHistory(args as any, config)) }] })
   );
 
   // --- Transport ---

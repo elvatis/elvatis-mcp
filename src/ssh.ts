@@ -79,7 +79,8 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
     const args = [
       '-i', keyPath,
       '-o', 'StrictHostKeyChecking=no',
-      '-o', 'UserKnownHostsFile=/dev/null',  // prevent known_hosts divergence across SSH clients
+      '-o', 'UserKnownHostsFile=/dev/null',
+      '-o', 'LogLevel=ERROR',
       '-o', 'BatchMode=yes',
       '-o', 'ConnectTimeout=10',
       '-o', 'ServerAliveInterval=5',          // detect dead connections faster
