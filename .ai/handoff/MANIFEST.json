@@ -1,0 +1,87 @@
+{
+  "aahp_version": "2.0",
+  "project": "elvatis-mcp",
+  "last_session": {
+    "agent": "akido",
+    "session_id": "initial-setup-2026-03-31",
+    "timestamp": "2026-03-31T09:48:00Z",
+    "commit": "b6d4c17",
+    "phase": "development",
+    "duration_minutes": 15
+  },
+  "files": {
+    "STATUS.md": {
+      "checksum": "sha256:init",
+      "updated": "2026-03-31T09:48:00Z",
+      "lines": 50,
+      "summary": "Project scaffolded. MCP server with stdio+http transport. 12 tools across 3 domains (home, memory, cron). Needs npm install + build test on dev machine."
+    },
+    "NEXT_ACTIONS.md": {
+      "checksum": "sha256:init",
+      "updated": "2026-03-31T09:48:00Z",
+      "lines": 40,
+      "summary": "T-001 done (skeleton). T-002 next: build + test on Threadripper. T-003: Claude Desktop integration test. 8 tasks total."
+    },
+    "LOG.md": {
+      "checksum": "sha256:init",
+      "updated": "2026-03-31T09:48:00Z",
+      "lines": 15,
+      "summary": "Project created by Akido on 2026-03-31. Initial skeleton committed and pushed."
+    },
+    "DASHBOARD.md": {
+      "checksum": "sha256:init",
+      "updated": "2026-03-31T09:48:00Z",
+      "lines": 30,
+      "summary": "Build health tracking. 1/8 tasks done (skeleton). Build not yet verified."
+    },
+    "CONVENTIONS.md": {
+      "checksum": "sha256:init",
+      "updated": "2026-03-31T09:48:00Z",
+      "lines": 30,
+      "summary": "TypeScript strict, MCP SDK 1.x, Zod for schemas, stdio-first transport, Node.js 18+."
+    }
+  },
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Initial project skeleton (MCP server, 3 tool domains, config, README)",
+      "status": "done",
+      "completed": "2026-03-31"
+    },
+    {
+      "id": "T-002",
+      "title": "Build + typecheck on dev machine (Threadripper), fix any TS errors",
+      "status": "ready"
+    },
+    {
+      "id": "T-003",
+      "title": "Claude Desktop integration test: home_light tool live against HA",
+      "status": "ready"
+    },
+    {
+      "id": "T-004",
+      "title": "Add GitHub Actions CI (typecheck + build on push)",
+      "status": "ready"
+    },
+    {
+      "id": "T-005",
+      "title": "Add trading tools: portfolio status, open positions, daily P&L",
+      "status": "ready"
+    },
+    {
+      "id": "T-006",
+      "title": "Add webcam/camera snapshot tool (Ring via HA proxy)",
+      "status": "ready"
+    },
+    {
+      "id": "T-007",
+      "title": "HTTP transport end-to-end test with Cursor/Windsurf",
+      "status": "ready"
+    },
+    {
+      "id": "T-008",
+      "title": "npm publish @elvatis_com/elvatis-mcp v0.1.0 + ClawHub + GitHub Release",
+      "status": "ready"
+    }
+  ]
+}
