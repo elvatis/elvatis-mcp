@@ -64,6 +64,10 @@ import {
 } from './tools/codex.js';
 
 import {
+  claudeRunSchema, handleClaudeRun,
+} from './tools/claude.js';
+
+import {
   mcpHelpSchema, handleMcpHelp,
 } from './tools/help.js';
 
@@ -253,6 +257,14 @@ async function main() {
     'Send a task to OpenAI Codex via the local codex CLI. Specializes in coding tasks, file operations, and technical analysis. Uses cached OpenAI auth — no API key required.',
     codexRunSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleCodexRun(args as any, config)) }] })
+  );
+
+  // --- Claude sub-agent (for non-Claude MCP clients like Cursor, Windsurf) ---
+
+  registerTool(server, 'claude_run',
+    'Send a prompt to Claude via the local Claude Code CLI. Use this when the MCP client is NOT Claude (e.g. Cursor, Windsurf, Zed) or for cross-checking results from other AI backends. Uses cached Anthropic auth.',
+    claudeRunSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleClaudeRun(args as any)) }] })
   );
 
   // --- Local LLM sub-agent ---

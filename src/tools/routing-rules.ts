@@ -12,6 +12,15 @@ export interface RoutingRule {
 
 export const ROUTING_RULES: RoutingRule[] = [
   {
+    tool: 'claude_run',
+    keywords: [
+      'claude', 'anthropic', 'reason', 'think', 'complex', 'nuanced',
+      'creative', 'write', 'essay', 'strategy', 'plan', 'review',
+      'cross-check', 'second opinion', 'verify',
+    ],
+    reason: 'Claude excels at complex reasoning, nuanced writing, strategic planning, and code review. Essential when the MCP client is not Claude itself.',
+  },
+  {
     tool: 'codex_run',
     keywords: [
       'code', 'debug', 'refactor', 'function', 'class', 'bug', 'test', 'script',
@@ -91,7 +100,7 @@ export function matchRules(text: string): Array<{ tool: string; reason: string; 
 
 /** Known single-call tool names (for validation in prompt_split). */
 export const KNOWN_AGENTS = new Set([
-  'codex_run', 'gemini_run', 'openclaw_run', 'local_llm_run',
+  'claude_run', 'codex_run', 'gemini_run', 'openclaw_run', 'local_llm_run',
   'home_light', 'home_scene', 'home_sensors', 'home_climate',
   'home_vacuum', 'home_get_state', 'home_automation',
   'openclaw_memory_write', 'openclaw_memory_read_today', 'openclaw_memory_search',
@@ -106,6 +115,7 @@ export const ROUTING_GUIDE = `
 
 | Tool | Backend | Auth | Strengths |
 |------|---------|------|-----------|
+| \`claude_run\` | Claude (Anthropic) | Claude Code login | Complex reasoning, nuanced writing, code review. Use when MCP client is not Claude. |
 | \`openclaw_run\` | OpenClaw (claude/gpt/gemini + plugins) | SSH key | Trading plugins, automations, custom workflows, multi-step tasks |
 | \`gemini_run\` | Google Gemini | Google login (cached) | Long context (1M tokens), multimodal, fast analysis, second opinions |
 | \`codex_run\` | OpenAI Codex | OpenAI login (cached) | Coding, debugging, refactoring, file editing, shell scripting |

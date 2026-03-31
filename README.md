@@ -33,21 +33,22 @@ The key idea: Claude is the orchestrator, but it can delegate specialized work t
                                       |
                               elvatis-mcp server
                                       |
-              +-----------+-----------+-----------+-----------+
-              |           |           |           |           |
-         OpenClaw     Gemini      Codex     Local LLM    Home Asst.
-          (SSH)       (CLI)       (CLI)     (HTTP API)   (REST API)
-              |           |           |           |           |
-         Plugins     1M context   Coding    LM Studio    Lights
-         Trading     Multimodal   Files     Ollama       Climate
-         Automation  Analysis     Debug     llama.cpp    Vacuum
-         Workflows   Research     Shell     (free!)      Sensors
+              +--------+--------+--------+--------+--------+--------+
+              |        |        |        |        |        |        |
+          Claude  OpenClaw  Gemini   Codex   Local   llama   Home
+          (CLI)   (SSH)     (CLI)    (CLI)   LLM    .cpp    Asst.
+              |        |        |        |    (HTTP)  (proc)  (REST)
+          Reason  Plugins  1M ctx  Coding    |        |        |
+          Write   Trading  Multi-  Files   LM Stu  Turbo-  Lights
+          Review  Auto.    modal   Debug   Ollama  Quant   Climate
+                  Notify   Rsch    Shell   (free!) cache   Vacuum
 ```
 
 ### Sub-Agent Comparison
 
 | Tool | Backend | Transport | Auth | Best for | Cost |
 |---|---|---|---|---|---|
+| `claude_run` | Claude (Anthropic) | Local CLI | Claude Code login | Complex reasoning, writing, code review. For non-Claude MCP clients. | API usage |
 | `openclaw_run` | OpenClaw (plugins) | SSH | SSH key | Trading, automations, multi-step workflows | Self-hosted |
 | `gemini_run` | Google Gemini | Local CLI | Google login | Long context (1M tokens), multimodal, research | API usage |
 | `codex_run` | OpenAI Codex | Local CLI | OpenAI login | Coding, debugging, file editing, shell scripts | API usage |
@@ -79,9 +80,9 @@ Claude then executes the plan, calling tools in the right order and running para
 
 ---
 
-## Available Tools (20 total)
+## Available Tools (32 total)
 
-### Home Assistant (6 tools)
+### Home Assistant (7 tools)
 | Tool | Description |
 |---|---|
 | `home_get_state` | Read any Home Assistant entity state |
@@ -90,6 +91,7 @@ Claude then executes the plan, calling tools in the right order and running para
 | `home_scene` | Activate Hue scenes by room |
 | `home_vacuum` | Control Roborock vacuum: start, stop, dock, status |
 | `home_sensors` | Read all temperature, humidity, and CO2 sensors |
+| `home_automation` | List, trigger, enable, or disable HA automations |
 
 ### Memory (3 tools)
 | Tool | Description |
@@ -98,32 +100,53 @@ Claude then executes the plan, calling tools in the right order and running para
 | `openclaw_memory_read_today` | Read today's memory log |
 | `openclaw_memory_search` | Search memory files across the last N days |
 
-### Cron Automation (3 tools)
+### Cron Automation (6 tools)
 | Tool | Description |
 |---|---|
 | `openclaw_cron_list` | List all scheduled OpenClaw cron jobs |
 | `openclaw_cron_run` | Trigger a cron job immediately by ID |
 | `openclaw_cron_status` | Get scheduler status and recent run history |
+| `openclaw_cron_create` | Create a new cron job (cron expression, interval, or one-shot) |
+| `openclaw_cron_edit` | Edit an existing cron job (name, message, schedule, model) |
+| `openclaw_cron_delete` | Delete a cron job by ID |
+| `openclaw_cron_history` | Show recent execution history for a cron job |
 
-### OpenClaw Agent (3 tools)
+### OpenClaw Agent (4 tools)
 | Tool | Description |
 |---|---|
 | `openclaw_run` | Send a prompt to the OpenClaw AI agent (all plugins available) |
 | `openclaw_status` | Check if the OpenClaw daemon is running |
 | `openclaw_plugins` | List all installed plugins |
+| `openclaw_notify` | Send a notification via WhatsApp, Telegram, or last-used channel |
 
-### AI Sub-Agents (3 tools)
+### AI Sub-Agents (5 tools)
 | Tool | Description |
 |---|---|
+| `claude_run` | Send a prompt to Claude via the local CLI. For non-Claude MCP clients (Cursor, Windsurf). |
 | `gemini_run` | Send a prompt to Google Gemini via the local CLI. 1M token context. |
 | `codex_run` | Send a coding task to OpenAI Codex via the local CLI. |
 | `local_llm_run` | Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp). Free, private. |
+| `llama_server` | Start/stop/configure a llama.cpp server with TurboQuant cache support. |
+
+### System Management (4 tools)
+| Tool | Description |
+|---|---|
+| `system_status` | Health check all services at once with latency (HA, SSH, LLM, CLIs) |
+| `local_llm_models` | List, load, or unload models on LM Studio / Ollama |
+| `openclaw_logs` | View gateway, agent, or system logs from the OpenClaw server |
+| `file_transfer` | Upload, download, or list files on the OpenClaw server via SSH |
 
 ### Routing and Orchestration (2 tools)
 | Tool | Description |
 |---|---|
 | `mcp_help` | Show routing guide. Pass a task to get a specific tool recommendation. |
 | `prompt_split` | Analyze a complex prompt, split into sub-tasks with agent assignments. |
+
+### Dashboard
+| Endpoint | Description |
+|---|---|
+| `http://localhost:3334/status` | Auto-refreshing HTML dashboard (service health, loaded models) |
+| `http://localhost:3334/api/status` | JSON API for programmatic status checks |
 
 ---
 
@@ -202,6 +225,7 @@ Prerequisites: `.env` configured, local LLM server running, OpenClaw server reac
 - A [Home Assistant](https://www.home-assistant.io) instance with a long-lived access token
 
 **Optional (for sub-agents):**
+- `claude_run`: `npm install -g @anthropic-ai/claude-code` and run `claude` once to authenticate
 - `gemini_run`: `npm install -g @google/gemini-cli` and `gemini auth login`
 - `codex_run`: `npm install -g @openai/codex` and `codex login`
 - `local_llm_run`: any OpenAI-compatible local server:
@@ -445,18 +469,28 @@ npx tsx tests/integration.test.ts
 ### Project layout
 ```
 src/
-  index.ts              MCP server entry, tool registration, transport
+  index.ts              MCP server entry, tool registration, transport, dashboard
   config.ts             Environment variable configuration
+  dashboard.ts          Status dashboard HTML renderer
   ssh.ts                SSH exec helper (Windows/macOS/Linux)
   spawn.ts              Local process spawner for CLI sub-agents
   tools/
     home.ts             Home Assistant: light, climate, scene, vacuum, sensors
+    home-automation.ts  HA automations: list, trigger, enable, disable
     memory.ts           Daily memory log: write, read, search (SSH)
     cron.ts             OpenClaw cron: list, run, status (SSH)
+    cron-manage.ts      OpenClaw cron: create, edit, delete, history (SSH)
     openclaw.ts         OpenClaw agent orchestration (SSH)
+    openclaw-logs.ts    OpenClaw server log viewer (SSH)
+    notify.ts           WhatsApp/Telegram notifications via OpenClaw
+    claude.ts           Claude sub-agent (local CLI, for non-Claude clients)
     gemini.ts           Google Gemini sub-agent (local CLI)
     codex.ts            OpenAI Codex sub-agent (local CLI)
     local-llm.ts        Local LLM sub-agent (OpenAI-compatible HTTP)
+    local-llm-models.ts LM Studio model management (list/load/unload)
+    llama-server.ts     llama.cpp server manager (start/stop/configure)
+    file-transfer.ts    File upload/download via SSH
+    system-status.ts    Unified health check across all services
     splitter.ts         Smart prompt splitter (multi-strategy)
     help.ts             Routing guide and task recommender
     routing-rules.ts    Shared routing rules and keyword matching
