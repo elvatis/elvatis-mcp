@@ -11,10 +11,40 @@
 
 | Check | Result | Notes |
 |-------|--------|-------|
-| `build` | ⏳ Untested | tsc OOM on server (i7-6700K, 32GB). Build on Threadripper dev machine. |
-| `typecheck` | ⏳ Untested | Same — run on dev machine |
+| `build` | ❌ Failing | TS2589: Type instantiation excessively deep — see blocker below |
+| `typecheck` | ❌ Failing | Same root cause |
 | `lint` | — | Not configured yet |
 | `integration test` | ⏳ Untested | Needs Claude Desktop + HA token |
+
+## 🚨 Active Blocker: TS2589 — Type instantiation excessively deep
+
+**Error:** `TS2589: Type instantiation is excessively deep and possibly infinite` on every `server.tool()` call in `src/index.ts`.
+
+**Root cause:** The MCP SDK's `server.tool()` has 6 overloads. TypeScript cannot resolve the correct overload when Zod schemas are passed as raw shape objects (`{ field: z.string() }`) because the union of all schema shapes across all tools creates an exponentially deep type instantiation chain (~42M instantiations observed).
+
+**What was tried:**
+1. Generic loop pattern (first attempt) — same error + union of all schema shapes
+2. Direct per-tool registration with raw shape schemas — same TS2589
+
+**Likely fix (not yet tried):**
+Pass schemas as `z.object({...})` instances instead of raw shapes:
+```typescript
+// WRONG (raw shape — causes TS2589):
+server.tool('home_light', 'desc', { entity_id: z.string(), action: z.enum([...]) }, handler)
+
+// LIKELY CORRECT (z.object instance):
+server.tool('home_light', 'desc', z.object({ entity_id: z.string(), action: z.enum([...]) }), handler)
+```
+The SDK's `ZodRawShapeCompat` type may require `z.object()` wrappers for complex schemas with enums, tuples, and optional fields.
+
+**Alternative fix:** Downgrade to `@modelcontextprotocol/sdk@1.8.x` or earlier where the overload resolution was simpler.
+
+**Environment:**
+- Node.js: v22.x, Windows 11
+- TypeScript: 5.8.x
+- @modelcontextprotocol/sdk: 1.10.2
+- Zod: 3.24.2
+- Machine: Threadripper 3960X, 128GB RAM (NODE_OPTIONS=--max-old-space-size=16384)
 
 ---
 

@@ -2,16 +2,37 @@
 
 > Updated: 2026-03-31 by Akido
 
-## Immediate (next session on Threadripper dev machine)
+## 🚨 Immediate: Fix TS2589 build error
 
-### T-002: Build + typecheck
-```bash
-git clone https://github.com/elvatis/elvatis-mcp.git
-cd elvatis-mcp
-npm install
-npm run build
-# Expected: dist/ with compiled JS + .d.ts files
+**Task:** Fix `TS2589: Type instantiation excessively deep` in `src/index.ts`
+
+**Try in this order:**
+
+### Fix A — Use `z.object()` wrappers (most likely correct)
+In each tool file (`home.ts`, `memory.ts`, `cron.ts`), change schema exports from raw shapes to `z.object()`:
+```typescript
+// home.ts — change from:
+export const lightSchema = { entity_id: z.string(), action: z.enum([...]) }
+// to:
+export const lightSchema = z.object({ entity_id: z.string(), action: z.enum([...]) })
 ```
+Then in `index.ts`, pass directly: `server.tool('home_light', 'desc', lightSchema, handler)`
+
+### Fix B — Downgrade SDK
+```bash
+npm install @modelcontextprotocol/sdk@1.8.0
+npm run build
+```
+If this compiles: the overload resolution changed in 1.9+ and 1.8.x is the workaround.
+
+### Fix C — skipLibCheck + ts-ignore (last resort)
+Add `"skipLibCheck": true` to tsconfig (already set) and add `// @ts-ignore` above each `server.tool()` call. Ugly but unblocks progress.
+
+### After fix is confirmed working:
+- Run `npm run build` clean
+- Update STATUS.md: mark build ✅
+- Update DASHBOARD.md: T-002 done
+- Proceed to T-003: Claude Desktop smoke test
 
 ### T-003: Claude Desktop smoke test
 1. Install Claude Desktop on dev machine

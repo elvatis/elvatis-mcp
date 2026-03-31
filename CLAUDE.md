@@ -12,6 +12,22 @@ MCP server exposing OpenClaw tools (Home Assistant, memory, cron) to Claude Desk
 - `@modelcontextprotocol/sdk` 1.x (stay on 1.x, v2 is pre-alpha)
 - Zod 3.x for all tool schemas
 
+## 🚨 Active Build Blocker (read first!)
+
+`TS2589: Type instantiation excessively deep` on every `server.tool()` call in `src/index.ts`.
+
+Root cause: MCP SDK `server.tool()` has 6 overloads. Passing Zod schemas as raw shapes (`{ field: z.string() }`) causes exponential type instantiation (~42M).
+
+**Fix to try first:** Change all schema exports in `tools/*.ts` from raw shapes to `z.object()` instances:
+```typescript
+// WRONG: export const lightSchema = { entity_id: z.string() }
+// RIGHT: export const lightSchema = z.object({ entity_id: z.string() })
+```
+
+If that doesn't work: `npm install @modelcontextprotocol/sdk@1.8.0` and retry.
+
+See `.ai/handoff/NEXT_ACTIONS.md` for full fix sequence.
+
 ## Key Rules
 - **No em dashes** anywhere — use commas, colons, or parentheses
 - Tool names: `domain_action` format
