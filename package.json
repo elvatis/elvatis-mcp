@@ -37,5 +37,18 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elvatis/elvatis-mcp.git"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
