@@ -98,6 +98,12 @@ import {
   cronHistorySchema, handleCronHistory,
 } from './tools/cron-manage.js';
 
+import { handleDashboardRequest } from './dashboard.js';
+
+import {
+  llamaServerSchema, handleLlamaServer,
+} from './tools/llama-server.js';
+
 import {
   localLlmRunSchema, handleLocalLlmRun,
 } from './tools/local-llm.js';
@@ -342,12 +348,55 @@ async function main() {
     async (args) => ({ content: [{ type: 'text', text: toText(await handleCronHistory(args as any, config)) }] })
   );
 
+  // --- llama.cpp server management ---
+
+  registerTool(server, 'llama_server',
+    'Manage a local llama.cpp server: start with specific model, cache type (turbo2/turbo3/turbo4 for TurboQuant), '
+    + 'GPU layers, and context size. Runs alongside LM Studio on a different port. '
+    + 'Use "status" to check, "stop" to kill. Once started, use local_llm_run with the endpoint to query it.',
+    llamaServerSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleLlamaServer(args as any)) }] })
+  );
+
+  // --- Dashboard helper (serves HTML at /status or /) ---
+
+  async function serveDashboard(res: import('http').ServerResponse) {
+    try {
+      const html = await handleDashboardRequest(config);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch (err) {
+      res.writeHead(500);
+      res.end(`Dashboard error: ${err}`);
+    }
+  }
+
   // --- Transport ---
 
   if (config.transport === 'stdio') {
     const transport = new StdioServerTransport();
     await server.connect(transport);
     process.stderr.write('[elvatis-mcp] Running on stdio transport\n');
+
+    // In stdio mode, start a lightweight dashboard server on a separate port
+    const dashPort = config.httpPort + 1; // default: 3334
+    const { createServer: createDashServer } = await import('http');
+    const dashServer = createDashServer(async (req, res) => {
+      if (req.url === '/status' || req.url === '/') {
+        await serveDashboard(res);
+      } else if (req.url === '/api/status') {
+        // JSON API for programmatic access
+        const data = await handleSystemStatus({} as any, config).catch(() => ({ error: 'failed' }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(data));
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    });
+    dashServer.listen(dashPort, () => {
+      process.stderr.write(`[elvatis-mcp] Dashboard at http://localhost:${dashPort}/status\n`);
+    });
   } else {
     const { createServer } = await import('http');
     const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
@@ -355,14 +404,21 @@ async function main() {
     const httpServer = createServer(async (req, res) => {
       if (req.url === '/mcp') {
         await transport.handleRequest(req, res);
+      } else if (req.url === '/status' || req.url === '/') {
+        await serveDashboard(res);
+      } else if (req.url === '/api/status') {
+        const data = await handleSystemStatus({} as any, config).catch(() => ({ error: 'failed' }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(data));
       } else {
         res.writeHead(404);
-        res.end('Not found — MCP endpoint is /mcp');
+        res.end('Not found');
       }
     });
     await server.connect(transport);
     httpServer.listen(config.httpPort, () => {
       process.stderr.write(`[elvatis-mcp] Running on HTTP at http://localhost:${config.httpPort}/mcp\n`);
+      process.stderr.write(`[elvatis-mcp] Dashboard at http://localhost:${config.httpPort}/status\n`);
     });
   }
 }
