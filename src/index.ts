@@ -322,7 +322,13 @@ async function main() {
   registerTool(server, 'mcp_help',
     'List all available elvatis-mcp tools with a routing guide. Optionally provide a task description to get a specific recommendation for which sub-agent (openclaw_run, gemini_run, codex_run, local_llm_run) or tool to use.',
     mcpHelpSchema.shape,
-    async (args) => ({ content: [{ type: 'text', text: toText(await handleMcpHelp(args as any)) }] })
+    async (args) => {
+      const result = await handleMcpHelp(args as any);
+      const text = result.recommendation
+        ? `${result.guide}\n\n---\n\n## Recommendation for: "${result.task}"\n\n${result.recommendation}`
+        : result.guide;
+      return { content: [{ type: 'text', text }] };
+    }
   );
 
   registerTool(server, 'prompt_split',
