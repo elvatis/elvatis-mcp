@@ -109,7 +109,7 @@ npm run build
 
 ## Testing
 ```bash
-npm test                  # unit tests (33 tests, no external services needed)
+npm test                  # unit tests (42 tests, no external services needed)
 npm run test:integration  # integration tests (requires .env, SSH, LM Studio)
 npm run build && node dist/index.js  # manual: starts in stdio mode (waits for MCP client)
 ```

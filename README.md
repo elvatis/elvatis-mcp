@@ -136,11 +136,12 @@ Claude then executes the plan, calling tools in the right order and running para
 | `openclaw_logs` | View gateway, agent, or system logs from the OpenClaw server |
 | `file_transfer` | Upload, download, or list files on the OpenClaw server via SSH |
 
-### Routing and Orchestration (2 tools)
+### Routing and Orchestration (3 tools)
 | Tool | Description |
 |---|---|
 | `mcp_help` | Show routing guide. Pass a task to get a specific tool recommendation. |
 | `prompt_split` | Analyze a complex prompt, split into sub-tasks with agent assignments. |
+| `prompt_split_execute` | Execute a split plan: dispatch subtasks to agents in dependency order with rate limiting. |
 
 ### Dashboard
 | Endpoint | Description |
@@ -500,11 +501,32 @@ On Windows, elvatis-mcp automatically resolves the SSH binary to `C:\Windows\Sys
 
 ## `/mcp-help` Slash Command
 
-In Claude Code, the `/project:mcp-help` slash command is available:
+In Claude Code, the `/project:mcp-help` slash command shows the full 34-tool routing guide as formatted output:
 
 ```
-/project:mcp-help
-/project:mcp-help analyze this trading strategy for risk
+/project:mcp-help                           # full guide
+/project:mcp-help openclaw_status           # help for a specific tool
+/project:mcp-help analyze this trading strategy for risk  # routing recommendation
+```
+
+---
+
+## Rate Limiting
+
+Cloud sub-agents (`claude_run`, `codex_run`, `gemini_run`) are rate-limited to prevent runaway costs. Default limits:
+
+| Agent | /min | /hr | /day | Est. cost/call |
+|-------|------|-----|------|----------------|
+| `claude_run` | 5 | 30 | 200 | $0.03 |
+| `codex_run` | 5 | 30 | 200 | $0.02 |
+| `gemini_run` | 10 | 60 | 500 | $0.01 |
+
+Local agents (`local_llm_run`, `home_*`, `openclaw_*`) are unlimited.
+
+Usage data persists to `~/.elvatis-mcp/usage.json`. Override limits via the `RATE_LIMITS` env var:
+
+```bash
+RATE_LIMITS='{"claude_run":{"perMinute":3,"perDay":100}}'
 ```
 
 ---
