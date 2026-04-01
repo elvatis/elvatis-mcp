@@ -121,6 +121,10 @@ import {
 } from './tools/split-execute.js';
 
 import {
+  remoteShellSchema, handleRemoteShell,
+} from './tools/remote-shell.js';
+
+import {
   initRateLimiter, checkRateLimit, recordUsage, getAllQuotas, getCostSummary, flushNow,
 } from './rate-limiter.js';
 
@@ -349,6 +353,14 @@ async function main() {
     + 'Use "overrides" to change agent/model/prompt per task or skip tasks. Set dry_run=true to preview.',
     splitExecuteSchema.shape,
     async (args, extra) => ({ content: [{ type: 'text', text: toText(await handleSplitExecute(args as any, config, extra)) }] })
+  );
+
+  // --- Remote server (general Linux SSH) ---
+
+  registerTool(server, 'remote_shell',
+    'Run a shell command on the configured remote Linux server (REMOTE_HOST). Use for deployments, log checks, service restarts, or any ad-hoc command on a remote machine.',
+    remoteShellSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleRemoteShell(args as any, config)) }] })
   );
 
   // --- System management ---

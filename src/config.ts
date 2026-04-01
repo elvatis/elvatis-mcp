@@ -49,6 +49,15 @@ export interface Config {
   localLlmEndpoint?: string;
   /** Default model identifier for the local LLM (as shown in LM Studio / Ollama) */
   localLlmModel?: string;
+  // --- Remote Linux server (general SSH, independent of OpenClaw) ---
+  /** Host for remote_shell, remote_docker, remote_service tools */
+  remoteHost?: string;
+  /** SSH port for remote server (default: 22) */
+  remotePort: number;
+  /** SSH username for remote server (default: root) */
+  remoteUser: string;
+  /** SSH key path for remote server (defaults to SSH_KEY_PATH) */
+  remoteKeyPath: string;
   // --- Rate limiting ---
   /** Directory for persistent data (usage.json). Default: ~/.elvatis-mcp */
   dataDir?: string;
@@ -81,6 +90,11 @@ export function loadConfig(): Config {
     // Local LLM (LM Studio default port: 1234, Ollama: 11434, llama.cpp: 8080)
     localLlmEndpoint: optional('LOCAL_LLM_ENDPOINT'),
     localLlmModel: optional('LOCAL_LLM_MODEL'),
+    // Remote Linux server (optional, for remote_shell/docker/service tools)
+    remoteHost: optional('REMOTE_HOST'),
+    remotePort: parseInt(process.env['REMOTE_PORT'] ?? '22', 10),
+    remoteUser: optional('REMOTE_USER', 'root')!,
+    remoteKeyPath: optional('REMOTE_KEY_PATH') ?? optional('SSH_KEY_PATH', '~/.ssh/id_rsa')!,
     // Rate limiting
     dataDir: optional('ELVATIS_DATA_DIR'),
     rateLimits: parseRateLimits(optional('RATE_LIMITS')),

@@ -16,6 +16,7 @@ import { handleMcpHelp } from '../src/tools/help.js';
 import {
   initRateLimiter, checkRateLimit, recordUsage, getAllQuotas, getCostSummary,
 } from '../src/rate-limiter.js';
+import { toRemoteSshCfg } from '../src/tools/remote-shell.js';
 import type { Config } from '../src/config.js';
 
 // Minimal config stub for heuristic-only tests (no SSH/HTTP needed)
@@ -26,6 +27,9 @@ const stubConfig: Config = {
   localLlmEndpoint: 'http://localhost:1234/v1',
   localLlmModel: '',
   geminiModel: 'gemini-2.5-flash',
+  remotePort: 22,
+  remoteUser: 'root',
+  remoteKeyPath: '~/.ssh/id_rsa',
 };
 
 // ============================================================================
@@ -388,5 +392,37 @@ describe('rate limiter', () => {
     const quota = checkRateLimit('codex_run');
     assert.equal(quota.allowed, false);
     assert.equal(quota.limits.perMinute, 1);
+  });
+});
+
+// ============================================================================
+// remote_shell — config helpers
+// ============================================================================
+
+describe('remote_shell', () => {
+  it('toRemoteSshCfg throws when REMOTE_HOST is not set', () => {
+    assert.throws(
+      () => toRemoteSshCfg({ ...stubConfig, remoteHost: undefined }),
+      /REMOTE_HOST is not configured/,
+    );
+  });
+
+  it('toRemoteSshCfg returns correct SshConfig when REMOTE_HOST is set', () => {
+    const cfg = toRemoteSshCfg({
+      ...stubConfig,
+      remoteHost: '10.0.0.1',
+      remotePort: 2222,
+      remoteUser: 'deploy',
+      remoteKeyPath: '/home/deploy/.ssh/id_ed25519',
+    });
+    assert.equal(cfg.host, '10.0.0.1');
+    assert.equal(cfg.port, 2222);
+    assert.equal(cfg.username, 'deploy');
+    assert.equal(cfg.keyPath, '/home/deploy/.ssh/id_ed25519');
+  });
+
+  it('toRemoteSshCfg uses default port 22 when not overridden', () => {
+    const cfg = toRemoteSshCfg({ ...stubConfig, remoteHost: '10.0.0.2' });
+    assert.equal(cfg.port, 22);
   });
 });
