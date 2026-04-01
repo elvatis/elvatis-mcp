@@ -129,6 +129,10 @@ import {
 } from './tools/remote-docker.js';
 
 import {
+  openclawDeploySchema, handleOpenclawDeploy,
+} from './tools/openclaw-deploy.js';
+
+import {
   remoteServiceSchema, handleRemoteService,
 } from './tools/remote-service.js';
 
@@ -369,6 +373,12 @@ async function main() {
     'Run a shell command on the configured remote Linux server (REMOTE_HOST). Use for deployments, log checks, service restarts, or any ad-hoc command on a remote machine.',
     remoteShellSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleRemoteShell(args as any, config)) }] })
+  );
+
+  registerTool(server, 'openclaw_deploy',
+    'Trigger deploy or rollback scripts on the OpenClaw server, or check the last deploy log. Scripts must exist at OPENCLAW_DEPLOY_SCRIPT_DIR (default: ~/deploy).',
+    openclawDeploySchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleOpenclawDeploy(args as any, config)) }] })
   );
 
   registerTool(server, 'remote_docker',

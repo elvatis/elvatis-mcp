@@ -49,6 +49,9 @@ export interface Config {
   localLlmEndpoint?: string;
   /** Default model identifier for the local LLM (as shown in LM Studio / Ollama) */
   localLlmModel?: string;
+  // --- OpenClaw deploy ---
+  /** Directory of deploy scripts on the OpenClaw server (default: ~/deploy) */
+  deployScriptDir?: string;
   // --- Remote Linux server (general SSH, independent of OpenClaw) ---
   /** Host for remote_shell, remote_docker, remote_service tools */
   remoteHost?: string;
@@ -90,6 +93,8 @@ export function loadConfig(): Config {
     // Local LLM (LM Studio default port: 1234, Ollama: 11434, llama.cpp: 8080)
     localLlmEndpoint: optional('LOCAL_LLM_ENDPOINT'),
     localLlmModel: optional('LOCAL_LLM_MODEL'),
+    // OpenClaw deploy (optional)
+    deployScriptDir: optional('OPENCLAW_DEPLOY_SCRIPT_DIR'),
     // Remote Linux server (optional, for remote_shell/docker/service tools)
     remoteHost: optional('REMOTE_HOST'),
     remotePort: parseInt(process.env['REMOTE_PORT'] ?? '22', 10),

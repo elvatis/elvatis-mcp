@@ -19,6 +19,7 @@ import {
 import { toRemoteSshCfg } from '../src/tools/remote-shell.js';
 import { handleRemoteDocker } from '../src/tools/remote-docker.js';
 import { handleRemoteService } from '../src/tools/remote-service.js';
+import { handleOpenclawDeploy } from '../src/tools/openclaw-deploy.js';
 import type { Config } from '../src/config.js';
 
 // Minimal config stub for heuristic-only tests (no SSH/HTTP needed)
@@ -489,5 +490,30 @@ describe('remote_service', () => {
       { ...stubConfig, remoteHost: '10.0.0.1' },
     );
     assert.equal(result.action, 'stop');
+  });
+});
+
+// ============================================================================
+// openclaw_deploy — argument validation (no SSH needed)
+// ============================================================================
+
+describe('openclaw_deploy', () => {
+  it('reflects service and action in the response on SSH failure', async () => {
+    const result = await handleOpenclawDeploy(
+      { service: 'api', action: 'status' },
+      { ...stubConfig, sshHost: '0.0.0.1' },
+    );
+    assert.equal(result.service, 'api');
+    assert.equal(result.action, 'status');
+    assert.equal(result.success, false);
+  });
+
+  it('uses default deploy script dir when OPENCLAW_DEPLOY_SCRIPT_DIR is not set', async () => {
+    const result = await handleOpenclawDeploy(
+      { service: 'worker', action: 'status' },
+      { ...stubConfig, sshHost: '0.0.0.1', deployScriptDir: undefined },
+    );
+    assert.equal(result.success, false);
+    assert.equal(result.service, 'worker');
   });
 });
