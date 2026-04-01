@@ -34,12 +34,15 @@ export const geminiRunSchema = z.object({
   timeout_seconds: z.number().min(5).max(300).default(60).describe(
     'Max seconds to wait for a response.',
   ),
+  working_directory: z.string().optional().describe(
+    'Working directory for the Gemini process. Set this to the project root so Gemini can read local files. Defaults to the user home directory.',
+  ),
 });
 
 // --- Handler ---
 
 export async function handleGeminiRun(
-  args: { prompt: string; model?: string; timeout_seconds: number },
+  args: { prompt: string; model?: string; timeout_seconds: number; working_directory?: string },
   config: Config,
 ) {
   const model = args.model ?? config.geminiModel;
@@ -48,7 +51,7 @@ export async function handleGeminiRun(
 
   let raw: string;
   try {
-    raw = await spawnLocal('gemini', cliArgs, args.timeout_seconds * 1000);
+    raw = await spawnLocal('gemini', cliArgs, args.timeout_seconds * 1000, args.working_directory);
   } catch (err) {
     return {
       success: false,

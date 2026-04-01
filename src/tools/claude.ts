@@ -29,12 +29,15 @@ export const claudeRunSchema = z.object({
   timeout_seconds: z.number().min(5).max(300).default(60).describe(
     'Max seconds to wait for a response.',
   ),
+  working_directory: z.string().optional().describe(
+    'Working directory for the Claude process. Set this to the project root so Claude can read local files. Defaults to the user home directory.',
+  ),
 });
 
 // --- Handler ---
 
 export async function handleClaudeRun(
-  args: { prompt: string; model?: string; timeout_seconds: number },
+  args: { prompt: string; model?: string; timeout_seconds: number; working_directory?: string },
 ) {
   const cliArgs = [
     '-p', args.prompt,
@@ -45,7 +48,7 @@ export async function handleClaudeRun(
 
   let raw: string;
   try {
-    raw = await spawnLocal('claude', cliArgs, args.timeout_seconds * 1000);
+    raw = await spawnLocal('claude', cliArgs, args.timeout_seconds * 1000, args.working_directory);
   } catch (err) {
     return {
       success: false,

@@ -45,6 +45,9 @@ export const codexRunSchema = z.object({
   timeout_seconds: z.number().min(10).max(600).default(120).describe(
     'Max seconds to wait. Codex tasks can take longer than Gemini — 120s default.',
   ),
+  working_directory: z.string().optional().describe(
+    'Working directory for the Codex process. Set this to the project root so Codex can read and write local files. Defaults to the user home directory.',
+  ),
 });
 
 // --- JSONL event parser ---
@@ -106,6 +109,7 @@ export async function handleCodexRun(
     model?: string;
     sandbox: 'full-auto' | 'dangerous';
     timeout_seconds: number;
+    working_directory?: string;
   },
   config: Config,
 ) {
@@ -123,7 +127,7 @@ export async function handleCodexRun(
 
   let raw: string;
   try {
-    raw = await spawnLocal('codex', cliArgs, args.timeout_seconds * 1000);
+    raw = await spawnLocal('codex', cliArgs, args.timeout_seconds * 1000, args.working_directory);
   } catch (err) {
     return {
       success: false,

@@ -62,6 +62,7 @@ export function spawnLocal(
   cmd: string,
   args: string[],
   timeoutMs: number,
+  cwd?: string,
 ): Promise<string> {
   const isWin = process.platform === 'win32';
 
@@ -73,11 +74,16 @@ export function spawnLocal(
     : cmd;
   const spawnArgs = isWin ? [] : args;
 
+  // Default cwd to home directory so sub-agents never inherit System32
+  // (Electron sets process.cwd() = C:\Windows\System32 for MCP server processes).
+  const effectiveCwd = cwd ?? os.homedir();
+
   return new Promise((resolve, reject) => {
     const proc = spawn(spawnCmd, spawnArgs, {
       shell: isWin,
       windowsHide: true,
       env: spawnEnv(),
+      cwd: effectiveCwd,
     });
 
     // Close stdin immediately so CLIs that check for piped input (e.g. Claude)
