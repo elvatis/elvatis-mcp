@@ -4,7 +4,7 @@
 
 [![npm](https://img.shields.io/npm/v/@elvatis_com/elvatis-mcp)](https://www.npmjs.com/package/@elvatis_com/elvatis-mcp)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-11%2F11%20passed-brightgreen)](#test-results)
+[![Tests](https://img.shields.io/badge/unit%20tests-42%2F42%20passed-brightgreen)](#test-results)
 
 ## What is this?
 
@@ -13,10 +13,10 @@ elvatis-mcp connects Claude (or any MCP client) to your infrastructure:
 - **Smart home** control via Home Assistant (lights, thermostats, vacuum, sensors)
 - **Memory** system with daily logs stored on your OpenClaw server
 - **Cron** job management and triggering
-- **Multi-LLM orchestration** through 4 AI backends: OpenClaw, Google Gemini, OpenAI Codex, and local LLMs
-- **Smart prompt splitting** that analyzes complex requests and routes sub-tasks to the right AI
+- **Multi-LLM orchestration** through 5 AI backends: Claude, OpenClaw, Google Gemini, OpenAI Codex, and local LLMs
+- **Smart prompt splitting** that analyzes complex requests, routes sub-tasks to the right AI, and executes the plan with rate limiting
 
-The key idea: Claude is the orchestrator, but it can delegate specialized work to other AI models. Coding tasks go to Codex. Research goes to Gemini. Simple formatting goes to your local LLM (free, private). Trading and automation go to OpenClaw. And `prompt_split` figures out the routing automatically.
+The key idea: Claude is the orchestrator, but it can delegate specialized work to other AI models. Coding tasks go to Codex. Research goes to Gemini. Simple formatting goes to your local LLM (free, private). Trading and automation go to OpenClaw. `prompt_split` figures out the routing automatically, and `prompt_split_execute` runs the plan with rate limiting on cloud agents.
 
 ## What is MCP?
 
@@ -69,7 +69,7 @@ prompt_split returns:
   t4: openclaw_memory_write   -- "Save summary to today's log"        (after t2, t3)
 ```
 
-Claude then executes the plan, calling tools in the right order and running parallel tasks concurrently. Three analysis strategies:
+Use `prompt_split_execute` to run the plan automatically, or let Claude execute it step by step. Tasks run in dependency order with parallel groups executed concurrently. Three analysis strategies:
 
 | Strategy | Speed | Quality | Uses |
 |---|---|---|---|
@@ -80,7 +80,7 @@ Claude then executes the plan, calling tools in the right order and running para
 
 ---
 
-## Available Tools (32 total)
+## Available Tools (34 total)
 
 ### Home Assistant (7 tools)
 | Tool | Description |
@@ -100,7 +100,7 @@ Claude then executes the plan, calling tools in the right order and running para
 | `openclaw_memory_read_today` | Read today's memory log |
 | `openclaw_memory_search` | Search memory files across the last N days |
 
-### Cron Automation (6 tools)
+### Cron Automation (7 tools)
 | Tool | Description |
 |---|---|
 | `openclaw_cron_list` | List all scheduled OpenClaw cron jobs |
@@ -125,7 +125,7 @@ Claude then executes the plan, calling tools in the right order and running para
 | `claude_run` | Send a prompt to Claude via the local CLI. For non-Claude MCP clients (Cursor, Windsurf). |
 | `gemini_run` | Send a prompt to Google Gemini via the local CLI. 1M token context. |
 | `codex_run` | Send a coding task to OpenAI Codex via the local CLI. |
-| `local_llm_run` | Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp). Free, private. |
+| `local_llm_run` | Send a prompt to a local LLM (LM Studio, Ollama, llama.cpp). Free, private. Supports streaming. |
 | `llama_server` | Start/stop/configure a llama.cpp server with TurboQuant cache support. |
 
 ### System Management (4 tools)
@@ -230,27 +230,27 @@ See [BENCHMARKS.md](BENCHMARKS.md) for the full benchmark suite, methodology, an
 | GPU | AMD Radeon RX 9070 XT Elite (16 GB GDDR6) |
 | RAM | 128 GB DDR4 |
 | OS | Windows 11 Pro |
-| Runtime | LM Studio + ROCm (`llama.cpp-win-x86_64-amd-rocm-avx2@2.8.0`) |
+| Runtime | LM Studio + Vulkan (`llama.cpp-win-x86_64-vulkan-avx2@2.8.0`) |
 
-### Local LLM Inference (LM Studio, ROCm GPU, `--gpu max`)
+### Local LLM Inference (LM Studio, Vulkan GPU, `--gpu max`)
 
-Median of 3 runs, `max_tokens=512`. Tasks: classify (1-word sentiment), extract (JSON), reason (arithmetic), code (Python function).
+Median of 3 runs, `max_tokens=512`. Tasks: classify (1-word sentiment), extract (JSON), reason (arithmetic), code (Python function). Vulkan is the recommended runtime for AMD RX 9070 XT (wins 4 of 5 models over ROCm).
 
-| Model | Params | classify | extract | reason | code |
-|-------|--------|----------|---------|--------|------|
-| Phi 4 Mini Reasoning | 3B | 3.9s | 5.1s | 8.6s | 8.5s |
-| Deepseek R1 0528 Qwen3 | 8B | 2.5s | 7.7s | 13.3s | 7.3s |
-| Qwen 3.5 9B | 9B | 4.9s | 11.2s | 6.6s | 11.4s |
-| Phi 4 Reasoning Plus | 15B | 0.4s | 17.4s | 4.5s | 17.3s |
-| **GPT-OSS 20B** | **20B** | **0.6s** | **0.7s** | **0.7s** | **3.1s** |
+| Model | Params | classify | extract | reason | code | avg tok/s |
+|-------|--------|----------|---------|--------|------|-----------|
+| Phi 4 Mini Reasoning | 3B | 2.6s | 1.9s | 4.7s | 4.8s | **106** |
+| Deepseek R1 0528 Qwen3 | 8B | 3.0s | 6.5s | 7.2s | 7.4s | 70 |
+| Qwen 3.5 9B | 9B | 6.2s | 4.0s | 8.4s | 7.2s | 48 |
+| Phi 4 Reasoning Plus | 15B | 0.4s | 9.7s | 3.5s | 9.9s | 40 |
+| **GPT-OSS 20B** | **20B** | **0.6s** | **0.6s** | **0.6s** | **1.9s** | 63 |
 
-**GPU speedup vs CPU (Deepseek R1 8B):** classify 8.4x faster, extract 3.2x faster.
+**GPU speedup vs CPU (Deepseek R1 8B, Vulkan):** classify 7.2x faster, extract 3.8x faster.
 
 ### Sub-Agent Comparison (same task, different backends)
 
 | Agent | Backend | Avg Latency | Cost | Notes |
 |-------|---------|-------------|------|-------|
-| **local_llm_run** | GPT-OSS 20B (ROCm GPU) | **1.3s** | Free | 3x faster than Codex, 5x faster than Claude |
+| **local_llm_run** | GPT-OSS 20B (Vulkan GPU) | **1.0s** | Free | 4x faster than Codex, 6x faster than Claude |
 | codex_run | OpenAI Codex CLI | 4.1s | Pay-per-use | Best for coding tasks |
 | claude_run | Claude Sonnet 4.6 | 6.3s | Pay-per-use | Best for complex reasoning |
 | gemini_run | Gemini 2.5 Flash | 34.0s | Free tier | CLI startup overhead, best for long context |
@@ -270,12 +270,12 @@ Median of 3 runs, `max_tokens=512`. Tasks: classify (1-word sentiment), extract 
 
 | Metric | Result |
 |--------|--------|
-| Pass rate | 6/10 (60%) |
-| Task count accuracy | 7/10 (70%) |
-| Avg agent match | 70% |
+| Pass rate | **10/10 (100%)** |
+| Task count accuracy | 10/10 (100%) |
+| Avg agent match | 100% |
 | Latency | <1ms (no LLM call) |
 
-The `auto` strategy (Gemini or local LLM) handles complex multi-step prompts with higher accuracy. See [BENCHMARKS.md](BENCHMARKS.md) for details.
+Improvements in v0.8.0+: word boundary regex matching, comma-clause splitting for multi-agent prompts, per-tool routing rules, `openclaw_notify` routing. See [BENCHMARKS.md](BENCHMARKS.md) for the full test corpus.
 
 > Want to contribute benchmarks from your hardware? See [BENCHMARKS.md](BENCHMARKS.md#community-contributions).
 
@@ -444,6 +444,8 @@ Connect your client to `http://your-server:3333/mcp`.
 | `MCP_TRANSPORT` | `stdio` | Transport mode: `stdio` or `http` |
 | `MCP_HTTP_PORT` | `3333` | HTTP port |
 | `SSH_DEBUG` | -- | Set to `1` for verbose SSH output |
+| `ELVATIS_DATA_DIR` | `~/.elvatis-mcp` | Directory for persistent usage data (rate limiter) |
+| `RATE_LIMITS` | -- | JSON string with per-agent rate limit overrides |
 
 ---
 
@@ -577,9 +579,12 @@ src/
     file-transfer.ts    File upload/download via SSH
     system-status.ts    Unified health check across all services
     splitter.ts         Smart prompt splitter (multi-strategy)
+    split-execute.ts    Plan executor with agent dispatch and rate limiting
     help.ts             Routing guide and task recommender
     routing-rules.ts    Shared routing rules and keyword matching
+  rate-limiter.ts       Rate limiting + cost tracking for cloud sub-agents
 tests/
+  unit.test.ts          42 unit tests (no external services needed)
   integration.test.ts   Live integration tests
 ```
 

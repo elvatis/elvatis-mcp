@@ -30,7 +30,7 @@ Control Philips Hue lights, Tado thermostats, Roborock vacuum, and read environm
 | `home_scene` | Activate Hue scenes by room |
 | `home_vacuum` | Control Roborock (start, stop, dock, status) |
 | `home_sensors` | Read all environmental sensors |
-| `home_automation` | Natural language home commands via OpenClaw agent |
+| `home_automation` | List, trigger, enable, or disable HA automations |
 
 ### OpenClaw Memory (`openclaw_memory_*`)
 Daily markdown memory logs on the OpenClaw server, accessed via SSH.
@@ -98,4 +98,4 @@ Local sub-agents for delegating tasks to different AI backends.
 
 See `README.md` for full configuration reference and client setup instructions.
 
-**Version:** 1.0.0
+**Version:** 1.0.4
