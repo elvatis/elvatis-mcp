@@ -17,6 +17,8 @@ import {
   initRateLimiter, checkRateLimit, recordUsage, getAllQuotas, getCostSummary,
 } from '../src/rate-limiter.js';
 import { toRemoteSshCfg } from '../src/tools/remote-shell.js';
+import { handleRemoteDocker } from '../src/tools/remote-docker.js';
+import { handleRemoteService } from '../src/tools/remote-service.js';
 import type { Config } from '../src/config.js';
 
 // Minimal config stub for heuristic-only tests (no SSH/HTTP needed)
@@ -424,5 +426,68 @@ describe('remote_shell', () => {
   it('toRemoteSshCfg uses default port 22 when not overridden', () => {
     const cfg = toRemoteSshCfg({ ...stubConfig, remoteHost: '10.0.0.2' });
     assert.equal(cfg.port, 22);
+  });
+});
+
+// ============================================================================
+// remote_docker — argument validation (no SSH needed)
+// ============================================================================
+
+describe('remote_docker', () => {
+  const noHostConfig = { ...stubConfig, remoteHost: undefined };
+
+  it('returns error when REMOTE_HOST is not configured', async () => {
+    const result = await handleRemoteDocker({ action: 'list', lines: 50 }, noHostConfig);
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /REMOTE_HOST is not configured/);
+  });
+
+  it('returns error when container is missing for non-list action', async () => {
+    const result = await handleRemoteDocker(
+      { action: 'restart', lines: 50 },
+      { ...stubConfig, remoteHost: '10.0.0.1' },
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /container is required/);
+  });
+
+  it('returns error when command is missing for exec action', async () => {
+    const result = await handleRemoteDocker(
+      { action: 'exec', container: 'nginx', lines: 50 },
+      { ...stubConfig, remoteHost: '10.0.0.1' },
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /command is required/);
+  });
+});
+
+// ============================================================================
+// remote_service — argument validation (no SSH needed)
+// ============================================================================
+
+describe('remote_service', () => {
+  const noHostConfig = { ...stubConfig, remoteHost: undefined };
+
+  it('returns error when REMOTE_HOST is not configured', async () => {
+    const result = await handleRemoteService({ action: 'list' }, noHostConfig);
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /REMOTE_HOST is not configured/);
+  });
+
+  it('returns error when service is missing for non-list action', async () => {
+    const result = await handleRemoteService(
+      { action: 'restart' },
+      { ...stubConfig, remoteHost: '10.0.0.1' },
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /service is required/);
+  });
+
+  it('action field is reflected in the response', async () => {
+    const result = await handleRemoteService(
+      { action: 'stop' },
+      { ...stubConfig, remoteHost: '10.0.0.1' },
+    );
+    assert.equal(result.action, 'stop');
   });
 });

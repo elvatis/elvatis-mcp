@@ -125,6 +125,14 @@ import {
 } from './tools/remote-shell.js';
 
 import {
+  remoteDockerSchema, handleRemoteDocker,
+} from './tools/remote-docker.js';
+
+import {
+  remoteServiceSchema, handleRemoteService,
+} from './tools/remote-service.js';
+
+import {
   initRateLimiter, checkRateLimit, recordUsage, getAllQuotas, getCostSummary, flushNow,
 } from './rate-limiter.js';
 
@@ -361,6 +369,18 @@ async function main() {
     'Run a shell command on the configured remote Linux server (REMOTE_HOST). Use for deployments, log checks, service restarts, or any ad-hoc command on a remote machine.',
     remoteShellSchema.shape,
     async (args) => ({ content: [{ type: 'text', text: toText(await handleRemoteShell(args as any, config)) }] })
+  );
+
+  registerTool(server, 'remote_docker',
+    'Manage Docker containers on the remote Linux server via SSH. Actions: list, logs, start, stop, restart, stats, exec. No Docker API or open port needed.',
+    remoteDockerSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleRemoteDocker(args as any, config)) }] })
+  );
+
+  registerTool(server, 'remote_service',
+    'Manage systemd services on the remote Linux server via SSH. Actions: status, start, stop, restart, enable, disable, list.',
+    remoteServiceSchema.shape,
+    async (args) => ({ content: [{ type: 'text', text: toText(await handleRemoteService(args as any, config)) }] })
   );
 
   // --- System management ---
