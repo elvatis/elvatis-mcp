@@ -19,16 +19,19 @@ export interface SshConfig {
 }
 
 /**
- * Resolve the SSH binary path.
- * On Windows, Claude Desktop (MSIX) and Claude Code may run with a restricted
- * PATH. Use the full absolute path to avoid PATH resolution issues entirely.
+ * Resolve the SSH binary path on Windows.
+ * Windows OpenSSH (System32) requires console APIs that are unavailable in
+ * Electron-spawned Node.js processes (CWD=C:\Windows\System32, no console).
+ * Git's ssh.exe works in any stdio context and is preferred when available.
  */
 function sshBinary(): string {
-  if (process.platform === 'win32') {
-    const root = process.env['SystemRoot'] || process.env['systemroot'] || 'C:\\Windows';
-    return path.join(root, 'System32', 'OpenSSH', 'ssh.exe');
-  }
-  return 'ssh';
+  if (process.platform !== 'win32') return 'ssh';
+  // Prefer Git's ssh — works in all Windows stdio contexts
+  const gitSsh = 'C:\\Program Files\\Git\\usr\\bin\\ssh.exe';
+  if (require('fs').existsSync(gitSsh)) return gitSsh;
+  // Fallback to Windows OpenSSH
+  const root = process.env['SystemRoot'] || process.env['systemroot'] || 'C:\\Windows';
+  return path.join(root, 'System32', 'OpenSSH', 'ssh.exe');
 }
 
 /**
