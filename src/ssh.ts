@@ -19,29 +19,25 @@ export interface SshConfig {
 }
 
 /**
- * Resolve the SSH binary to a full path on Windows.
- * Claude Desktop (MSIX) and Claude Code may have a different PATH than the
- * user's interactive shell. We try known locations explicitly so we don't
- * depend on PATH resolution inside a sandboxed child process.
+ * Resolve the SSH binary path.
+ * On Windows, Claude Desktop (MSIX) and Claude Code may run with a restricted
+ * PATH. Use the full absolute path to avoid PATH resolution issues entirely.
  */
+function sshBinary(): string {
+  if (process.platform === 'win32') {
+    const root = process.env['SystemRoot'] || process.env['systemroot'] || 'C:\\Windows';
+    return path.join(root, 'System32', 'OpenSSH', 'ssh.exe');
+  }
+  return 'ssh';
+}
+
 /**
- * Build a PATH that guarantees the Windows native OpenSSH directory is included.
- * Claude Desktop (MSIX) and Claude Code may strip PATH entries, so we add
- * the known SSH locations explicitly.
+ * Build the environment for the SSH child process.
+ * Keep it simple: inherit process.env with HOME set.
+ * No PATH manipulation — using the absolute ssh binary path instead.
  */
 function sshEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, HOME: os.homedir() };
-  if (process.platform === 'win32') {
-    const root = process.env['SystemRoot'] || 'C:\\Windows';
-    const sshDirs = [
-      path.join(root, 'System32', 'OpenSSH'),
-      path.join(root, 'Sysnative', 'OpenSSH'),
-    ];
-    const currentPath = env['PATH'] || env['Path'] || '';
-    // Prepend SSH directories so they are found first
-    env['PATH'] = sshDirs.join(';') + ';' + currentPath;
-  }
-  return env;
+  return { ...process.env, HOME: os.homedir() };
 }
 
 /** Normalize a file path to forward slashes (SSH on Windows needs this). */
@@ -76,10 +72,11 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
     );
     const debug = process.env['SSH_DEBUG'] === '1';
 
+    const nullDevice = process.platform === 'win32' ? 'NUL' : '/dev/null';
     const args = [
       '-i', keyPath,
       '-o', 'StrictHostKeyChecking=no',
-      '-o', 'UserKnownHostsFile=/dev/null',
+      '-o', `UserKnownHostsFile=${nullDevice}`,
       '-o', 'LogLevel=ERROR',
       '-o', 'BatchMode=yes',
       '-o', 'ConnectTimeout=10',
@@ -94,19 +91,27 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
 
     args.push(`${cfg.username}@${cfg.host}`, command);
 
-    // Use plain 'ssh' and rely on PATH (augmented with known SSH dirs via sshEnv).
-    // No shell: true, no full path resolution. This avoids cmd.exe backslash escaping
-    // issues and WoW64 System32 redirection problems on Windows.
-    const proc = spawn('ssh', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const proc = spawn(sshBinary(), args, {
+      // Use 'pipe' for stdin (not 'ignore') so Windows OpenSSH gets a valid
+      // stdin handle. 'ignore' in Electron-spawned Node leaves stdin as
+      // INVALID_HANDLE_VALUE which causes Windows ssh.exe to exit 255 silently.
+      stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
       env: sshEnv(),
+      // Explicitly set cwd to a writable directory. When the MCP server is
+      // launched by Claude Code (Electron), process.cwd() is C:\Windows\System32
+      // which is write-protected. ssh.exe fails silently at startup if it cannot
+      // write temp/lock files in its working directory.
+      cwd: os.tmpdir(),
     });
+    // Immediately signal EOF on stdin — SSH doesn't need input from us.
+    proc.stdin!.end();
+
     let stdout = '';
     let stderr = '';
 
-    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
-    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+    proc.stdout!.on('data', (d: Buffer) => { stdout += d.toString(); });
+    proc.stderr!.on('data', (d: Buffer) => { stderr += d.toString(); });
 
     const timer = setTimeout(() => {
       proc.kill();
@@ -132,7 +137,7 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
       clearTimeout(timer);
       if (err.code === 'ENOENT') {
         reject(new Error(
-          'ssh binary not found on PATH. ' +
+          `ssh binary not found at ${sshBinary()}. ` +
           'Windows: Settings > Optional Features > OpenSSH Client. ' +
           'macOS/Linux: should be pre-installed.',
         ));
