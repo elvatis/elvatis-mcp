@@ -70,11 +70,11 @@ src/
 
 ## Slash Command
 
-`.claude/commands/mcp-help.md` provides `/project:mcp-help` in Claude Code.
+`.claude/commands/mcp-help.md` provides `/mcp-help` in Claude Code.
 Usage:
-- `/project:mcp-help` -- full 34-tool routing guide (formatted as Claude's own output)
-- `/project:mcp-help openclaw_status` -- help for a specific tool (parameters, examples)
-- `/project:mcp-help <task description>` -- routing recommendation for a task
+- `/mcp-help` -- full 34-tool routing guide (formatted as Claude's own output)
+- `/mcp-help openclaw_status` -- help for a specific tool (parameters, examples)
+- `/mcp-help <task description>` -- routing recommendation for a task
 
 ## Configuration
 All configuration via environment variables. Copy `.env.example` to `.env` and fill in your values.

@@ -503,12 +503,12 @@ On Windows, elvatis-mcp automatically resolves the SSH binary to `C:\Windows\Sys
 
 ## `/mcp-help` Slash Command
 
-In Claude Code, the `/project:mcp-help` slash command shows the full 34-tool routing guide as formatted output:
+In Claude Code, the `/mcp-help` slash command shows the full 34-tool routing guide as formatted output:
 
 ```
-/project:mcp-help                           # full guide
-/project:mcp-help openclaw_status           # help for a specific tool
-/project:mcp-help analyze this trading strategy for risk  # routing recommendation
+/mcp-help                           # full guide
+/mcp-help openclaw_status           # help for a specific tool
+/mcp-help analyze this trading strategy for risk  # routing recommendation
 ```
 
 ---
