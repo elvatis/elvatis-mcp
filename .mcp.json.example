@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "elvatis-mcp": {
+      "command": "node",
+      "args": ["./dist/index.js"],
+      "cwd": "/absolute/path/to/elvatis-mcp",
+      "env": {
+        "SSH_HOST": "192.168.x.x",
+        "SSH_PORT": "22",
+        "SSH_USER": "your-user",
+        "SSH_KEY_PATH": "/absolute/path/to/.ssh/your_key"
+      }
+    }
+  }
+}

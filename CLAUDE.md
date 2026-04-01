@@ -65,7 +65,7 @@ src/
 | Client | Config file | Notes |
 |--------|-------------|-------|
 | Claude Desktop + Cowork | `claude_desktop_config.json` | MSIX path on Windows (see README) |
-| Claude Code (project) | `.mcp.json` in repo root | Already included |
+| Claude Code (project) | `.mcp.json` in repo root | Copy from `.mcp.json.example` (gitignored) |
 | Claude Code (global) | `~/.claude.json` | Use `claude mcp add --scope user` |
 
 ## Slash Command

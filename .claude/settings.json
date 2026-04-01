@@ -1,19 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build)",
-      "Bash(npm run typecheck)",
-      "Bash(npm install)",
-      "Bash(npm run dev)",
-      "Bash(node dist/index.js)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git push *)",
-      "Bash(git tag *)",
-      "Bash(git log *)",
-      "Bash(git status)",
-      "Bash(gh release create *)",
-      "Bash(npm publish *)"
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(ssh *)",
+      "Bash(where *)",
+      "Bash(which *)",
+      "Bash(curl *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(sleep *)",
+      "Bash(pwd)",
+      "Bash(wmic *)",
+      "mcp__elvatis-mcp__*"
     ],
     "deny": []
   }

@@ -404,7 +404,7 @@ Open this file (create it if needed):
 > On Windows, always use full absolute paths. The MSIX sandbox does not resolve `~` or relative paths.
 
 #### Claude Code (this project)
-`.mcp.json` is already included. Copy `.env.example` to `.env` and fill in your values.
+Copy `.mcp.json.example` to `.mcp.json` (gitignored, never committed) and fill in your paths and SSH details. Then copy `.env.example` to `.env` for the remaining config.
 
 #### Claude Code (global)
 ```bash
