@@ -174,7 +174,7 @@ export const KNOWN_AGENTS = new Set([
 ]);
 
 export const ROUTING_GUIDE = `
-# elvatis-mcp: Sub-Agent Routing Guide
+# elvatis-mcp: Sub-Agent Routing Guide (34 tools)
 
 ## Sub-Agents (spawn a separate AI to handle a task)
 
@@ -186,7 +186,7 @@ export const ROUTING_GUIDE = `
 | \`codex_run\` | OpenAI Codex | OpenAI login (cached) | Coding, debugging, refactoring, file editing, shell scripting |
 | \`local_llm_run\` | Local LLM (Ollama/LM Studio/llama.cpp) | None | Free, private, fast for simple tasks (classify, format, extract, rewrite) |
 
-## Home Automation Tools (direct Home Assistant calls)
+## Home Automation (direct Home Assistant calls)
 
 | Tool | What it does |
 |------|-------------|
@@ -196,8 +196,9 @@ export const ROUTING_GUIDE = `
 | \`home_vacuum\` | Start, stop, or dock the robot vacuum |
 | \`home_sensors\` | Read all temp/humidity/CO2 sensors |
 | \`home_get_state\` | Read any Home Assistant entity |
+| \`home_automation\` | List, trigger, enable, or disable HA automations |
 
-## Memory Tools (OpenClaw server)
+## Memory (OpenClaw server via SSH)
 
 | Tool | What it does |
 |------|-------------|
@@ -205,19 +206,48 @@ export const ROUTING_GUIDE = `
 | \`openclaw_memory_read_today\` | Read today's memory log |
 | \`openclaw_memory_search\` | Search memory across past N days |
 
-## Cron Tools (OpenClaw server)
+## Cron (OpenClaw server via SSH)
 
 | Tool | What it does |
 |------|-------------|
 | \`openclaw_cron_list\` | List all scheduled cron jobs |
 | \`openclaw_cron_run\` | Trigger a job immediately |
 | \`openclaw_cron_status\` | Get scheduler status and recent runs |
+| \`openclaw_cron_create\` | Create a new cron job (cron expr, interval, or one-shot) |
+| \`openclaw_cron_edit\` | Edit an existing cron job |
+| \`openclaw_cron_delete\` | Delete a cron job by ID |
+| \`openclaw_cron_history\` | View execution history for cron jobs |
 
-## Prompt Splitting
+## OpenClaw Server
 
 | Tool | What it does |
 |------|-------------|
-| \`prompt_split\` | Analyze a complex prompt and split into sub-tasks with agent assignments |
+| \`openclaw_status\` | Check if the OpenClaw daemon is running |
+| \`openclaw_plugins\` | List installed OpenClaw plugins |
+| \`openclaw_notify\` | Send notifications via WhatsApp or Telegram |
+| \`openclaw_logs\` | Tail OpenClaw server logs with optional filtering |
+| \`file_transfer\` | Upload/download files to/from OpenClaw server via SCP |
+
+## Local LLM Management
+
+| Tool | What it does |
+|------|-------------|
+| \`local_llm_models\` | List, load, or unload models on the local LLM server |
+| \`llama_server\` | Start/stop a llama.cpp inference server |
+
+## Orchestration and Routing
+
+| Tool | What it does |
+|------|-------------|
+| \`mcp_help\` | This guide. Optionally provide a task for routing recommendations |
+| \`prompt_split\` | Analyze a complex prompt, split into sub-tasks with agent assignments |
+| \`prompt_split_execute\` | Execute a split plan: dispatches to agents in dependency order with rate limiting |
+
+## System
+
+| Tool | What it does |
+|------|-------------|
+| \`system_status\` | Check health of all services (HA, SSH, LLM, Gemini, Codex) with latency |
 
 ## Decision Guide
 
@@ -227,6 +257,9 @@ export const ROUTING_GUIDE = `
 - **Simple formatting, extraction, classification** -> \`local_llm_run\`
 - **Smart home control** -> appropriate \`home_*\` tool (no sub-agent needed)
 - **Cross-check / second opinion** -> run both \`gemini_run\` and compare
-- **Complex multi-step task** -> \`prompt_split\` first, then execute the plan
+- **Complex multi-step task** -> \`prompt_split\` first, review, then \`prompt_split_execute\`
 - **Coding task that also needs context** -> \`codex_run\` first, then \`gemini_run\` to review
+- **Send results to user** -> \`openclaw_notify\` (WhatsApp/Telegram)
+- **Schedule a recurring task** -> \`openclaw_cron_create\`
+- **Check system health** -> \`system_status\`
 `.trim();
