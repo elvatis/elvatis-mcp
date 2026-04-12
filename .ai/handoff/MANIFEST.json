@@ -2,12 +2,12 @@
   "aahp_version": "2.0",
   "project": "elvatis-mcp",
   "last_session": {
-    "agent": "akido",
-    "session_id": "initial-setup-2026-03-31",
-    "timestamp": "2026-03-31T09:48:00Z",
-    "commit": "b6d4c17",
+    "agent": "claude-sonnet-4-6",
+    "session_id": "session-resume-2026-04-12",
+    "timestamp": "2026-04-12T00:00:00Z",
+    "commit": "pending",
     "phase": "development",
-    "duration_minutes": 15
+    "duration_minutes": 20
   },
   "files": {
     "STATUS.md": {
@@ -51,37 +51,23 @@
     {
       "id": "T-002",
       "title": "Build + typecheck on dev machine (Threadripper), fix any TS errors",
-      "status": "ready"
+      "status": "ready",
+      "github_issue": 22,
+      "github_repo": "elvatis/elvatis-mcp"
     },
-    {
-      "id": "T-003",
-      "title": "Claude Desktop integration test: home_light tool live against HA",
-      "status": "ready"
-    },
-    {
-      "id": "T-004",
-      "title": "Add GitHub Actions CI (typecheck + build on push)",
-      "status": "ready"
-    },
-    {
-      "id": "T-005",
-      "title": "Add trading tools: portfolio status, open positions, daily P&L",
-      "status": "ready"
-    },
-    {
-      "id": "T-006",
-      "title": "Add webcam/camera snapshot tool (Ring via HA proxy)",
-      "status": "ready"
-    },
+    null,
+    null,
+    null,
+    null,
     {
       "id": "T-007",
       "title": "HTTP transport end-to-end test with Cursor/Windsurf",
-      "status": "ready"
+      "status": "ready",
+      "github_issue": 11,
+      "github_repo": "elvatis/elvatis-mcp",
+      "priority": "medium"
     },
-    {
-      "id": "T-008",
-      "title": "npm publish @elvatis_com/elvatis-mcp v0.1.0 + ClawHub + GitHub Release",
-      "status": "ready"
-    }
-  ]
+    null
+  ],
+  "next_task_id": 91
 }

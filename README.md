@@ -4,7 +4,7 @@
 
 [![npm](https://img.shields.io/npm/v/@elvatis_com/elvatis-mcp)](https://www.npmjs.com/package/@elvatis_com/elvatis-mcp)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/unit%20tests-42%2F42%20passed-brightgreen)](#test-results)
+[![Tests](https://img.shields.io/badge/unit%20tests-53%2F53%20passed-brightgreen)](#test-results)
 
 ## What is this?
 
@@ -53,6 +53,18 @@ The key idea: Claude is the orchestrator, but it can delegate specialized work t
 | `gemini_run` | Google Gemini | Local CLI | Google login | Long context (1M tokens), multimodal, research | API usage |
 | `codex_run` | OpenAI Codex | Local CLI | OpenAI login | Coding, debugging, file editing, shell scripts | API usage |
 | `local_llm_run` | LM Studio / Ollama / llama.cpp | HTTP | None | Classification, formatting, extraction, rewriting | **Free** |
+
+### Session Resume
+
+`claude_run`, `gemini_run`, and `codex_run` use **CLI session resume** to eliminate cold-start overhead. On the first call a new session is created; subsequent calls resume it so the model receives only the new message instead of re-processing the full conversation history.
+
+| Metric | Without session resume | With session resume |
+|--------|----------------------|---------------------|
+| Prompt size per request | 18-25 KB | <1 KB (new message only) |
+| Claude Sonnet response time | 80-120s (50% hang rate) | 5-10s |
+| Silent hang rate | ~50% | Near 0% |
+
+Sessions are persisted to `~/.openclaw/cli-bridge/cli-sessions.json` and expire after 2 hours of inactivity or 50 requests. The `session_id` is returned in every response so you can inspect which session was used.
 
 ### Smart Prompt Splitting
 
@@ -252,7 +264,7 @@ Median of 3 runs, `max_tokens=512`. Tasks: classify (1-word sentiment), extract 
 |-------|---------|-------------|------|-------|
 | **local_llm_run** | GPT-OSS 20B (Vulkan GPU) | **1.0s** | Free | 4x faster than Codex, 6x faster than Claude |
 | codex_run | OpenAI Codex CLI | 4.1s | Pay-per-use | Best for coding tasks |
-| claude_run | Claude Sonnet 4.6 | 6.3s | Pay-per-use | Best for complex reasoning |
+| claude_run | Claude Sonnet 4.6 | 6.3s (5-10s with session resume) | Pay-per-use | Best for complex reasoning |
 | gemini_run | Gemini 2.5 Flash | 34.0s | Free tier | CLI startup overhead, best for long context |
 
 ### Service Latency (system_status)
@@ -560,7 +572,8 @@ src/
   config.ts             Environment variable configuration
   dashboard.ts          Status dashboard HTML renderer
   ssh.ts                SSH exec helper (Windows/macOS/Linux)
-  spawn.ts              Local process spawner for CLI sub-agents
+  spawn.ts              Local process spawner for CLI sub-agents (supports stdin piping)
+  session-registry.ts   CLI session registry: persist/resume Claude, Gemini, Codex sessions
   tools/
     home.ts             Home Assistant: light, climate, scene, vacuum, sensors
     home-automation.ts  HA automations: list, trigger, enable, disable

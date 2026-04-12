@@ -63,6 +63,7 @@ export function spawnLocal(
   args: string[],
   timeoutMs: number,
   cwd?: string,
+  stdinData?: string,
 ): Promise<string> {
   const isWin = process.platform === 'win32';
 
@@ -86,8 +87,10 @@ export function spawnLocal(
       cwd: effectiveCwd,
     });
 
-    // Close stdin immediately so CLIs that check for piped input (e.g. Claude)
-    // don't wait for data that will never come
+    // Write prompt via stdin if provided, then close
+    if (stdinData !== undefined) {
+      proc.stdin?.write(stdinData);
+    }
     proc.stdin?.end();
 
     let stdout = '';

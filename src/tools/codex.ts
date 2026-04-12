@@ -1,8 +1,11 @@
 /**
  * Codex sub-agent tool.
  *
- * Uses the @openai/codex CLI in non-interactive mode:
- *   codex exec "<prompt>" --full-auto [--model <model>] [--json]
+ * Uses the @openai/codex CLI in non-interactive mode with session resume:
+ *   echo "<prompt>" | codex exec --json --full-auto [--model <m>]          (first request)
+ *   echo "<prompt>" | codex exec resume <session-id> --json --full-auto    (subsequent)
+ *
+ * Note: --ephemeral is NOT used here (that flag skips session persistence).
  *
  * Authentication: the CLI uses locally cached OpenAI credentials.
  * Run `codex` once interactively to authenticate.
@@ -26,6 +29,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { spawnLocal } from '../spawn.js';
+import { getOrCreateSession, recordSuccess, invalidateSession, isNewSession } from '../session-registry.js';
 
 // --- Schemas ---
 
@@ -113,9 +117,16 @@ export async function handleCodexRun(
   },
   config: Config,
 ) {
-  const model = args.model ?? config.codexModel;
+  const model = args.model ?? config.codexModel ?? 'default';
+  const session = getOrCreateSession('codex', model);
 
-  const cliArgs = ['exec', args.prompt, '--json', '--ephemeral'];
+  // Codex resume uses a subcommand: `codex exec resume <session-id>`
+  // First request uses plain `codex exec`; subsequent requests use the resume subcommand.
+  const cliArgs: string[] = ['exec'];
+  if (!isNewSession(session)) {
+    cliArgs.push('resume', session.sessionId);
+  }
+  cliArgs.push('--json');
 
   if (args.sandbox === 'dangerous') {
     cliArgs.push('--dangerously-bypass-approvals-and-sandbox');
@@ -123,25 +134,31 @@ export async function handleCodexRun(
     cliArgs.push('--full-auto');
   }
 
-  if (model) cliArgs.push('--model', model);
+  if (args.model) cliArgs.push('--model', args.model);
 
   let raw: string;
   try {
-    raw = await spawnLocal('codex', cliArgs, args.timeout_seconds * 1000, args.working_directory);
+    raw = await spawnLocal('codex', cliArgs, args.timeout_seconds * 1000, args.working_directory, args.prompt);
   } catch (err) {
+    const errMsg = String(err);
+    if (errMsg.includes('session not found') || errMsg.includes('not found')) {
+      invalidateSession('codex', model);
+    }
     return {
       success: false,
-      error: String(err),
+      error: errMsg,
       hint: 'Run `codex` once to authenticate, or check `codex --version` to confirm the CLI is installed.',
     };
   }
 
+  recordSuccess('codex', model);
   const response = extractResponseFromJsonl(raw);
 
   return {
     success: true,
     response,
-    model: model ?? 'default',
+    model,
     sandbox: args.sandbox,
+    session_id: session.sessionId,
   };
 }

@@ -1,8 +1,16 @@
 # elvatis-mcp: Next Actions
 
-> Updated: 2026-03-31
+> Updated: 2026-04-12
 
 ## Completed
+
+### T-018: CLI session resume (v1.2.0)
+- `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json`
+- `src/spawn.ts`: added `stdinData` param so prompts pipe via stdin instead of CLI args
+- `src/tools/claude.ts`: uses `--session-id` (first) / `--resume` (subsequent), stdin piping, `bypassPermissions`
+- `src/tools/gemini.ts`: always passes `--resume` (Gemini creates session on unknown UUID), `--approval-mode yolo`
+- `src/tools/codex.ts`: removed `--ephemeral`, uses `codex exec resume <id>` for subsequent requests
+- Result: eliminates ~50% silent hang rate and 80-120s response times on large prompts
 
 ### T-002: TS2589 build error
 Fixed via `registerTool()` wrapper. See STATUS.md and CLAUDE.md for details.
@@ -73,7 +81,57 @@ npm install
 
 ---
 
-## Backlog
+## Backlog: New Tools Roadmap
+
+### T-010: remote_shell — general Linux server SSH tool (HIGH PRIORITY) (issue #20)
+A general-purpose SSH exec tool for ANY Linux server, not tied to OpenClaw.
+Lets an agent run arbitrary shell commands on a configured remote machine.
+
+**New env vars:** `REMOTE_HOST`, `REMOTE_USER`, `REMOTE_PORT`, `REMOTE_KEY_PATH`
+**New tool:** `remote_shell { command: string, timeout_seconds?: number }`
+**New file:** `src/tools/remote-shell.ts`
+
+Reuses `src/ssh.ts` (SshConfig already supports any host).
+Enables: deployment scripts, log tailing, service restarts, file operations — all via agent.
+
+---
+
+### T-011: remote_docker — Docker container management via SSH (issue #19)
+Control Docker on any remote Linux server the agent is connected to.
+**Tools:** `remote_docker { action: list|logs|start|stop|restart|exec, container?: string, command?: string }`
+SSH-based, no Docker API needed. Uses `docker ps`, `docker logs --tail N`, `docker restart` etc.
+
+### T-012: remote_service — systemd service control via SSH (issue #18)
+**Tools:** `remote_service { action: status|start|stop|restart|enable|disable, service: string }`
+SSH-based. Useful for managing nginx, postgres, custom daemons on the remote server.
+
+### T-013: http_request — general HTTP/REST API caller (issue #4)
+**Tool:** `http_request { method, url, headers?, body?, timeout_seconds? }`
+Lets agents call any REST API, webhook, or internal service without needing a custom tool.
+No auth secrets stored — headers passed directly in the call.
+
+### T-014: calendar_event — Google Calendar / CalDAV integration (issue #5)
+Read and create events. Useful for scheduling, reminders, and time-aware agent decisions.
+**Tools:** `calendar_list_events`, `calendar_create_event`
+Config: OAuth token via env var or service account JSON path.
+
+### T-015: db_query — read-only database queries via SSH tunnel (issue #6)
+Run SQL queries on remote MySQL/PostgreSQL over SSH tunnel (no direct DB port needed).
+**Tool:** `db_query { sql: string, db?: string }`
+**Env vars:** `DB_TYPE`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (SSH tunnel uses existing REMOTE_HOST config)
+
+### T-016: home_camera_snapshot — HA camera proxy as image (issue #7)
+**Tool:** `home_camera_snapshot { entity_id: string }`
+Fetches JPEG from `/api/camera_proxy/{entity_id}`, returns as base64 image content block.
+Enables visual context in agent decisions (e.g. "is anyone at the door?").
+
+### T-017: openclaw_deploy — trigger deployments on OpenClaw server (issue #13)
+**Tool:** `openclaw_deploy { service: string, action: deploy|rollback|status }`
+SSH-based. Runs deploy scripts already on the server.
+
+---
+
+## Backlog: Existing
 
 ### T-004: GitHub Actions CI
 - `.github/workflows/ci.yml`

@@ -1,14 +1,15 @@
 /**
  * Gemini sub-agent tool.
  *
- * Uses the @google/gemini-cli package in headless mode:
- *   gemini -p "<prompt>" --model <model> --output-format json
+ * Uses the @google/gemini-cli package in headless mode with session resume:
+ *   echo "<prompt>" | gemini -p "" --model <model> --resume <uuid> --approval-mode yolo
+ *
+ * Gemini creates a new session when --resume is passed with an unknown UUID,
+ * so we always pass --resume (using our generated UUID) -- no separate
+ * "first request" path needed.
  *
  * Authentication: the CLI uses locally cached Google credentials
  * (from `gemini auth login`). No API key env var required.
- *
- * Output format (--output-format json):
- *   { "response": "...", "stats": { ... }, "error": null }
  *
  * Use cases vs openclaw_run:
  *   - Direct, fast Gemini call with no OpenClaw overhead
@@ -20,6 +21,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { spawnLocal } from '../spawn.js';
+import { getOrCreateSession, recordSuccess, invalidateSession } from '../session-registry.js';
 
 // --- Schemas ---
 
@@ -45,17 +47,30 @@ export async function handleGeminiRun(
   args: { prompt: string; model?: string; timeout_seconds: number; working_directory?: string },
   config: Config,
 ) {
-  const model = args.model ?? config.geminiModel;
-  const cliArgs = ['-p', args.prompt, '--output-format', 'json'];
+  const model = args.model ?? config.geminiModel ?? 'gemini-2.5-flash';
+  const session = getOrCreateSession('gemini', model);
+
+  // Gemini creates a new session when --resume is given an unknown UUID,
+  // so --resume is always used (no --session-id equivalent needed).
+  const cliArgs = [
+    '-p', '',
+    '--output-format', 'json',
+    '--resume', session.sessionId,
+    '--approval-mode', 'yolo',
+  ];
   if (model) cliArgs.push('--model', model);
 
   let raw: string;
   try {
-    raw = await spawnLocal('gemini', cliArgs, args.timeout_seconds * 1000, args.working_directory);
+    raw = await spawnLocal('gemini', cliArgs, args.timeout_seconds * 1000, args.working_directory, args.prompt);
   } catch (err) {
+    const errMsg = String(err);
+    if (errMsg.includes('session not found') || errMsg.includes('not found')) {
+      invalidateSession('gemini', model);
+    }
     return {
       success: false,
-      error: String(err),
+      error: errMsg,
       hint: 'Run `gemini auth login` to authenticate, or check `gemini --version` to confirm the CLI is installed.',
     };
   }
@@ -72,19 +87,23 @@ export async function handleGeminiRun(
       return { success: false, error: parsed.error.message, raw };
     }
 
+    recordSuccess('gemini', model);
     return {
       success: true,
       response: parsed.response ?? '(empty response)',
-      model: model ?? 'default',
+      model,
       stats: parsed.stats,
+      session_id: session.sessionId,
     };
   } catch {
     // CLI returned plain text instead of JSON (can happen with some versions)
+    recordSuccess('gemini', model);
     return {
       success: true,
       response: raw.trim(),
-      model: model ?? 'default',
+      model,
       note: 'Response was plain text, not JSON — consider upgrading @google/gemini-cli',
+      session_id: session.sessionId,
     };
   }
 }
