@@ -46,7 +46,7 @@ export async function handleClaudeRun(
   args: { prompt: string; model?: string; timeout_seconds: number; working_directory?: string },
 ) {
   const model = args.model ?? 'claude-sonnet-4-6';
-  const session = getOrCreateSession('claude', model);
+  const isOpus = model.includes('opus');
 
   const cliArgs = [
     '-p',
@@ -58,20 +58,28 @@ export async function handleClaudeRun(
 
   if (args.model) cliArgs.push('--model', args.model);
 
-  // Use --session-id on first request, --resume on subsequent
-  if (isNewSession(session)) {
-    cliArgs.push('--session-id', session.sessionId);
-  } else {
-    cliArgs.push('--resume', session.sessionId);
+  // Session resume: Opus only. Sonnet/Haiku have 45% hang rate with session resume
+  // due to corrupted sessions after SIGTERM kills.
+  if (isOpus) {
+    const session = getOrCreateSession('claude', model);
+    if (isNewSession(session)) {
+      cliArgs.push('--session-id', session.sessionId);
+    } else {
+      cliArgs.push('--resume', session.sessionId);
+    }
   }
 
   let raw: string;
   try {
-    raw = await spawnLocal('claude', cliArgs, args.timeout_seconds * 1000, args.working_directory, args.prompt);
+    // CRITICAL: Claude CLI must run from homedir(), never from a project directory.
+    // Running from a project dir triggers Claude Code's agentic mode, which ignores
+    // prompt instructions and treats tool injection as "prompt injection attempts".
+    // See: openclaw-cli-bridge-elvatis v3.8.0 root cause analysis.
+    raw = await spawnLocal('claude', cliArgs, args.timeout_seconds * 1000, undefined, args.prompt);
   } catch (err) {
     const errMsg = String(err);
     // Session may have been cleaned up externally: invalidate and let the caller retry
-    if (errMsg.includes('session not found') || errMsg.includes('ENOENT')) {
+    if (isOpus && (errMsg.includes('session not found') || errMsg.includes('ENOENT') || errMsg.includes('already in use'))) {
       invalidateSession('claude', model);
     }
     return {
@@ -96,7 +104,7 @@ export async function handleClaudeRun(
       return { success: false, error: parsed.result ?? 'Unknown error from Claude CLI' };
     }
 
-    recordSuccess('claude', model);
+    if (isOpus) recordSuccess('claude', model);
 
     const modelUsed = parsed.modelUsage
       ? Object.keys(parsed.modelUsage)[0] ?? model
@@ -109,17 +117,15 @@ export async function handleClaudeRun(
       duration_ms: parsed.duration_ms,
       cost_usd: parsed.total_cost_usd,
       stop_reason: parsed.stop_reason,
-      session_id: session.sessionId,
     };
   } catch {
     // CLI returned plain text instead of JSON
-    recordSuccess('claude', model);
+    if (isOpus) recordSuccess('claude', model);
     return {
       success: true,
       response: raw.trim(),
       model,
       note: 'Response was plain text, not JSON.',
-      session_id: session.sessionId,
     };
   }
 }
