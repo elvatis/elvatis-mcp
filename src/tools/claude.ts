@@ -91,9 +91,12 @@ export async function handleClaudeRun(
     };
   }
 
-  // Parse the JSON output
+  // Parse the JSON output — sanitize raw newlines/tabs that models embed in strings
   try {
-    const parsed = JSON.parse(raw.trim()) as {
+    const sanitized = raw.trim().replace(/[\x00-\x1f]/g, (ch) =>
+      ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : ch === '\t' ? '\\t' : '',
+    );
+    const parsed = JSON.parse(sanitized) as {
       result?: string;
       is_error?: boolean;
       duration_ms?: number;
