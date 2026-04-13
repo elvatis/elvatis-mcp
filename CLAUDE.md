@@ -47,7 +47,7 @@ src/
     notify.ts         <- openclaw_notify: send notifications via WhatsApp/Telegram
     gemini.ts         <- Google Gemini sub-agent via local gemini CLI (headless mode)
     codex.ts          <- OpenAI Codex sub-agent via local codex CLI (full-auto + JSONL)
-    claude.ts         <- Claude sub-agent via local claude CLI (JSON output)
+    claude.ts         <- Claude sub-agent via local claude CLI (JSON output, homedir cwd, Opus-only session resume)
     local-llm.ts      <- Local LLM sub-agent via OpenAI-compatible API (Ollama, LM Studio)
     local-llm-models.ts <- local_llm_models: list available models from local LLM server
     llama-server.ts   <- llama_server: start/stop llama.cpp server for local inference
@@ -116,6 +116,11 @@ npm test                  # unit tests (42 tests, no external services needed)
 npm run test:integration  # integration tests (requires .env, SSH, LM Studio)
 npm run build && node dist/index.js  # manual: starts in stdio mode (waits for MCP client)
 ```
+
+## Known Issues
+
+- **Claude cwd must be homedir()** -- running `claude -p` from a project directory triggers Claude Code's agentic mode, which ignores prompt instructions and treats tool injection as "prompt injection attempts". The `claude_run` tool now always uses `homedir()` regardless of the `working_directory` parameter. See openclaw-cli-bridge-elvatis v3.8.0.
+- **Session resume: Opus only** -- Sonnet/Haiku have a 45% hang rate with `--session-id`/`--resume` due to corrupted sessions after SIGTERM kills. Only Opus uses session resume; Sonnet/Haiku make fresh `claude -p` calls every time.
 
 ## Handoff Files
 `.ai/handoff/` — AAHP v2 protocol. Read STATUS.md and NEXT_ACTIONS.md at session start.
