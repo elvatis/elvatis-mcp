@@ -1,13 +1,15 @@
 /**
  * Claude sub-agent tool.
  *
- * Uses the Claude Code CLI in non-interactive mode with session resume:
- *   echo "<prompt>" | claude -p --session-id <uuid> --output-format json ...  (first request)
- *   echo "<prompt>" | claude -p --resume <uuid> --output-format json ...       (subsequent)
+ * Uses the Claude Code CLI in non-interactive mode:
+ *   echo "<prompt>" | claude -p --output-format json --max-turns 1 ...
  *
- * Session resume keeps conversation context on the CLI side so subsequent
- * requests only send the new message (not the full history), eliminating
- * the ~50% silent hang rate and 80-120s response times on large prompts.
+ * Session resume is enabled for Opus only (Sonnet/Haiku have 45% hang rate
+ * with session resume due to corrupted sessions after SIGTERM).
+ *
+ * CRITICAL: Claude CLI always runs from homedir(), never from a project
+ * directory. Running from a project dir triggers Claude Code's agentic mode
+ * which ignores prompt instructions. See openclaw-cli-bridge-elvatis v3.8.0.
  *
  * Authentication: uses locally cached Anthropic credentials
  * (from Claude Code login or ANTHROPIC_API_KEY env var).
@@ -36,7 +38,7 @@ export const claudeRunSchema = z.object({
     'Max seconds to wait for a response.',
   ),
   working_directory: z.string().optional().describe(
-    'Working directory for the Claude process. Set this to the project root so Claude can read local files. Defaults to the user home directory.',
+    'Ignored for Claude (always runs from homedir to prevent agentic mode). Kept for API compatibility.',
   ),
 });
 

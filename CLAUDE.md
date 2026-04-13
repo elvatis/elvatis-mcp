@@ -119,8 +119,9 @@ npm run build && node dist/index.js  # manual: starts in stdio mode (waits for M
 
 ## Known Issues
 
-- **Claude cwd must be homedir()** -- running `claude -p` from a project directory triggers Claude Code's agentic mode, which ignores prompt instructions and treats tool injection as "prompt injection attempts". The `claude_run` tool now always uses `homedir()` regardless of the `working_directory` parameter. See openclaw-cli-bridge-elvatis v3.8.0.
+- **Claude cwd must be homedir()** -- running `claude -p` from a project directory triggers Claude Code's agentic mode, which ignores prompt instructions and treats tool injection as "prompt injection attempts". The `claude_run` tool always uses `homedir()` regardless of the `working_directory` parameter. Orchestration test: 30/30 pass from homedir, 90% fail from project dirs. See openclaw-cli-bridge-elvatis v3.8.0.
 - **Session resume: Opus only** -- Sonnet/Haiku have a 45% hang rate with `--session-id`/`--resume` due to corrupted sessions after SIGTERM kills. Only Opus uses session resume; Sonnet/Haiku make fresh `claude -p` calls every time.
+- **No preemptive Opus escalation** -- Sonnet handles all requests by default. If Sonnet fails, fallback chain is: Opus, Gemini Flash, Codex. No more routing every request to Opus.
 
 ## Handoff Files
 `.ai/handoff/` — AAHP v2 protocol. Read STATUS.md and NEXT_ACTIONS.md at session start.
