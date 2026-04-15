@@ -64,6 +64,7 @@ export function spawnLocal(
   timeoutMs: number,
   cwd?: string,
   stdinData?: string,
+  staleTimeoutMs?: number,
 ): Promise<string> {
   const isWin = process.platform === 'win32';
 
@@ -95,18 +96,36 @@ export function spawnLocal(
 
     let stdout = '';
     let stderr = '';
+    let lastOutputAt = Date.now();
+    let killed = false;
 
-    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); lastOutputAt = Date.now(); });
     // Codex streams progress to stderr during execution — collect but don't reject on it
-    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); lastOutputAt = Date.now(); });
 
+    // Hard timeout
     const timer = setTimeout(() => {
-      proc.kill('SIGTERM');
+      if (!killed) { killed = true; proc.kill('SIGTERM'); }
       reject(new Error(`Process "${cmd}" timed out after ${timeoutMs}ms`));
     }, timeoutMs);
 
+    // Stale-output detection: kill if no stdout/stderr for staleTimeoutMs
+    let staleTimer: ReturnType<typeof setInterval> | undefined;
+    if (staleTimeoutMs && staleTimeoutMs > 0) {
+      staleTimer = setInterval(() => {
+        const silent = Date.now() - lastOutputAt;
+        if (silent >= staleTimeoutMs && !killed) {
+          killed = true;
+          proc.kill('SIGTERM');
+          clearInterval(staleTimer);
+          // Don't reject here — let the 'close' handler decide based on stdout
+        }
+      }, 10_000); // check every 10s
+    }
+
     proc.on('close', (code) => {
       clearTimeout(timer);
+      if (staleTimer) clearInterval(staleTimer);
       if (code !== 0) {
         // Include stderr in the error message for easier debugging
         const detail = stderr.trim() || stdout.trim() || '(no output)';
@@ -118,6 +137,7 @@ export function spawnLocal(
 
     proc.on('error', (err: NodeJS.ErrnoException) => {
       clearTimeout(timer);
+      if (staleTimer) clearInterval(staleTimer);
       if (err.code === 'ENOENT') {
         reject(new Error(
           `Command not found: "${cmd}". ` +

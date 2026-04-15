@@ -77,7 +77,9 @@ export async function handleClaudeRun(
     // Running from a project dir triggers Claude Code's agentic mode, which ignores
     // prompt instructions and treats tool injection as "prompt injection attempts".
     // See: openclaw-cli-bridge-elvatis v3.8.0 root cause analysis.
-    raw = await spawnLocal('claude', cliArgs, args.timeout_seconds * 1000, undefined, args.prompt);
+    // Stale timeout: Opus 90s (long-form), Sonnet 60s (tool reasoning needs time), Haiku 30s
+    const staleMs = isOpus ? 90_000 : model.includes('sonnet') ? 60_000 : 30_000;
+    raw = await spawnLocal('claude', cliArgs, args.timeout_seconds * 1000, undefined, args.prompt, staleMs);
   } catch (err) {
     const errMsg = String(err);
     // Session may have been cleaned up externally: invalidate and let the caller retry
