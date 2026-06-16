@@ -51,14 +51,11 @@
     {
       "id": "T-002",
       "title": "Build + typecheck on dev machine (Threadripper), fix any TS errors",
-      "status": "ready",
+      "status": "done",
+      "completed": "2026-06-16",
       "github_issue": 22,
       "github_repo": "elvatis/elvatis-mcp"
     },
-    null,
-    null,
-    null,
-    null,
     {
       "id": "T-007",
       "title": "HTTP transport end-to-end test with Cursor/Windsurf",
@@ -66,8 +63,7 @@
       "github_issue": 11,
       "github_repo": "elvatis/elvatis-mcp",
       "priority": "medium"
-    },
-    null
+    }
   ],
-  "next_task_id": 3731
+  "next_task_id": 30
 }
