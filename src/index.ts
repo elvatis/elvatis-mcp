@@ -182,7 +182,7 @@ async function main() {
 
   const server = new McpServer({
     name: 'elvatis-mcp',
-    version: '0.1.0',
+    version: require('../package.json').version,
   });
 
   // --- Home Assistant tools ---
