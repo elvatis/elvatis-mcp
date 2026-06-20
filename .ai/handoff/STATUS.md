@@ -117,3 +117,6 @@ Claude Desktop / Cursor / Windsurf
 | `src/tools/cron.ts` | OpenClaw cron management (SSH) |
 | `src/tools/openclaw.ts` | Sub-agent orchestration + status (SSH) |
 | `.env.example` | Template — copy to .env and fill values |
+
+<!-- aahp-gate -->
+_AAHP verify gate: v3.0.2 synced 2026-06-20._

@@ -1,69 +1,50 @@
 {
-  "aahp_version": "2.0",
+  "aahp_version": "3.0",
   "project": "elvatis-mcp",
   "last_session": {
-    "agent": "claude-sonnet-4-6",
-    "session_id": "session-resume-2026-04-12",
-    "timestamp": "2026-04-12T00:00:00Z",
-    "commit": "pending",
-    "phase": "development",
-    "duration_minutes": 20
+    "agent": "cli-tool",
+    "session_id": "cli-1781964456",
+    "timestamp": "2026-06-20T14:07:37Z",
+    "commit": "cd11ccc",
+    "phase": "fix",
+    "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:init",
-      "updated": "2026-03-31T09:48:00Z",
-      "lines": 50,
-      "summary": "Project scaffolded. MCP server with stdio+http transport. 12 tools across 3 domains (home, memory, cron). Needs npm install + build test on dev machine."
+      "checksum": "sha256:a4eb00bd18ca4c3f5d7aa6ee75d49ab5c3d5b252e7e78ec7f6c9a25761afbb25",
+      "updated": "2026-06-20T14:07:34Z",
+      "lines": 122,
+      "summary": "(no summary available)"
     },
     "NEXT_ACTIONS.md": {
-      "checksum": "sha256:init",
-      "updated": "2026-03-31T09:48:00Z",
-      "lines": 40,
-      "summary": "T-001 done (skeleton). T-002 next: build + test on Threadripper. T-003: Claude Desktop integration test. 8 tasks total."
+      "checksum": "sha256:09b59e2c92ae7d2a1ec651e6b6b0e1c790e560b9bf6e4297e0796e4ba1875cde",
+      "updated": "2026-04-12T14:49:20Z",
+      "lines": 163,
+      "summary": "(no summary available)"
     },
     "LOG.md": {
-      "checksum": "sha256:init",
-      "updated": "2026-03-31T09:48:00Z",
-      "lines": 15,
-      "summary": "Project created by Akido on 2026-03-31. Initial skeleton committed and pushed."
+      "checksum": "sha256:318c39119af5704c4e2cbc7ba47869958fb20f59e7c0d10c5a627f38c07df31f",
+      "updated": "2026-03-31T10:23:37Z",
+      "lines": 24,
+      "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
-      "checksum": "sha256:init",
-      "updated": "2026-03-31T09:48:00Z",
-      "lines": 30,
-      "summary": "Build health tracking. 1/8 tasks done (skeleton). Build not yet verified."
+      "checksum": "sha256:443b83555b9597eb5d124dd7f53b5948790a597c1d52fefef9874205a9a7236d",
+      "updated": "2026-03-31T13:07:06Z",
+      "lines": 51,
+      "summary": "(no summary available)"
     },
     "CONVENTIONS.md": {
-      "checksum": "sha256:init",
-      "updated": "2026-03-31T09:48:00Z",
-      "lines": 30,
-      "summary": "TypeScript strict, MCP SDK 1.x, Zod for schemas, stdio-first transport, Node.js 18+."
+      "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
+      "updated": "2026-03-31T10:23:37Z",
+      "lines": 38,
+      "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
     }
   },
-  "tasks": [
-    {
-      "id": "T-001",
-      "title": "Initial project skeleton (MCP server, 3 tool domains, config, README)",
-      "status": "done",
-      "completed": "2026-03-31"
-    },
-    {
-      "id": "T-002",
-      "title": "Build + typecheck on dev machine (Threadripper), fix any TS errors",
-      "status": "done",
-      "completed": "2026-06-16",
-      "github_issue": 22,
-      "github_repo": "elvatis/elvatis-mcp"
-    },
-    {
-      "id": "T-007",
-      "title": "HTTP transport end-to-end test with Cursor/Windsurf",
-      "status": "ready",
-      "github_issue": 11,
-      "github_repo": "elvatis/elvatis-mcp",
-      "priority": "medium"
-    }
-  ],
-  "next_task_id": 30
+  "quick_context": "(no summary available) (no summary available) ",
+  "token_budget": {
+    "manifest_only": 85,
+    "manifest_plus_core": 2242,
+    "full_read": 3257
+  }
 }
