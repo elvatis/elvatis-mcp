@@ -1,11 +1,11 @@
-# CLAUDE.md — elvatis-mcp
+# CLAUDE.md - elvatis-mcp
 
 MCP server exposing OpenClaw tools (Home Assistant, memory, cron, sub-agent orchestration) to Claude Desktop, Cursor, Windsurf, and any MCP client.
 
 ## Quick Commands
-- `/build` — typecheck + compile
-- `/status` — show project status
-- `/ship` — pre-publish checklist
+- `/build` - typecheck + compile
+- `/status` - show project status
+- `/ship` - pre-publish checklist
 
 ## Stack
 - TypeScript 5.x strict, Node.js 18+, CommonJS output
@@ -22,12 +22,12 @@ MCP SDK `server.tool()` has 6 overloads that caused 47M+ type instantiations and
 **Rule:** Never call `server.tool()` directly. Always use `registerTool()`.
 
 ## Key Rules
-- **No em dashes** anywhere — use commas, colons, or parentheses
+- **No em dashes** anywhere - use commas, colons, or parentheses
 - Tool names: `domain_action` format
-- Tool descriptions must be precise — Claude uses them for tool selection
-- All secrets via env vars only — never hardcode tokens or IPs
+- Tool descriptions must be precise - Claude uses them for tool selection
+- All secrets via env vars only - never hardcode tokens or IPs
 - Logs to **stderr only** in stdio mode (stdout = MCP protocol stream)
-- Build: `npm run build` (avoid building on machines with limited RAM — tsc is memory-intensive)
+- Build: `npm run build` (avoid building on machines with limited RAM - tsc is memory-intensive)
 
 ## Project Layout
 ```
@@ -105,7 +105,7 @@ npm run build
 ```
 
 ## Adding a New Tool Domain
-1. Create `src/tools/<domain>.ts` — define schemas (Zod) and handler functions
+1. Create `src/tools/<domain>.ts` - define schemas (Zod) and handler functions
 2. Import and register in `src/index.ts` using `registerTool()` (never `server.tool()` directly)
 3. Add entries to `.ai/handoff/DASHBOARD.md` tool table
 4. Update README.md tool table
@@ -124,4 +124,11 @@ npm run build && node dist/index.js  # manual: starts in stdio mode (waits for M
 - **No preemptive Opus escalation** -- Sonnet handles all requests by default. If Sonnet fails, fallback chain is: Opus, Gemini Flash, Codex. No more routing every request to Opus.
 
 ## Handoff Files
-`.ai/handoff/` — AAHP v2 protocol. Read STATUS.md and NEXT_ACTIONS.md at session start.
+`.ai/handoff/` - AAHP v2 protocol. Read STATUS.md and NEXT_ACTIONS.md at session start.
+
+## Style Rules
+
+- Never use em dashes (—, U+2014) in any content: documentation, markdown, README, code comments, GitHub issue titles, or handoff files. Use a plain hyphen (-) instead.
+- When reviewing existing files, scan for em dashes and replace them.
+- Applies to all .md files, HTML templates, comments, and .ai/handoff files.
+- If an AI tool auto-inserts em dashes (e.g. "Title - Subtitle"), fix before committing.
