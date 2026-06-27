@@ -1,9 +1,11 @@
 # elvatis-mcp: Current State of the Nation
 
-> Last updated: 2026-03-31 by Claude (Cowork session)
+> Last updated: 2026-06-27 by claude-opus-4-8 (AAHP onboarding sweep)
 > Commit: pending
 >
 > **Rule:** This file is rewritten (not appended) at the end of every session.
+>
+> **Note (2026-06-27):** Product-state sections below predate this sweep (last functional update 2026-03-31). This session is an AAHP gate-onboarding pass only (badge + manifest commit-pointer refresh); no source code changed. See the gate-log footer for the dated trail.
 
 ---
 
@@ -130,3 +132,5 @@ _AAHP verify gate: v3.0.2 synced 2026-06-20._
 > 2026-06-27 ci: migrate npm publish to OIDC trusted publishing (publish + release jobs in ci.yml, semver-tag triggered, no NPM_TOKEN); removed old token-based publish.yml.
 
 > 2026-06-27 ci: re-pin supply-chain-guard Action to v5.2.37 (be1d718b17cc38e4bce7fa48579b7112e557943b) and enable Dependabot github-actions weekly updates.
+
+> 2026-06-27 aahp: onboard full AAHP gate. Added the AAHP Verify badge to README and regenerated MANIFEST so the commit-pointer tracks HEAD. Scripts and the aahp-verify workflow were already present and passing, so they were left intact (kept the repo's locally-hardened self-contained PII lint rather than swapping in AAHP's allowlist-file variant).
