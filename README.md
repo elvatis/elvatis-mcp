@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/@elvatis_com/elvatis-mcp)](https://www.npmjs.com/package/@elvatis_com/elvatis-mcp)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Tests](https://img.shields.io/badge/unit%20tests-53%2F53%20passed-brightgreen)](#test-results)
+[![AAHP Verify](https://github.com/elvatis/elvatis-mcp/actions/workflows/aahp-verify.yml/badge.svg)](https://github.com/elvatis/elvatis-mcp/actions/workflows/aahp-verify.yml)
 
 ## What is this?
 
