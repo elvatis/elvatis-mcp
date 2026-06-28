@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, SshConfig } from '../ssh.js';
+import { validateScheduleValue, validateCronId } from '../validate.js';
 
 // --- Schemas ---
 
@@ -86,11 +87,21 @@ export async function handleCronCreate(
   parts.push('--name', `'${escapeShell(args.name)}'`);
   parts.push('--message', `'${escapeShell(args.message)}'`);
 
-  // Parse schedule type
-  if (args.schedule.startsWith('every ') || args.schedule.startsWith('every ')) {
-    parts.push('--every', args.schedule.replace(/^every\s+/, ''));
+  // Parse schedule type and validate the extracted value before use.
+  if (args.schedule.startsWith('every ')) {
+    const rawEvery = args.schedule.replace(/^every\s+/, '');
+    try {
+      parts.push('--every', validateScheduleValue(rawEvery));
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
   } else if (args.schedule.startsWith('at ') || args.schedule.startsWith('+')) {
-    parts.push('--at', args.schedule.replace(/^at\s+/, ''));
+    const rawAt = args.schedule.replace(/^at\s+/, '');
+    try {
+      parts.push('--at', validateScheduleValue(rawAt));
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
   } else {
     parts.push('--cron', `'${escapeShell(args.schedule)}'`);
   }
@@ -124,7 +135,14 @@ export async function handleCronEdit(
 ) {
   const cfg = toSshCfg(config);
 
-  const parts = ['openclaw', 'cron', 'edit', args.id];
+  let safeId: string;
+  try {
+    safeId = validateCronId(args.id);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  const parts = ['openclaw', 'cron', 'edit', safeId];
   if (args.name) parts.push('--name', `'${escapeShell(args.name)}'`);
   if (args.message) parts.push('--message', `'${escapeShell(args.message)}'`);
   if (args.schedule) parts.push('--cron', `'${escapeShell(args.schedule)}'`);
@@ -148,8 +166,14 @@ export async function handleCronDelete(
   config: Config,
 ) {
   const cfg = toSshCfg(config);
+  let safeId: string;
   try {
-    const output = await sshExec(cfg, `openclaw cron rm ${args.id} --json 2>&1`, 15000);
+    safeId = validateCronId(args.id);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+  try {
+    const output = await sshExec(cfg, `openclaw cron rm ${safeId} --json 2>&1`, 15000);
     return { success: true, action: 'deleted', id: args.id, response: output.trim() };
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -167,7 +191,13 @@ export async function handleCronHistory(
       error: 'Job ID is required for cron history. Use openclaw_cron_list to find job IDs.',
     };
   }
-  const cmd = `openclaw cron runs --id ${args.id} --limit ${args.lines} --json 2>&1`;
+  let safeId: string;
+  try {
+    safeId = validateCronId(args.id);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+  const cmd = `openclaw cron runs --id ${safeId} --limit ${args.lines} --json 2>&1`;
 
   try {
     const output = await sshExec(cfg, cmd, 15000);

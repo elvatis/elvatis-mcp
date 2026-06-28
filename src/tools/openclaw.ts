@@ -19,6 +19,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, sshReadFile, SshConfig } from '../ssh.js';
+import { validateAgentName, shellQuote } from '../validate.js';
 
 // --- Schemas ---
 
@@ -66,11 +67,23 @@ export async function handleOpenclawRun(
   config: Config,
 ) {
   const cfg = toSshCfg(config);
-  // Escape double quotes in the prompt to prevent shell injection
-  const safePrompt = args.prompt.replace(/"/g, '\\"');
-  const agentName = args.agent ?? config.openclawDefaultAgent;
-  const agentFlag = agentName ? ` --agent ${agentName}` : '';
-  const cmd = `openclaw agent -m "${safePrompt}"${agentFlag} --local --timeout ${args.timeout_seconds}`;
+  // Single-quote the entire prompt so it is treated as one shell token with no
+  // interpretation of metacharacters inside the value.
+  const rawAgent = args.agent ?? config.openclawDefaultAgent;
+  let agentFlag = '';
+  if (rawAgent) {
+    let safeAgent: string;
+    try {
+      safeAgent = validateAgentName(rawAgent);
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+    agentFlag = ` --agent ${shellQuote(safeAgent)}`;
+  }
+  const cmd = `openclaw agent -m ${shellQuote(args.prompt)}${agentFlag} --local --timeout ${args.timeout_seconds}`;
 
   try {
     const output = await sshExec(cfg, cmd, (args.timeout_seconds + 10) * 1000);

@@ -151,17 +151,28 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
   });
 }
 
+/** Single-quote-escape a string for safe embedding in a POSIX shell command. */
+function sqe(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
 /** Read a file on the remote host. Returns empty string if file does not exist. */
 export async function sshReadFile(cfg: SshConfig, remotePath: string): Promise<string> {
-  return sshExec(cfg, `cat ${remotePath} 2>/dev/null || true`);
+  // Single-quote the path so no shell metacharacters in the value are
+  // interpreted. The base64-encoded content is not user-controlled here.
+  return sshExec(cfg, `cat ${sqe(remotePath)} 2>/dev/null || true`);
 }
 
 /**
  * Append content to a remote file, creating the directory if needed.
  * Content is base64-encoded to survive shell escaping of special characters.
+ * Both dir and remotePath are single-quoted to prevent shell injection.
  */
 export async function sshAppendFile(cfg: SshConfig, remotePath: string, content: string): Promise<void> {
   const encoded = Buffer.from(content).toString('base64');
-  const dir = remotePath.replace(/\/[^/]+$/, '');
-  await sshExec(cfg, `mkdir -p ${dir} && echo "${encoded}" | base64 -d >> ${remotePath}`);
+  // Derive the directory from the path and quote both values independently.
+  const dir = remotePath.replace(/\/[^/]+$/, '') || '.';
+  // The encoded string is pure base64 (no shell metacharacters) so it is safe
+  // to embed directly. We single-quote remotePath to protect the destination.
+  await sshExec(cfg, `mkdir -p ${sqe(dir)} && printf '%s' ${sqe(encoded)} | base64 -d >> ${sqe(remotePath)}`);
 }

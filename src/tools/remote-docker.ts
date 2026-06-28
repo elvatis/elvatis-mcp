@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec } from '../ssh.js';
 import { toRemoteSshCfg } from './remote-shell.js';
+import { validateContainerName, shellQuote } from '../validate.js';
 
 // --- Schema ---
 
@@ -41,16 +42,34 @@ export async function handleRemoteDocker(
     return { success: false, error: 'command is required for exec action', action };
   }
 
+  // Validate container name before building any shell command.
+  let safeContainer = '';
+  if (container !== undefined) {
+    try {
+      safeContainer = validateContainerName(container);
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+        action,
+      };
+    }
+  }
+
   const cfg = toRemoteSshCfg(config);
 
+  // All container references use shellQuote so the value is treated as a
+  // single token with no shell interpretation even if validateContainerName
+  // passes (defence-in-depth).
+  const qc = safeContainer ? shellQuote(safeContainer) : '';
   const cmds: Record<string, string> = {
     list:    'docker ps --format "table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}"',
-    logs:    `docker logs --tail ${lines} ${container}`,
-    start:   `docker start ${container}`,
-    stop:    `docker stop ${container}`,
-    restart: `docker restart ${container}`,
-    stats:   `docker stats --no-stream --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.NetIO}}" ${container}`,
-    exec:    `docker exec ${container} sh -c ${JSON.stringify(command ?? '')}`,
+    logs:    `docker logs --tail ${lines} ${qc}`,
+    start:   `docker start ${qc}`,
+    stop:    `docker stop ${qc}`,
+    restart: `docker restart ${qc}`,
+    stats:   `docker stats --no-stream --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.NetIO}}" ${qc}`,
+    exec:    `docker exec ${qc} sh -c ${shellQuote(command ?? '')}`,
   };
 
   try {

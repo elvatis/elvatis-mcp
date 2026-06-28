@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Config } from '../config.js';
 import { sshExec, SshConfig } from '../ssh.js';
+import { shellQuote } from '../validate.js';
 
 export const fileTransferSchema = z.object({
   action: z.enum(['upload', 'download', 'list']).describe(
@@ -38,11 +39,14 @@ export async function handleFileTransfer(
 ) {
   const cfg = toSshCfg(config);
 
+  // Shell-quote the remote path once; reuse in every branch.
+  const qPath = shellQuote(args.remote_path);
+
   switch (args.action) {
     case 'list': {
       const output = await sshExec(
         cfg,
-        `ls -lah '${args.remote_path.replace(/'/g, "'\\''")}' 2>/dev/null || echo "(directory not found: ${args.remote_path})"`,
+        `ls -lah ${qPath} 2>/dev/null || echo "(directory not found)"`,
         10000,
       );
       return { success: true, path: args.remote_path, listing: output.trim() };
@@ -52,7 +56,7 @@ export async function handleFileTransfer(
       // Get file size first
       const sizeOut = await sshExec(
         cfg,
-        `stat -c%s '${args.remote_path.replace(/'/g, "'\\''")}' 2>/dev/null || echo -1`,
+        `stat -c%s ${qPath} 2>/dev/null || echo -1`,
         5000,
       );
       const size = parseInt(sizeOut.trim(), 10);
@@ -66,7 +70,7 @@ export async function handleFileTransfer(
       // Read file as base64
       const b64 = await sshExec(
         cfg,
-        `base64 '${args.remote_path.replace(/'/g, "'\\''")}'`,
+        `base64 ${qPath}`,
         30000,
       );
       const content = Buffer.from(b64.trim(), 'base64');
@@ -111,11 +115,14 @@ export async function handleFileTransfer(
 
       const content = fs.readFileSync(args.local_path);
       const b64 = content.toString('base64');
-      const remoteDir = args.remote_path.replace(/\/[^/]+$/, '');
+      // b64 is pure base64 (A-Z a-z 0-9 + / =) — no shell metacharacters.
+      // We still use shellQuote on the path values for defence-in-depth.
+      const remoteDir = args.remote_path.replace(/\/[^/]+$/, '') || '.';
+      const qDir = shellQuote(remoteDir);
 
       await sshExec(
         cfg,
-        `mkdir -p '${remoteDir.replace(/'/g, "'\\''")}' && echo '${b64}' | base64 -d > '${args.remote_path.replace(/'/g, "'\\''")}'`,
+        `mkdir -p ${qDir} && printf '%s' ${shellQuote(b64)} | base64 -d > ${qPath}`,
         30000,
       );
 

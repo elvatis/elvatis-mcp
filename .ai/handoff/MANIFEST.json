@@ -3,40 +3,40 @@
   "project": "elvatis-mcp",
   "last_session": {
     "agent": "claude-opus-4-8",
-    "session_id": "cli-1782541365",
-    "timestamp": "2026-06-27T06:22:47Z",
-    "commit": "18a254d",
-    "phase": "implementation",
+    "session_id": "cli-1782654539",
+    "timestamp": "2026-06-28T13:49:01Z",
+    "commit": "c12c2cb",
+    "phase": "fix",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:80875c4020b4e2d67cc081f389a2fe7d84503956947b48623328f1aeb9f6416b",
-      "updated": "2026-06-27T06:21:54Z",
-      "lines": 136,
+      "checksum": "sha256:033c3d7a87712abaee4267862af00e3d95197eba9d4c3ebb072fa50273b551cd",
+      "updated": "2026-06-28T13:48:50Z",
+      "lines": 138,
       "summary": "(no summary available)"
     },
     "NEXT_ACTIONS.md": {
-      "checksum": "sha256:09b59e2c92ae7d2a1ec651e6b6b0e1c790e560b9bf6e4297e0796e4ba1875cde",
-      "updated": "2026-06-27T06:16:36Z",
+      "checksum": "sha256:3e439ec837911971a3d5303d76c072d06f0c7897ed2e4a2f8575baa900f8f7ff",
+      "updated": "2026-06-28T13:42:58Z",
       "lines": 163,
       "summary": "(no summary available)"
     },
     "LOG.md": {
       "checksum": "sha256:318c39119af5704c4e2cbc7ba47869958fb20f59e7c0d10c5a627f38c07df31f",
-      "updated": "2026-06-27T06:16:36Z",
+      "updated": "2026-03-31T10:23:37Z",
       "lines": 24,
       "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
       "checksum": "sha256:443b83555b9597eb5d124dd7f53b5948790a597c1d52fefef9874205a9a7236d",
-      "updated": "2026-06-27T06:16:36Z",
+      "updated": "2026-03-31T13:07:06Z",
       "lines": 51,
       "summary": "(no summary available)"
     },
     "CONVENTIONS.md": {
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
-      "updated": "2026-06-27T06:16:36Z",
+      "updated": "2026-03-31T10:23:37Z",
       "lines": 38,
       "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
     }
@@ -44,7 +44,7 @@
   "quick_context": "(no summary available) (no summary available) ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 2451,
-    "full_read": 3466
+    "manifest_plus_core": 2562,
+    "full_read": 3577
   }
 }

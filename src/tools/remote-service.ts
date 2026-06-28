@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec } from '../ssh.js';
 import { toRemoteSshCfg } from './remote-shell.js';
+import { validateServiceName, shellQuote } from '../validate.js';
 
 // --- Schema ---
 
@@ -33,13 +34,28 @@ export async function handleRemoteService(
     return { success: false, error: `service is required for action "${action}"`, action };
   }
 
+  // Validate service name before building any shell command.
+  let safeService = '';
+  if (service !== undefined) {
+    try {
+      safeService = validateServiceName(service);
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+        action,
+      };
+    }
+  }
+
   const cfg = toRemoteSshCfg(config);
 
   // list: show all active services in a compact format
-  // others: run systemctl with sudo (non-interactive, assumes NOPASSWD sudoers or root user)
+  // others: run systemctl with the validated, shell-quoted service name.
+  const qs = safeService ? shellQuote(safeService) : '';
   const cmd = action === 'list'
     ? 'systemctl list-units --type=service --state=active --no-pager --plain --no-legend | awk \'{print $1, $3, $4}\' | head -50'
-    : `systemctl ${action} ${service} && systemctl status ${service} --no-pager --lines=5`;
+    : `systemctl ${action} ${qs} && systemctl status ${qs} --no-pager --lines=5`;
 
   try {
     const output = await sshExec(cfg, cmd, 15_000);
