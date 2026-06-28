@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, sshReadFile, SshConfig } from '../ssh.js';
+import { validateCronId } from '../validate.js';
 
 const CRON_JOBS_FILE = '~/.openclaw/cron/jobs.json';
 
@@ -55,24 +56,37 @@ export async function handleCronList(args: { include_disabled: boolean }, config
 }
 
 export async function handleCronRun(args: { job_id: string }, config: Config) {
+  // Validate the job_id before interpolating it into a shell command string.
+  // This mirrors the pattern used in cron-manage.ts (handleCronDelete, handleCronHistory).
+  let safeJobId: string;
+  try {
+    safeJobId = validateCronId(args.job_id);
+  } catch (err) {
+    return {
+      success: false,
+      job_id: args.job_id,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
   // Try the OpenClaw CLI to trigger the job.
   // Command: openclaw cron run <id>
   // Adjust OPENCLAW_CLI_CMD in env if the CLI syntax differs on your server.
   try {
     const output = await sshExec(
       toSshCfg(config),
-      `openclaw cron run ${args.job_id}`,
+      `openclaw cron run ${safeJobId}`,
       30_000,
     );
-    return { success: true, job_id: args.job_id, output: output.trim() };
+    return { success: true, job_id: safeJobId, output: output.trim() };
   } catch (err) {
     // Fallback: find the job in jobs.json and report the command that would run
     const jobs = await readJobs(config);
-    const job = jobs.find(j => j['id'] === args.job_id);
-    if (!job) throw new Error(`Job ${args.job_id} not found`);
+    const job = jobs.find(j => j['id'] === safeJobId);
+    if (!job) throw new Error(`Job ${safeJobId} not found`);
     return {
       success: false,
-      job_id: args.job_id,
+      job_id: safeJobId,
       error: String(err),
       note: 'CLI trigger failed. Set OPENCLAW_CLI_CMD env var to the correct command.',
       job,

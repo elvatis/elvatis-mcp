@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, SshConfig } from '../ssh.js';
+import { validateDeployService, shellQuote } from '../validate.js';
 
 // --- Schema ---
 
@@ -32,12 +33,29 @@ export async function handleOpenclawDeploy(
   };
 
   const scriptDir = config.deployScriptDir ?? '~/deploy';
-  const { service, action } = args;
+  const { action } = args;
 
+  // Validate service name before any shell interpolation. The service value is
+  // embedded into script filenames and log paths on the remote shell, so it must
+  // consist only of safe characters (alphanumerics, hyphens, underscores).
+  let service: string;
+  try {
+    service = validateDeployService(args.service);
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      service: args.service,
+      action,
+    };
+  }
+
+  // Shell-quote the script dir (may contain tilde or user-supplied path).
+  const qDir = shellQuote(scriptDir);
   const cmds: Record<string, string> = {
-    deploy:   `bash ${scriptDir}/deploy-${service}.sh 2>&1`,
-    rollback: `bash ${scriptDir}/rollback-${service}.sh 2>&1`,
-    status:   `if [ -f ${scriptDir}/logs/${service}.log ]; then tail -30 ${scriptDir}/logs/${service}.log; else echo "No log found at ${scriptDir}/logs/${service}.log"; fi`,
+    deploy:   `bash ${qDir}/deploy-${service}.sh 2>&1`,
+    rollback: `bash ${qDir}/rollback-${service}.sh 2>&1`,
+    status:   `if [ -f ${qDir}/logs/${service}.log ]; then tail -30 ${qDir}/logs/${service}.log; else echo "No log found at ${qDir}/logs/${service}.log"; fi`,
   };
 
   try {

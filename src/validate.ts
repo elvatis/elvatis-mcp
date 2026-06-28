@@ -89,6 +89,29 @@ export function validateScheduleValue(value: string): string {
 }
 
 /**
+ * Validate a deploy service name used in openclaw_deploy.
+ * These names become part of script filenames on the remote server, e.g.
+ * deploy-{service}.sh and logs/{service}.log. Only lowercase and uppercase
+ * alphanumeric characters, hyphens, and underscores are allowed so that
+ * user input cannot traverse paths or inject shell syntax.
+ */
+export function validateDeployService(value: string): string {
+  if (!value || value.length === 0) throw new Error('Deploy service name must not be empty.');
+  if (value.length > 64) throw new Error('Deploy service name too long (max 64 chars).');
+  // Must start with alphanumeric (not a hyphen / flag prefix).
+  // Allowed body: alphanumeric, hyphen, underscore only (no dots, slashes, or
+  // metacharacters that could affect path construction or shell parsing).
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9\-_]*$/.test(value)) {
+    throw new Error(
+      `Invalid deploy service name "${value}". Only alphanumerics, hyphens, and underscores ` +
+      'are allowed. The name must start with an alphanumeric character.',
+    );
+  }
+  if (value.includes('..')) throw new Error('Deploy service name must not contain "..".');
+  return value;
+}
+
+/**
  * Validate a UUID-format cron job ID (used in cron delete/history).
  * Accepts the standard 8-4-4-4-12 hex format.
  */
