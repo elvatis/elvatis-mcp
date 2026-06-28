@@ -12,10 +12,10 @@
 - `src/tools/codex.ts`: removed `--ephemeral`, uses `codex exec resume <id>` for subsequent requests
 - Result: eliminates ~50% silent hang rate and 80-120s response times on large prompts
 
-### T-002: TS2589 build error
+### T-002: TS2589 build error (issue #20)
 Fixed via `registerTool()` wrapper. See STATUS.md and CLAUDE.md for details.
 
-### T-003: Claude Desktop smoke test
+### T-003: Claude Desktop smoke test (issue #18)
 MCP server connected and tools verified in Claude Desktop.
 
 Key finding: Claude Desktop on Windows (MSIX install) reads config from:
@@ -83,7 +83,7 @@ npm install
 
 ## Backlog: New Tools Roadmap
 
-### T-010: remote_shell — general Linux server SSH tool (HIGH PRIORITY) (issue #20)
+### T-010: remote_shell — general Linux server SSH tool (HIGH PRIORITY) (issue #7)
 A general-purpose SSH exec tool for ANY Linux server, not tied to OpenClaw.
 Lets an agent run arbitrary shell commands on a configured remote machine.
 
@@ -96,12 +96,12 @@ Enables: deployment scripts, log tailing, service restarts, file operations — 
 
 ---
 
-### T-011: remote_docker — Docker container management via SSH (issue #19)
+### T-011: remote_docker — Docker container management via SSH (issue #6)
 Control Docker on any remote Linux server the agent is connected to.
 **Tools:** `remote_docker { action: list|logs|start|stop|restart|exec, container?: string, command?: string }`
 SSH-based, no Docker API needed. Uses `docker ps`, `docker logs --tail N`, `docker restart` etc.
 
-### T-012: remote_service — systemd service control via SSH (issue #18)
+### T-012: remote_service — systemd service control via SSH (issue #5)
 **Tools:** `remote_service { action: status|start|stop|restart|enable|disable, service: string }`
 SSH-based. Useful for managing nginx, postgres, custom daemons on the remote server.
 
@@ -110,12 +110,12 @@ SSH-based. Useful for managing nginx, postgres, custom daemons on the remote ser
 Lets agents call any REST API, webhook, or internal service without needing a custom tool.
 No auth secrets stored — headers passed directly in the call.
 
-### T-014: calendar_event — Google Calendar / CalDAV integration (issue #5)
+### T-014: calendar_event — Google Calendar / CalDAV integration (issue #16)
 Read and create events. Useful for scheduling, reminders, and time-aware agent decisions.
 **Tools:** `calendar_list_events`, `calendar_create_event`
 Config: OAuth token via env var or service account JSON path.
 
-### T-015: db_query — read-only database queries via SSH tunnel (issue #6)
+### T-015: db_query — read-only database queries via SSH tunnel (issue #14)
 Run SQL queries on remote MySQL/PostgreSQL over SSH tunnel (no direct DB port needed).
 **Tool:** `db_query { sql: string, db?: string }`
 **Env vars:** `DB_TYPE`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (SSH tunnel uses existing REMOTE_HOST config)
@@ -133,24 +133,24 @@ SSH-based. Runs deploy scripts already on the server.
 
 ## Backlog: Existing
 
-### T-004: GitHub Actions CI
+### T-004: GitHub Actions CI (issue #17)
 - `.github/workflows/ci.yml`
 - Trigger: push and PR to main
 - Steps: install, typecheck, build
 - No secrets required in CI
 
-### T-005: Trading tools
+### T-005: Trading tools (issue #10)
 - `trading_status`, `trading_positions`, `trading_daily_pnl`
 - Read from OpenClaw server output files via SSH
 
-### T-006: Camera snapshot tool
+### T-006: Camera snapshot tool (issue #15)
 - `home_camera_snapshot` — fetch JPEG via HA `/api/camera_proxy/{entity_id}`
 - Return as base64 image content block
 
-### T-007: HTTP transport test (Cursor / Windsurf)
+### T-007: HTTP transport test (Cursor / Windsurf) (issue #11)
 - `MCP_TRANSPORT=http MCP_HTTP_PORT=3333 node dist/index.js`
 
-### T-008: Publish v0.1.0
+### T-008: Publish v0.1.0 (issue #13)
 1. `git tag v0.1.0 && git push origin v0.1.0`
 2. `gh release create v0.1.0`
 3. `npm publish --access public`
