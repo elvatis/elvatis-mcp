@@ -1,6 +1,6 @@
 # elvatis-mcp: Current State of the Nation
 
-> Last updated: 2026-06-27 by claude-opus-4-8 (AAHP onboarding sweep)
+> Last updated: 2026-06-29 by claude-opus-4-8 (community-health sweep)
 > Commit: pending
 >
 > **Rule:** This file is rewritten (not appended) at the end of every session.
@@ -138,3 +138,7 @@ _AAHP verify gate: v3.0.2 synced 2026-06-20._
 > 2026-06-28 security: fix 9 command-injection and secrets findings. New src/validate.ts provides allowlist validators (validateContainerName, validateServiceName, validateAgentName, validateScheduleValue, validateCronId) and shellQuote helper. All user-controlled values reaching SSH shell strings now go through a strict allowlist regex that rejects shell metacharacters, leading hyphens, and path traversal before use. sshReadFile/sshAppendFile in ssh.ts now single-quote paths. Hardcoded HA_TOKEN JWT removed from .env. 49 regression tests added covering all finding categories. Build and 99/99 tests pass.
 
 > 2026-06-28 security (wave 3): fix 2 remaining command-injection sinks. Added validateDeployService() to src/validate.ts; openclaw-deploy.ts now calls it before interpolating service into SSH script paths; cron.ts handleCronRun now calls validateCronId() before interpolating job_id into the openclaw cron run command (mirrors existing pattern in cron-manage.ts). shellQuote applied to deployScriptDir as well. 23 new regression tests added. Build and 122/122 tests pass.
+
+> 2026-06-29 by claude-opus-4-8 (community-health sweep): added
+> .github/PULL_REQUEST_TEMPLATE.md and .github/ISSUE_TEMPLATE/{bug_report,feature_request}.md
+> copied from canonical homeofe/aahp-swarm. No source code changed.
