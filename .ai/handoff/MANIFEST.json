@@ -3,17 +3,17 @@
   "project": "elvatis-mcp",
   "last_session": {
     "agent": "claude-opus-4-8",
-    "session_id": "cli-1782714222",
-    "timestamp": "2026-06-29T06:23:45Z",
-    "commit": "55ad4b7",
+    "session_id": "cli-1782812768",
+    "timestamp": "2026-06-30T09:46:09Z",
+    "commit": "e2c57c4",
     "phase": "fix",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:41744d45de3c6f1f5dbd45c826c71b91e400a898bffa92de3dd420e0102e2c3b",
-      "updated": "2026-06-29T06:23:31Z",
-      "lines": 144,
+      "checksum": "sha256:1048d5961d46e322c97b78870ee9dcbaa51f44b10fa7f8610d7924642c16321d",
+      "updated": "2026-06-30T08:37:19Z",
+      "lines": 146,
       "summary": "(no summary available)"
     },
     "NEXT_ACTIONS.md": {
@@ -39,12 +39,18 @@
       "updated": "2026-03-31T10:23:37Z",
       "lines": 38,
       "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
+    },
+    "pii-allowlist.json": {
+      "checksum": "sha256:7c1051f6e2bc3943b7c1dbe4da229694455681b8875a346c99279e555edb733f",
+      "updated": "2026-06-30T09:46:06Z",
+      "lines": 4,
+      "summary": "{"
     }
   },
   "quick_context": "(no summary available) (no summary available) ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 2665,
-    "full_read": 3680
+    "manifest_plus_core": 2685,
+    "full_read": 3708
   }
 }

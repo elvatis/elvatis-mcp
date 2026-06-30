@@ -142,3 +142,5 @@ _AAHP verify gate: v3.0.2 synced 2026-06-20._
 > 2026-06-29 by claude-opus-4-8 (community-health sweep): added
 > .github/PULL_REQUEST_TEMPLATE.md and .github/ISSUE_TEMPLATE/{bug_report,feature_request}.md
 > copied from canonical homeofe/aahp-swarm. No source code changed.
+
+> 2026-06-30 by claude-opus-4-8 (verify): added reviewed expiring PII allowlist, rolled out from AAHP v3.2.0.
