@@ -144,3 +144,5 @@ _AAHP verify gate: v3.0.2 synced 2026-06-20._
 > copied from canonical homeofe/aahp-swarm. No source code changed.
 
 > 2026-06-30 by claude-opus-4-8 (verify): added reviewed expiring PII allowlist, rolled out from AAHP v3.2.0.
+
+> 2026-06-30 ci: exempt Dependabot from the aahp-verify handoff gate (keep supply-chain-guard/codeql/build).
