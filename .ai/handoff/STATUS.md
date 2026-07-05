@@ -1,5 +1,6 @@
 # elvatis-mcp: Current State of the Nation
 
+> Last updated: 2026-07-05 by claude-opus-4-8 (CI moved to self-hosted OpenClaw runners; workflow runs-on only, no product change)
 > Last updated: 2026-06-29 by claude-opus-4-8 (community-health sweep)
 > Commit: pending
 >
