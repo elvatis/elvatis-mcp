@@ -30,7 +30,7 @@ on:
 
 jobs:
   aahp-verify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, elvatis-ci]
 
     steps:
       - name: Dependabot exemption (handoff gate not applicable)
