@@ -15,7 +15,7 @@ permissions:
 jobs:
   scan:
     name: Scan
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, elvatis-ci]
     steps:
       - uses: actions/checkout@v7
       - uses: homeofe/supply-chain-guard@be1d718b17cc38e4bce7fa48579b7112e557943b  # v5.2.37
