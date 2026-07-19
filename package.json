@@ -34,7 +34,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@elvatis_com/aahp": "3.8.0",
+    "@elvatis_com/aahp": "3.8.1",
     "@types/node": "^22.0.0",
     "typescript": "^5.9.3"
   },
