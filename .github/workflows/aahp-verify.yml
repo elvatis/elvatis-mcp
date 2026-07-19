@@ -8,6 +8,9 @@
 #   Layer 3: commit-pointer freshness
 #   Layer 4: TRUST-TTL expiry (advisory)
 #
+# The gate is driven by the pinned @elvatis_com/aahp CLI (devDependencies), not a
+# vendored copy of the scripts, so it stays in lockstep with the published protocol.
+#
 # Dependabot exemption: a pure dependency bump introduces no handoff-state change,
 # so the AAHP handoff gate does not apply to it. The job stays a REQUIRED check but
 # no-ops to success when the change originates from dependabot[bot] - on both the PR
@@ -53,12 +56,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Set up Python 3
+      - name: Install dependencies (pinned AAHP CLI)
         if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
+        run: npm ci --ignore-scripts
 
       - name: Run aahp verify (CI level, no escape hatch)
         if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
-        run: bash scripts/verify-handoff.sh . --level ci
+        run: npx --no-install aahp verify . --level ci
+
+      - name: Emit conformance record
+        if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
+        run: npx --no-install aahp doctor . --json

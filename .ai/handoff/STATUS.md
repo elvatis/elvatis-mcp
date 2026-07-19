@@ -1,3 +1,5 @@
+> Note (2026-07-18, claude-opus-4-8): Adopted CLI-based AAHP conformance v3.8.0. Switched the gate driver from vendored bash scripts to the pinned @elvatis_com/aahp CLI (devDependencies, exact 3.8.0) and removed the package-provided scripts (_aahp-lib.sh, aahp-manifest.sh, lint-handoff.sh, verify-handoff.sh, install-hooks.sh, verify-hooks.sh, scripts/hooks/). Added GROUNDING.md, TRUST.md (with a Provenance column), WORKFLOW.md, LOG-ARCHIVE.md, .aiignore, and aahp.config.json (pinnedDep + forbidden em-dash). aahp-verify.yml now runs the CLI (npm ci + npx aahp verify/doctor), keeping the dependabot exemption. Relocated the non-canonical handoff-session-resume note to .ai/notes/ so the handoff set is clean. Kept repo-specific validate-pii-allowlist.py. doctor: 6 gates, no failures.
+
 > Note (2026-07-14, claude-opus-4-8): Synced the canonical AAHP gate scripts from homeofe/improvements (v3.5.0 fixes: aahp-manifest.sh --phase documentation + cross_repo_ref preservation, lint-handoff.sh SC2034), AAHP_HANDOFF_FILES preserved, and refreshed the local hook tooling (scripts/hooks/, install-hooks.sh, verify-hooks.sh). Fleet re-sync.
 
 > Note (2026-07-14, claude-opus-4-8): Synced the canonical Layer 3 tolerance fix from homeofe/improvements. verify-handoff.sh now downgrades a non-ancestor MANIFEST.last_session.commit from FAIL to WARN so a squash-merge or rebase-merge no longer trips AAHP Verify Layer 3 on main; Layers 1-2 still gate real staleness.
@@ -150,3 +152,5 @@ _AAHP verify gate: v3.0.2 synced 2026-06-20._
 > 2026-06-30 by claude-opus-4-8 (verify): added reviewed expiring PII allowlist, rolled out from AAHP v3.2.0.
 
 > 2026-06-30 ci: exempt Dependabot from the aahp-verify handoff gate (keep supply-chain-guard/codeql/build).
+
+> Note (2026-07-19): Moved the AAHP conformance pin from 3.8.0 to 3.8.1 (picks up the v3.8.1 Windows/MSYS manifest-regen fix so tasks, next_task_id and cross_repo_ref survive regeneration). No runtime behavior change on Linux or CI. Handoff refreshed and MANIFEST regenerated.
