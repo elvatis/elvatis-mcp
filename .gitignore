@@ -7,3 +7,7 @@ dist/
 .claude/worktrees/
 .claude/settings.local.json
 .ai/logs/
+
+# supply-chain-guard scanner state (risk history, triage decisions).
+# Scanner state, not project content.
+.scg-history/
