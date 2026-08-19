@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, SshConfig } from '../ssh.js';
-import { validateScheduleValue, validateCronId } from '../validate.js';
+import { validateScheduleValue, validateCronId, validateChannel } from '../validate.js';
 
 // --- Schemas ---
 
@@ -108,7 +108,13 @@ export async function handleCronCreate(
 
   if (args.model) parts.push('--model', `'${escapeShell(args.model)}'`);
   if (args.channel) {
-    parts.push('--channel', args.channel);
+    // Validated AND quoted, like every other value on this command line. This
+    // was the one that was neither, and it is the only one that reaches sshExec raw.
+    try {
+      parts.push('--channel', `'${escapeShell(validateChannel(args.channel))}'`);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
     parts.push('--announce');
   }
   if (args.target) parts.push('--to', `'${escapeShell(args.target)}'`);
