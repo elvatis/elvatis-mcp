@@ -33,6 +33,31 @@ export function validateContainerName(value: string): string {
 }
 
 /**
+ * Validate an openclaw delivery channel.
+ *
+ * The zod schema declares this free-form (`z.string()`), and its description
+ * naming whatsapp/telegram/last is documentation rather than a constraint. The
+ * value reaches a shell command through `sshExec`, so it is validated here like
+ * every other such value, per this module's opening contract.
+ *
+ * Deliberately an allow-list of the channel-identifier shape rather than a hard
+ * enum of the three documented names: openclaw may gain channels, and a rule
+ * that has to be edited for each one gets widened under pressure. A leading
+ * hyphen is refused so a value cannot smuggle in another flag.
+ */
+export function validateChannel(value: string): string {
+  if (!value || value.length === 0) throw new Error('Channel must not be empty.');
+  if (value.length > 64) throw new Error('Channel too long (max 64 chars).');
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9\-_.]*$/.test(value)) {
+    throw new Error(
+      `Invalid channel "${value}". Only alphanumerics, hyphens, underscores, and dots ` +
+      'are allowed, and the channel must start with an alphanumeric character.',
+    );
+  }
+  return value;
+}
+
+/**
  * Validate a systemd service name.
  * systemctl accepts names like "nginx", "postgresql", "my-service@1.service".
  * Rejects leading hyphens and shell metacharacters.
