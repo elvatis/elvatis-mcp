@@ -91,14 +91,14 @@ export async function handleCronCreate(
   if (args.schedule.startsWith('every ')) {
     const rawEvery = args.schedule.replace(/^every\s+/, '');
     try {
-      parts.push('--every', validateScheduleValue(rawEvery));
+      parts.push('--every', `'${escapeShell(validateScheduleValue(rawEvery))}'`);
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   } else if (args.schedule.startsWith('at ') || args.schedule.startsWith('+')) {
     const rawAt = args.schedule.replace(/^at\s+/, '');
     try {
-      parts.push('--at', validateScheduleValue(rawAt));
+      parts.push('--at', `'${escapeShell(validateScheduleValue(rawAt))}'`);
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
