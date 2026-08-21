@@ -16,9 +16,92 @@ jobs:
   scan:
     name: Scan
     runs-on: ubuntu-latest
+    # MANDATORY, not taste: project-conventions.md section 10. On 2026-07-21 a
+    # scan that had already finished cleanly failed to exit and held a shared
+    # runner for hours, blocking unrelated repositories. The root cause was fixed
+    # in supply-chain-guard v5.17.7; the time bound stays as the second line of
+    # defence, because the pin below can only ever be as new as the last bump.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: homeofe/supply-chain-guard@be1d718b17cc38e4bce7fa48579b7112e557943b  # v5.2.37
+
+      # THE SCANNER IS CONSUMED AT A COMMIT - THE NEWEST RELEASE'S COMMIT.
+      #
+      # THIS REPOSITORY IS THE ESTATE'S FINISHED COUNTER-EXAMPLE, so the comment
+      # is longer than the line it explains. It read
+      #
+      #     - uses: homeofe/supply-chain-guard@be1d718b...  # v5.2.37
+      #
+      # from 2026-06-27 until today, 2026-08-21: roughly 100 releases. Nothing
+      # looked broken for 55 days. The Scan check was green the whole time,
+      # because a scanner pinned to an old release still runs - it just runs on
+      # that release's malware indicator set.
+      #
+      # The pin was not the mistake, and neither was a missing automation.
+      # Dependabot was enabled in the SAME commit that created this pin,
+      # explicitly to move it, and it worked: eight correct, mergeable bump pull
+      # requests arrived on eight consecutive Saturdays (#43, #45, #49, #52, #53,
+      # #54, #55). Not one was ever merged. Each was closed by dependabot[bot]
+      # itself as superseded when the next opened. The chain produced everything
+      # except a merge.
+      #
+      # So a fourth part is required, and it is in no file: something has to LAND
+      # the bump. That is filed as elvatis/ideabase#337 for the owner, with the
+      # state measured here on 2026-08-21 - `allow_auto_merge` is `false` on this
+      # repository, and `main` carries NO required status checks at all, so
+      # nothing merges a bump and nothing would block a bad one. Until that is
+      # decided, the three parts below are correct and their delivery is
+      # unproven. Stated, not assumed.
+      #
+      # WHY NOT `@v5`, WHICH THIS REPOSITORY IS OLD ENOUGH TO REMEMBER: there is
+      # no `v5` TAG in that repository. Re-measured 2026-08-21:
+      #
+      #   $ gh api repos/homeofe/supply-chain-guard/git/ref/tags/v5
+      #   404 Not Found
+      #   $ gh api repos/homeofe/supply-chain-guard/git/ref/heads/v5 -q .object.sha
+      #   fc8fb8f4989cd1960f48833fbaa1f726df897bbc
+      #
+      # `@v5` resolves to the BRANCH `refs/heads/v5`, a pointer that moves under
+      # the workflow - and by owner decision of 2026-08-21 that ref is to be
+      # disabled, so restoring it would not merely re-introduce a mutable
+      # reference, it would break this workflow outright the day the ref is gone.
+      #
+      # HOW THE SHA WAS VERIFIED (2026-08-21). The tag is ANNOTATED, which needs
+      # two dereferences; skipping the second returns a 404 that reads like a
+      # missing commit and is not that:
+      #
+      #   $ gh api repos/homeofe/supply-chain-guard/releases/latest -q .tag_name
+      #   v5.28.1                       # draft=false, target_commitish=main
+      #   $ gh api .../git/ref/tags/v5.28.1 -q '.object.type + " " + .object.sha'
+      #   tag 0a6f9b34bd86694bf66f7824e13d292b0d4acf62     # a TAG object
+      #   $ gh api .../git/tags/0a6f9b34... -q .object.sha
+      #   fc8fb8f4989cd1960f48833fbaa1f726df897bbc         # the commit
+      #
+      # Asking `git/commits/0a6f9b34...` returns 404: a valid object of the wrong
+      # type. The commit was confirmed to exist and to be v5.28.1's release commit.
+      #
+      # THE BUMP LANE lives in `.github/dependabot.yml`: a `github-actions`
+      # ecosystem on `interval: daily` (under a SHA pin the interval IS the
+      # indicator freshness - v5.26.4 through v5.26.7 shipped on four consecutive
+      # days), this action in a dedicated group of one, and NO `ignore` entry
+      # naming it anywhere in that file. `aahp-verify.yml` exempts dependabot[bot]
+      # from the handoff gate so the bumps are not blocked by a gate a bot cannot
+      # satisfy. `tests/security/action-pin.test.ts` turns red if any of those
+      # four is removed - including the `ignore` rule, which is the exact one-line
+      # deletion that froze a sibling repository for eight releases.
+      #
+      # Matches elvatis-intelligence and atlas, which pin this action identically.
+      - uses: homeofe/supply-chain-guard@fc8fb8f4989cd1960f48833fbaa1f726df897bbc # v5.28.1
         with:
           fail-on: critical
           comment-on-pr: true
+          # min-severity governs what the report SHOWS; `fail-on` above governs
+          # what fails the job. Left at the default `low`, it hides the one class
+          # of finding a reader most needs: the coverage signals
+          # (PATH_SCAN_INCOMPLETE, FILE_TOO_LARGE_SKIPPED,
+          # INTERNAL_DISCLOSURE_TRUNCATED, ...) are all severity `info`, while
+          # `partialScan` is computed BEFORE the severity filter runs. The result
+          # is a report that announces "PARTIAL - coverage incomplete" and then
+          # lists nothing that explains it. A longer report that says why it is
+          # partial beats a short one that does not.
+          min-severity: info
