@@ -1,3 +1,47 @@
+## 2026-08-21 - `main` must always carry an unreleased version, and the guard now says so
+
+`1.3.0` shipped today from the commit that is still `main`, and the number was
+never vacated. Within hours all three open pull requests were red on `version is
+not already published`, none of them having touched a version. The guard is right
+and stays: `main` carrying a published number means anything merged there is
+unpublishable, which is the state that left two security fixes uninstallable
+between 2026-04-15 and 2026-08-21 while every check stayed green.
+
+What was missing was the convention, not the gate. It is now written where a
+public reader meets it:
+
+- SECURITY.md gains step 4 of the release path and a section, `main` always
+  carries an unreleased version, stating the rule and the four-month incident
+  that motivates it.
+- CONTRIBUTING.md repeats it for contributors, including how to read a red
+  version-guard: it is a statement about `main`, not about your branch.
+- The guard's failure message now names the convention and says the fix belongs
+  on `main`. Mutation proof: reverting package.json to 1.3.0 returns exit 1 with
+  the new text present; restored, exit 0. Full suite 175/175 in 5.8s.
+- `package.json` moves to 1.3.1, which is the rule applied to today's state.
+
+Also corrected: SECURITY.md claimed the tree is built on Node 18, 20 and 22. The
+matrix moved to 22 and 24 in #62 and the prose stayed behind, inside a section
+whose own claim is that everything in it is checkable against the workflow. It
+now points at the matrix rather than restating it, so it cannot drift again. The
+five em dashes the file carried are gone; `aahp.config.json` forbids them and
+nothing was catching them in that file.
+
+**Measured, for whoever sequences the merges.** The 1.3.0 -> 1.3.1 bump reported
+as pushed to `chore/aahp-3.10.0` is NOT on that branch; all three PR heads still
+read 1.3.0, and #65's only `package.json` change is the AAHP devDependency and
+the test script. The three also do not rebase cleanly onto one another: every one
+of them rewrites `.ai/handoff/MANIFEST.json`, whose session id, timestamps,
+checksums and line counts are regenerated per session, so the second and third to
+merge conflict there by construction. #64 collides on STATUS.md as well. Resolve
+MANIFEST.json by rerunning `npx aahp manifest .` after each merge rather than
+hand-editing it; resolve STATUS.md by keeping both sides.
+
+Open and Emre's: no status check is required on this repository
+(`required_status_checks` is null, recorded in aahp-verify.yml), so the
+version-guard, CI and Scan are all advisory and a red pull request can still be
+merged by anyone with push access.
+
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
 Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
