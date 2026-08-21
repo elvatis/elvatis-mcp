@@ -1,3 +1,31 @@
+## 2026-08-21 - The handoff docs named the workstation, and the benchmark tables still do
+
+`.ai/handoff/LOG.md` and `.claude/commands/build.md` carried the exact CPU and
+GPU model of the machine this is worked from. Both are internal documents that
+happen to sit on a public repository, and in neither does the part number serve
+a reader: "use the dev PC" is the same instruction as "use the <model> dev PC".
+Removed. The maintainer's name and email stay, which was already decided.
+
+REMOVING IT DOES NOT MAKE THE HARDWARE PRIVATE, and this entry exists mostly to
+say so. `README.md` carries a Reference Hardware table with the same CPU and
+GPU, and `BENCHMARKS.md` carries the same table plus the model in roughly ten
+result headings. That is deliberate: they are the specs the published benchmark
+numbers were measured on, and a benchmark that does not say what it ran on is
+not a benchmark. So the hardware remains publicly readable here on purpose, and
+anyone reading the handoff edit as "that detail is no longer public" would be
+wrong. Recommendation is to keep the benchmark tables as they are; it is a
+maintainer decision, not a cleanup, and it stays open.
+
+THE LOCAL GATE RUN DISAGREED WITH CI, AND CI WAS RIGHT. `aahp verify --level ci`
+passed locally and then failed on the pull request. The cause was the order of
+operations rather than the environment: Layer 2 compares COMMITTED state against
+the base, and the local run was made while the change was still unstaged, so it
+saw no source change and reported the drift gate as not triggered. Once
+committed, it correctly reported `.claude/commands/build.md` as a source file
+changed outside `.ai/handoff/`. Layer 2 counts everything outside the handoff
+directory as source, `.claude/` included. Run the gate AFTER committing, or it
+answers a question about a tree that is not the one being pushed.
+
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
 Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
