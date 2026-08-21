@@ -74,17 +74,35 @@
  *   - "checkout is bound to the triggering commit": delete the
  *     `ref: ${{ github.sha }}` line, or change it to `${{ github.ref }}`.
  *   - "publish waits for the build job": delete `needs: build`, which would let
- *     a tag publish a tree whose typecheck and tests never ran.
+ *     a tag publish a tree whose typecheck and tests never ran. The candidate
+ *     build jobs are scoped to the publisher's OWN file, because `needs:` cannot
+ *     name a job in another workflow.
+ *   - "the tag agrees with the version it would publish": delete the check step,
+ *     or make its comparison prefix-tolerant. That last mutation is why the
+ *     scenario set includes a tag which is a PREFIX of the shipped version: a
+ *     `startsWith` or `contains` comparison accepts `v1.2` for 1.2.5 and an
+ *     equality test does not, and only the prefix row tells them apart.
+ *
+ * EVERY WORKFLOW FILE, NOT ONE FILENAME
+ * ---------------------------------------------------------------------------
+ * All 32 published versions of this package came from a SEPARATE
+ * `.github/workflows/publish.yml`, deleted on 2026-06-27 when the publish moved
+ * into ci.yml. Restoring that file verbatim turns six of the eight assertions
+ * below red - it had no `if:`, no `ref:` on its checkout and no build job to
+ * depend on - and a guard keyed to the string "ci.yml" would have had nothing to
+ * say about any of it. The release path is therefore located by CAPABILITY
+ * across the whole directory: any file, any job name.
  *
  * WHAT THIS FILE CANNOT PROVE, SO IT DOES NOT CLAIM IT: that the commit under
- * the tag was ever reviewed. `main` has zero required status checks and
- * `enforce_admins` is `true`, so admin enforcement currently enforces nothing;
- * there are no environments to hold a reviewer, and no tag protection, so any
- * push-capable actor can point `v9.9.9` at any commit and that IS a pushed
- * v-tag. All four are repository settings, unreachable from any file here, and
- * are raised on elvatis/ideabase#337. This file closes the half that lives in
- * the workflow: no path that is not a pushed v-tag, and no tree but the tagged
- * commit's.
+ * the tag was ever reviewed. There is no required status check on the default
+ * branch, no environment to hold a reviewer, and no restriction on who may
+ * create `refs/tags/v*`, so an actor with push access can point `v9.9.9` at any
+ * commit - and that IS a pushed v-tag, so it passes every assertion here. Those
+ * are repository settings, unreachable from any file in this tree; SECURITY.md
+ * describes the residual exposure and the two controls that would close it. This
+ * file closes the half that lives in the workflow: no path that is not a pushed
+ * v-tag, no tree but the tagged commit's, and no version but the one the tag
+ * names.
  *
  * The workflow is PARSED, never grepped. `npm publish` appears in this
  * repository's own prose, `workflow_dispatch` legitimately remains among the
@@ -96,13 +114,24 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 
 import { parse } from 'yaml';
 
 const REPO_ROOT = join(__dirname, '..', '..');
-const CI_FILE = join(REPO_ROOT, '.github', 'workflows', 'ci.yml');
+
+/**
+ * EVERY workflow file, not just ci.yml. This repository shipped all 32 of its
+ * published versions from a SEPARATE `.github/workflows/publish.yml`, deleted on
+ * 2026-06-27 when the publish moved into ci.yml. A guard keyed to one filename
+ * would have been silent for that file's entire life, and goes silent again the
+ * moment a `release.yml` appears beside it. The release path is therefore located
+ * by capability across the whole directory.
+ */
+const WORKFLOW_DIR = join(REPO_ROOT, '.github', 'workflows');
 
 /** The one command that puts a tarball on the public registry. */
 const NPM_PUBLISH = /(^|[\s;&|(])npm\s+publish(\s|$)/m;
@@ -134,16 +163,33 @@ interface Workflow {
 }
 
 interface NamedJob {
+  /** Basename of the workflow file the job lives in, e.g. `ci.yml`. */
+  readonly file: string;
+  /** Job id as written inside that file, which is what `needs:` refers to. */
   readonly id: string;
   readonly job: Job;
 }
 
-function workflow(): Workflow {
-  return parse(readFileSync(CI_FILE, 'utf8')) as Workflow;
+/** How a job is named in an assertion message. Never fed back into `needs:`. */
+function label(named: NamedJob): string {
+  return `${named.file}:${named.id}`;
+}
+
+function workflowFiles(): string[] {
+  return readdirSync(WORKFLOW_DIR)
+    .filter((name) => /\.ya?ml$/i.test(name))
+    .sort();
 }
 
 function jobs(): NamedJob[] {
-  return Object.entries(workflow().jobs ?? {}).map(([id, job]) => ({ id, job }));
+  const found: NamedJob[] = [];
+  for (const file of workflowFiles()) {
+    const parsed = parse(readFileSync(join(WORKFLOW_DIR, file), 'utf8')) as Workflow | null;
+    for (const [id, job] of Object.entries(parsed?.jobs ?? {})) {
+      found.push({ file, id, job });
+    }
+  }
+  return found;
 }
 
 function permission(job: Job, scope: string): string | undefined {
@@ -169,6 +215,66 @@ function releasePathJobs(): NamedJob[] {
       permission(job, 'id-token') === 'write' ||
       permission(job, 'contents') === 'write',
   );
+}
+
+/**
+ * Steps whose shell script this file is willing to EXECUTE while looking for the
+ * tag/version gate.
+ *
+ * Selection is a heuristic and is allowed to be, because selection cannot
+ * manufacture a pass: the verdict comes from running the script. What selection
+ * must do is stay SAFE. A publish job also contains `npm ci`, `npm run build`
+ * and `npm install -g npm@latest`; running those here would hit the network and
+ * mutate the machine, so anything invoking a package manager is refused outright
+ * and reported as refused. A gate expressed as `npm pkg get version` therefore
+ * cannot be checked and must be rewritten with `node -p`.
+ */
+const PACKAGE_MANAGER = /\b(?:npm|npx|yarn|pnpm)\b/;
+
+function versionGateCandidates(job: Job): { script: string; refused: boolean }[] {
+  return (job.steps ?? [])
+    .map((step) => step.run)
+    .filter((run): run is string => typeof run === 'string' && run.includes('package.json'))
+    .map((script) => ({ script, refused: PACKAGE_MANAGER.test(script) }));
+}
+
+/** `${{ github.ref_name }}` and friends, resolved from a scenario context. */
+function interpolate(script: string, context: Readonly<Record<string, string>>): string {
+  return script.replace(/\$\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}/g, (whole, path: string) => {
+    const value = context[path];
+    if (value === undefined) {
+      throw new Error(
+        `a candidate release step interpolates \`${path}\`, which tests/security/publish-guard.test.ts ` +
+          'does not model. Add it to githubContext() rather than dropping the assertion.',
+      );
+    }
+    return value;
+  });
+}
+
+/**
+ * Run one step's script in a throwaway directory holding nothing but a
+ * package.json at `version`, and return its exit status. A shell that cannot be
+ * started returns -1, which is not 0, so a script that never ran is never
+ * credited as a passing gate.
+ */
+function runShell(script: string, env: Record<string, string>, version: string): number {
+  const dir = mkdtempSync(join(tmpdir(), 'publish-guard-'));
+  try {
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'fixture', version }), 'utf8');
+    // GitHub runs `run:` steps under `bash -e` on ubuntu-latest; `-e` is the half
+    // that decides an exit status, so it is the half modelled here.
+    const result = spawnSync('sh', ['-e', '-c', script], {
+      cwd: dir,
+      env: { ...process.env, ...env },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+    if (result.error || result.status === null) return -1;
+    return result.status;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function checkoutSteps(job: Job): Step[] {
@@ -476,21 +582,21 @@ describe('the npm publish is reachable only from a pushed v-tag', () => {
 
     assert.ok(
       publishing.length > 0,
-      'No job in .github/workflows/ci.yml runs `npm publish`. If publishing moved to another ' +
-        'workflow, this file must move with it; every assertion below is vacuously true over an ' +
-        'empty job list.',
+      `No job under .github/workflows/ runs \`npm publish\` (scanned: ${workflowFiles().join(', ')}). ` +
+        'If publishing moved out of this repository, this file must move with it; every assertion ' +
+        'below is vacuously true over an empty job list.',
     );
   });
 
   it('marks every release-path job with a condition', () => {
     const unconditional = releasePathJobs()
       .filter(({ job }) => typeof job.if !== 'string' || job.if.trim() === '')
-      .map(({ id }) => id);
+      .map(label);
 
     assert.deepEqual(
       unconditional,
       [],
-      `A release-path job with no \`if:\` runs on every trigger this workflow accepts, including ` +
+      `A release-path job with no \`if:\` runs on every trigger its workflow accepts, including ` +
         `a manual dispatch of any branch. Offenders: ${unconditional.join(', ')}`,
     );
   });
@@ -498,21 +604,21 @@ describe('the npm publish is reachable only from a pushed v-tag', () => {
   it('states that condition in terms this file can actually evaluate', () => {
     // Separated from the scenario assertions so that an unreadable condition
     // reports itself as unreadable rather than as an unrelated failure.
-    for (const { id, job } of releasePathJobs()) {
+    for (const named of releasePathJobs()) {
       assert.doesNotThrow(
-        () => evaluate(String(job.if), SCENARIOS[0]?.context ?? {}),
-        `The \`if:\` on job \`${id}\` uses syntax or context this guard does not model, so the ` +
-          'scenario table below cannot decide whether it is safe.',
+        () => evaluate(String(named.job.if), SCENARIOS[0]?.context ?? {}),
+        `The \`if:\` on job \`${label(named)}\` uses syntax or context this guard does not model, so ` +
+          'the scenario table below cannot decide whether it is safe.',
       );
     }
   });
 
   it('lets no trigger but a pushed v-tag reach a release-path job', () => {
     const escapes: string[] = [];
-    for (const { id, job } of releasePathJobs()) {
+    for (const named of releasePathJobs()) {
       for (const scenario of SCENARIOS.filter((s) => !s.reaches)) {
-        if (evaluate(String(job.if), scenario.context)) {
-          escapes.push(`${id} runs on ${scenario.name}`);
+        if (evaluate(String(named.job.if), scenario.context)) {
+          escapes.push(`${label(named)} runs on ${scenario.name}`);
         }
       }
     }
@@ -533,7 +639,7 @@ describe('the npm publish is reachable only from a pushed v-tag', () => {
 
     const dead = releasePathJobs()
       .filter(({ job }) => !evaluate(String(job.if), release.context))
-      .map(({ id }) => id);
+      .map(label);
 
     assert.deepEqual(
       dead,
@@ -548,11 +654,11 @@ describe('the npm publish is reachable only from a pushed v-tag', () => {
     // is the tag, which can be moved between the build job and this one; under
     // the old dispatch path it was the dispatched branch outright.
     const unbound: string[] = [];
-    for (const { id, job } of releasePathJobs()) {
-      for (const step of checkoutSteps(job)) {
+    for (const named of releasePathJobs()) {
+      for (const step of checkoutSteps(named.job)) {
         const ref = String(step.with?.['ref'] ?? '').replace(/\s+/g, ' ').trim();
         if (ref !== PINNED_CHECKOUT_REF) {
-          unbound.push(`${id}: ${step.uses} with ref=${ref === '' ? '(absent)' : ref}`);
+          unbound.push(`${label(named)}: ${step.uses} with ref=${ref === '' ? '(absent)' : ref}`);
         }
       }
     }
@@ -567,22 +673,93 @@ describe('the npm publish is reachable only from a pushed v-tag', () => {
   });
 
   it('publishes only after the build job, so the tagged tree was typechecked and tested', () => {
-    const buildJobs = jobs()
-      .filter(({ job }) => (job.steps ?? []).some((step) => step.run === 'npm run typecheck'))
-      .map(({ id }) => id);
+    // `needs:` names a job in the SAME file, so the candidate build jobs are
+    // scoped to the publishing job's own workflow. That is also what makes a
+    // second workflow file fail here rather than borrow ci.yml's build: the
+    // deleted publish.yml had no typecheck job at all, it ran `npm run build`
+    // inline and published whatever came out.
+    for (const publisher of jobs().filter(({ job }) => publishesToRegistry(job))) {
+      const buildJobs = jobs()
+        .filter(
+          (candidate) =>
+            candidate.file === publisher.file &&
+            (candidate.job.steps ?? []).some((step) => step.run === 'npm run typecheck'),
+        )
+        .map((candidate) => candidate.id);
 
-    assert.ok(
-      buildJobs.length > 0,
-      'No job runs `npm run typecheck`, so there is nothing for the publish to depend on.',
-    );
+      assert.ok(
+        buildJobs.length > 0,
+        `\`${publisher.file}\` publishes to the public registry but contains no job running ` +
+          '`npm run typecheck`, so there is nothing in that workflow for the publish to depend on.',
+      );
 
-    for (const { id, job } of jobs().filter(({ job: j }) => publishesToRegistry(j))) {
-      const needs = typeof job.needs === 'string' ? [job.needs] : (job.needs ?? []);
+      const needs =
+        typeof publisher.job.needs === 'string' ? [publisher.job.needs] : (publisher.job.needs ?? []);
       assert.ok(
         buildJobs.some((build) => needs.includes(build)),
-        `Job \`${id}\` publishes to the public registry without \`needs:\` on a job that typechecks ` +
-          `and tests the tree. Expected one of ${JSON.stringify(buildJobs)}, found ` +
+        `Job \`${label(publisher)}\` publishes to the public registry without \`needs:\` on a job ` +
+          `that typechecks and tests the tree. Expected one of ${JSON.stringify(buildJobs)}, found ` +
           `${JSON.stringify(needs)}.`,
+      );
+    }
+  });
+
+  it('refuses a tag whose name disagrees with the version it would publish', () => {
+    // EXECUTED, not pattern-matched, for the same reason the `if:` is: a regex
+    // looking for `GITHUB_REF_NAME` passes on a script that reads the variable
+    // and then ignores it. Each publishing job's own shell script is run against
+    // an agreeing pair and three disagreeing ones, in a throwaway directory
+    // holding nothing but a package.json.
+    assert.equal(
+      spawnSync('sh', ['-c', 'exit 0']).status,
+      0,
+      'this assertion EXECUTES the workflow step, and `sh` could not be started. It is present on ' +
+        'ubuntu-latest and in Git Bash; without it this file cannot decide the question and ' +
+        'deliberately refuses to pass rather than assume.',
+    );
+
+    const publishing = jobs().filter(({ job }) => publishesToRegistry(job));
+    assert.ok(publishing.length > 0, 'no publishing job to check; see the first assertion');
+
+    for (const publisher of publishing) {
+      const candidates = versionGateCandidates(publisher.job);
+      const runnable = candidates.filter((c) => !c.refused);
+
+      const verdicts = runnable.map(({ script }) => {
+        const shipped = '1.2.5';
+        const attempt = (tag: string): number =>
+          runShell(interpolate(script, githubContext('push', `refs/tags/${tag}`, tag, 'tag')), {
+            GITHUB_REF_NAME: tag,
+            GITHUB_REF: `refs/tags/${tag}`,
+          }, shipped);
+        return {
+          first: script.split('\n')[0],
+          // The tag names the version that would actually ship.
+          agreeing: attempt(`v${shipped}`),
+          // The tag announces a version the tree does not carry.
+          ahead: attempt('v1.3.0'),
+          behind: attempt('v1.2.4'),
+          // A tag that is a PREFIX of the shipped version - what a `startsWith`
+          // or `contains` comparison waves through and an equality test does not.
+          prefix: attempt('v1.2'),
+        };
+      });
+
+      const gate = verdicts.find(
+        (v) => v.agreeing === 0 && v.ahead !== 0 && v.behind !== 0 && v.prefix !== 0,
+      );
+
+      assert.ok(
+        gate,
+        `Job \`${label(publisher)}\` publishes to the public registry with no step that fails when ` +
+          'the tag and package.json disagree, so nothing ties the version on the registry to the tag ' +
+          'that produced it or to the GitHub Release announcing it: tagging `v1.3.0` on a tree whose ' +
+          'package.json still reads `1.2.5` ships 1.2.5 under a release called v1.3.0. publish.yml ' +
+          'carried this check until it was deleted on 2026-06-27 and the move into ci.yml did not ' +
+          `bring it across. Scripts executed (0 = accepted the tag): ${JSON.stringify(verdicts)}. ` +
+          `Refused as unsafe to execute here: ${JSON.stringify(
+            candidates.filter((c) => c.refused).map((c) => c.script.split('\n')[0]),
+          )}.`,
       );
     }
   });

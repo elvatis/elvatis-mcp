@@ -16,7 +16,7 @@ jobs:
   scan:
     name: Scan
     runs-on: ubuntu-latest
-    # MANDATORY, not taste: project-conventions.md section 10. On 2026-07-21 a
+    # MANDATORY, not taste. On 2026-07-21 a
     # scan that had already finished cleanly failed to exit and held a shared
     # runner for hours, blocking unrelated repositories. The root cause was fixed
     # in supply-chain-guard v5.17.7; the time bound stays as the second line of
@@ -46,7 +46,7 @@ jobs:
       # except a merge.
       #
       # So a fourth part is required, and it is in no file: something has to LAND
-      # the bump. That is filed as elvatis/ideabase#337 for the owner, with the
+      # the bump. That is open with the maintainer, with the
       # state measured here on 2026-08-21 - `allow_auto_merge` is `false` on this
       # repository, and `main` carries NO required status checks at all, so
       # nothing merges a bump and nothing would block a bad one. Until that is
@@ -90,7 +90,7 @@ jobs:
       # four is removed - including the `ignore` rule, which is the exact one-line
       # deletion that froze a sibling repository for eight releases.
       #
-      # Matches elvatis-intelligence and atlas, which pin this action identically.
+      # Pinned by commit, with the version it corresponds to in the trailing comment.
       - uses: homeofe/supply-chain-guard@fc8fb8f4989cd1960f48833fbaa1f726df897bbc # v5.28.1
         with:
           fail-on: critical
