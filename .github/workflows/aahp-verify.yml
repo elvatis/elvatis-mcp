@@ -12,15 +12,34 @@
 # vendored copy of the scripts, so it stays in lockstep with the published protocol.
 #
 # Dependabot exemption: a pure dependency bump introduces no handoff-state change,
-# so the AAHP handoff gate does not apply to it. The job stays a REQUIRED check but
-# no-ops to success when the change originates from dependabot[bot] - on both the PR
-# (github.actor) and the resulting push to main (head_commit.author). Security and
-# build remain gated by the supply-chain-guard and CodeQL checks, which still run.
+# so the AAHP handoff gate does not apply to it. The job no-ops to success when the
+# change originates from dependabot[bot] - on both the PR (github.actor) and the
+# resulting push to main (head_commit.author). Build stays gated by the CI workflow
+# and the supply chain by the Scan check, both of which still run on those PRs.
+# `tests/security/action-pin.test.ts` asserts this exemption still exists: without
+# it every scanner bump is blocked by a gate a bot cannot satisfy, and the SHA pin
+# in supply-chain-guard.yml ages exactly as if Dependabot had been switched off.
 #
-# NOTE: GitHub Actions is currently OFF org-wide (cost sweep). This workflow is
-# committed anyway so it activates automatically when Actions is re-enabled.
-# Once Actions is on, mark this job as a REQUIRED status check in branch
-# protection so the gate cannot be bypassed by skipping local hooks.
+# TWO CLAIMS WERE REMOVED FROM THIS HEADER ON 2026-08-21 BECAUSE THEY WERE FALSE,
+# and both were the reassuring kind - the kind a reader accepts and stops checking:
+#
+#   - "CodeQL checks, which still run". There is no CodeQL workflow in this
+#     repository and default setup is off: `gh api repos/elvatis/elvatis-mcp/
+#     code-scanning/default-setup` returns `"state": "not-configured"` and
+#     `/code-scanning/analyses` returns "no analysis found". The sentence named a
+#     second gate covering dependabot PRs; that gate does not exist.
+#   - "GitHub Actions is currently OFF org-wide (cost sweep) ... activates
+#     automatically when Actions is re-enabled." Actions is ON and has been for
+#     some time: CI, Scan and this workflow all completed successfully on
+#     2026-08-19. The note made a live workflow read as dormant.
+#
+# THE FOLLOW-UP THAT NOTE CARRIED IS STILL OPEN, and is why the first line says
+# "intended": measured 2026-08-21, `main` has branch protection but
+# `required_status_checks` is `null`. No check on this repository is required,
+# so this gate - and CI, and Scan - are advisory. That is a repository setting,
+# unreachable from any file here; recorded in .ai/handoff/STATUS.md and raised
+# with elvatis/ideabase#337, which asks the same question about who merges a
+# scanner bump.
 
 name: AAHP Verify
 

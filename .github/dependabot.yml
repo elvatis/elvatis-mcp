@@ -1,6 +1,84 @@
+# Dependabot VERSION updates.
+#
+# ONE ecosystem, and it is the second half of a SHA pin rather than general
+# dependency hygiene.
+#
+# `.github/workflows/supply-chain-guard.yml` consumes
+# `homeofe/supply-chain-guard` at an immutable commit. A SHA pin with nothing to
+# bump it does not freeze a risk, it freezes a VERSION - which is precisely what
+# happened here: pinned 2026-06-27 at v5.2.37 and still there on 2026-08-21,
+# about 100 releases later, with a green Scan check every single day. This entry
+# is the mechanism that makes that pin safe rather than merely still. Dependabot
+# rewrites the SHA AND the trailing `# vX.Y.Z` comment together, so the comment
+# cannot rot into a decoy the way `# v5.2.37` did.
+#
+# THE ENTRY BELOW IS NOT NEW - it existed, on `weekly`, and it worked. It opened
+# eight correct bump pull requests on eight consecutive Saturdays. None was ever
+# merged; dependabot[bot] closed each as superseded by the next. What changed
+# today is the interval, the grouping and this comment. What still has to change
+# is outside every file in this repository: see elvatis/ideabase#337.
+#
+# NO `ignore` ENTRY MAY NAME `homeofe/supply-chain-guard`, quoted, bare, or
+# behind a wildcard such as `*` or `homeofe/*`. That combination - a SHA pin
+# beside an `ignore` rule for the same action - is what left a sibling repository
+# eight releases behind between 2026-08-02 and 2026-08-07 while every other
+# signal stayed green: the lane existed and nothing could move the pin through
+# it. `tests/security/action-pin.test.ts` fails if such an entry appears.
+#
+# `npm` is deliberately ABSENT, matching elvatis-intelligence. Adding it is
+# tracked in elvatis/ideabase#79 and is blocked on a budget decision from Emre:
+# this tree is ~99 packages and every bump pull request costs runner time. The
+# advisory signal in the meantime is the supply-chain-guard scan plus manual
+# lockfile refreshes (see the 2026-08-19 note in .ai/handoff/STATUS.md, which
+# cleared 15 alerts that way).
+#
+# This file does not control Dependabot ALERTS. Those are a repository setting,
+# unreadable and unwritable from here. Do not restate their state anywhere.
 version: 2
+
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  # GitHub Actions versions. Actions pinned by SHA carry a trailing `# vX.Y.Z`
+  # comment; Dependabot bumps both, which is the whole point of this entry.
+  #
+  # DAILY, PER D-065. Under a SHA pin the interval is not a taste, it is the
+  # malware-indicator freshness: homeofe/supply-chain-guard carries its indicator
+  # set inside the release the pin names, and it shipped v5.26.4 through v5.26.7
+  # on four consecutive days (2026-08-16 to -19). `weekly` licenses six-day-old
+  # indicators at the merge gate - and on this repository `weekly` demonstrably
+  # licensed 55-day-old ones, because a bump that is never merged has no
+  # interval at all.
+  #
+  # This costs pull requests, not runner budget: Dependabot's own version updates
+  # run on GitHub's infrastructure. The CI those pull requests trigger runs on
+  # GitHub-hosted runners for this repository (the documented exception in
+  # project-conventions.md section 12), which is what the grouping is for.
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: daily
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(actions)'
+    labels:
+      - dependencies
+      - github_actions
+    groups:
+      # THE SCANNER GETS ITS OWN GROUP OF ONE, so its bump always arrives as a
+      # pull request touching exactly one line of one file. That shape is what
+      # makes the bump reviewable in seconds, and it is the shape the estate's
+      # `dependabot-auto-merge.yml` merges without a human under D-065 point 3.
+      # That workflow is NOT in this repository yet, on purpose: `allow_auto_merge`
+      # measured `false` here on 2026-08-21, so the job could only ever fail
+      # loudly on every bump. Both halves land together or neither - elvatis/ideabase#337.
+      supply-chain-guard:
+        applies-to: version-updates
+        patterns:
+          - homeofe/supply-chain-guard
+
+      actions-minor-and-patch:
+        applies-to: version-updates
+        exclude-patterns:
+          - homeofe/supply-chain-guard
+        update-types:
+          - minor
+          - patch

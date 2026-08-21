@@ -11,7 +11,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "test": "npm run build && npx tsx --test tests/unit.test.ts",
+    "test": "npm run build && npx tsx --test tests/unit.test.ts tests/security/action-pin.test.ts",
     "test:integration": "npx tsx tests/integration.test.ts",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
@@ -36,7 +36,8 @@
   "devDependencies": {
     "@elvatis_com/aahp": "3.8.1",
     "@types/node": "^22.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.0"
   },
   "engines": {
     "node": ">=18"
