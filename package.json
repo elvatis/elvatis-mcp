@@ -11,7 +11,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "test": "npm run build && npx --no-install tsx --test tests/unit.test.ts tests/security/action-pin.test.ts",
+    "test": "npm run build && npx --no-install tsx --test tests/unit.test.ts tests/security/action-pin.test.ts tests/security/publish-guard.test.ts",
     "test:integration": "npx --no-install tsx tests/integration.test.ts",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",

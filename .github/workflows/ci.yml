@@ -43,12 +43,21 @@ jobs:
     name: Publish to npm
     needs: build
     runs-on: ubuntu-latest
-    if: (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '.')) || github.event_name == 'workflow_dispatch'
+    # Only a PUSHED v-tag publishes. `workflow_dispatch` used to be an OR-branch
+    # here, and the Run-workflow dialog accepts any branch, so a manual dispatch
+    # published an unreviewed branch tree to the public registry. Asserting the
+    # event closes the tag-dropdown variant too. tests/security/publish-guard.test.ts
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '.')
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Bind to the exact commit that triggered this run, not to the moving
+          # ref. Without it the tree published can differ from the tree `build`
+          # verified, and under a manual dispatch it was the dispatched branch.
+          ref: ${{ github.sha }}
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -66,11 +75,16 @@ jobs:
     name: Create GitHub Release
     needs: publish
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '.')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '.')
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Bind to the exact commit that triggered this run, not to the moving
+          # ref. Without it the tree published can differ from the tree `build`
+          # verified, and under a manual dispatch it was the dispatched branch.
+          ref: ${{ github.sha }}
       - name: Create GitHub Release
         run: gh release create "$GITHUB_REF_NAME" --title "elvatis-mcp $GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME. See the README changelog."
         env:
