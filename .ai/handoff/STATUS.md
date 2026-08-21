@@ -69,6 +69,41 @@ repository on purpose. Treating the handoff edit as "the hardware is no longer
 public" would be wrong, and the recommendation is to keep the benchmark tables
 as they are.
 
+VERSION-GUARD IS NOW RED ON EVERY PULL REQUEST, INCLUDING ONES THAT SHIP
+NOTHING. This is the steady state rather than a one-off, and it is the item most
+worth a decision.
+
+The job has no `if:`, no `paths:` filter and no `continue-on-error` - all
+deliberate, and `tests/security/version-guard.test.ts` asserts each of them - so
+it runs on every pull request and asks one question: is the version in
+`package.json` already on the registry? After any release the answer is yes, and
+stays yes until someone bumps. So from the moment 1.3.0 was published, every
+pull request against this repository fails that check until the version moves.
+
+The docs-only PR opened today demonstrates it: it changes no shippable file at
+all and is still red, because the guard reads the version string rather than
+whether the branch changes anything shippable. Both of today's PRs are red on
+it, and so would be a README typo fix.
+
+The intent behind it is sound and should be kept - `publish` carries
+`needs: [build, version-guard]`, which is the one place a check can hold
+something up while `required_status_checks` is null. The misfire is the separate
+PR-visible job, not the gate on the release path. A permanently red check is one
+people stop reading, and this repository has no required checks, so the only
+thing that check currently does is train a reader to ignore red.
+
+Options, none taken here because they are release policy:
+
+  1. Bump `version` in whichever PR lands a shippable change. Matches the
+     original intent most closely; awkward with two PRs open at once, since both
+     would claim the same number and collide.
+  2. Fail on the pull request only when the branch touches shippable source
+     (`src/`, `package.json`), so docs and CI PRs stay green while a code change
+     still has to move the number.
+  3. Keep the guard only where it is already load-bearing - `needs:` on
+     `publish` - and drop the separate PR job, accepting that the version moves
+     at release time rather than at merge time.
+
 Open and Emre's:
 
 - **c12c6e5 has a German subject line on a public repository** ("Node 18 und 20
