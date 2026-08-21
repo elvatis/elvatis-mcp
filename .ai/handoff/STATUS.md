@@ -1,3 +1,65 @@
+## 2026-08-22 - The three stranded pull requests carry nothing main lacks, and the handoff notes were German
+
+RE-MEASURED #63, #64 AND #66 AGAINST `main`, LINE BY LINE, AND ALL THREE ARE
+EMPTY. The session below reached this by tree comparison; this one repeated it at
+the granularity that answers the follow-up question, which is not "does the
+branch differ from main" but "does the branch carry anything main lacks". Those
+are different questions, and only the second one decides whether a branch is
+worth re-proposing. For each branch, every line it ADDS relative to the common
+base `c12c6e5` was looked up in main's copy of the same file:
+
+  #66   96 added lines, 0 absent from main
+  #64  190 added lines, 0 absent from main
+  #63  193 added lines, 0 absent from main
+
+Bookkeeping files (`MANIFEST.json`, `STATUS.md`, `package-lock.json`) excluded,
+since those three are regenerated or appended by every session and never carry a
+branch's argument.
+
+The reason this needed re-measuring rather than trusting the earlier note is that
+the assignment arrived with a per-branch list of things main was said to still
+lack: #63's `LOG.md` line, #66's release-convention section in `CONTRIBUTING.md`,
+#64's `SECURITY.md` wording. All three are on `main` already, and the
+`CONTRIBUTING.md` section is there verbatim. A two-dot diff makes the branches
+look enormous (each would delete 1,300 to 1,600 lines) and a three-dot diff makes
+them look small; neither says whether their content survives. Counting added
+lines against main does.
+
+WHAT MAIN DID STILL LACK IS A DIFFERENT DEFECT THAN THE ONE #63 FIXED. #63
+removed a CPU and GPU model from `LOG.md`, and that removal is on main. What it
+left behind is the rest of the line and the rest of the file: a German session
+narrative, in a public repository, recording which machine the author connected
+from. The hardware string was the smaller half.
+
+Measured before and after with a word-list scan over every tracked file, so the
+fix has a denominator rather than an impression: 12 German lines in 2 files
+before, 1 line in 1 file after. The one that remains is `STATUS.md` line 484,
+which quotes the German subject line of commit `c12c6e5` inside an English
+paragraph that exists to explain why that subject cannot be corrected. It is a
+citation of something immutable, not prose, and it stays.
+
+NO LANGUAGE GATE WAS ADDED, DELIBERATELY. A detector strong enough to catch
+German prose also catches that citation, so it would have to ship with an
+exception for it, and an exception carved into a matcher is the thing that
+swallows the next real instance. This repository already has one control that
+reads as active and cannot fire (issue #67, `forbiddenPatterns` declared in
+`aahp.config.json` with nothing invoking `aahp check`), and a second gate of that
+shape is worth less than no gate plus an accurate sentence in CONTRIBUTING.md.
+Recorded here so the choice is visible rather than looking like an omission.
+
+Open, and Emre's:
+
+- **`CONTRIBUTING.md` and `SECURITY.md` both describe a changelog gate that does
+  not exist.** Both state that "the changelog gate requires the topmost dated
+  release heading to equal the version in `package.json`". Nothing in `tests/`,
+  `scripts/`, `.github/workflows/` or `aahp.config.json` compares those two
+  values; `grep -rni changelog` over all four returns only prose and the npm
+  `files` entry. This is the same class as #67, and worse placed: it is asserted
+  in a public `SECURITY.md` section whose opening claim is that nothing depends
+  on taking our word for it. Filed as its own issue.
+- #63, #64 and #66 are still open and still show stale green check marks. They
+  are not this session's to close.
+
 ## 2026-08-22 - The three blocked pull requests were already shipped, and the sweep #64 asked for
 
 #63, #64 AND #66 ARE ALREADY ON `main`, CARRIED BY #65. The instruction for this
@@ -539,33 +601,33 @@ rather than trusting the default. Layers 1, 3 and 4 are unaffected - they do not
 depend on a diff range - and Layer 2 counts everything outside `.ai/handoff/` as
 source, `.claude/` included.
 
-## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
+## 2026-08-21 - Node 18 and 20 are end of life, and the publish job ran on one of them
 
-Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
-version-guard (der meldete 1.3.0 korrekt als frei), sondern an der Laufzeit:
+The v1.3.0 release failed today. Not on the package, and not on the new
+version-guard, which correctly reported 1.3.0 as still free, but on the runtime:
 
     npm error code EBADENGINE
     npm error notsup Required: {"node":"^22.22.2 || ^24.15.0 || >=26.0.0"}
     npm error notsup Actual:   {"npm":"10.8.2","node":"v20.20.2"}
 
-Der publish-Job holt `npm@latest` fuer OIDC Trusted Publishing. npm 12 hat Node
-20 fallen gelassen. Der Schritt, der das Veroeffentlichen ermoeglichen soll, ist
-also der, der es verweigert - bei JEDEM Release-Versuch seit npm 12. Gesehen hat
-es niemand, weil seit April nichts veroeffentlicht wurde.
+The publish job fetches `npm@latest` for OIDC trusted publishing, and npm 12
+dropped Node 20. The step whose whole purpose is to make publishing possible is
+therefore the step refusing it, on EVERY release attempt since npm 12. Nobody
+saw it, because nothing had been published since April.
 
-Gleichzeitig lief die Matrix auf [18, 20, 22] und `engines.node` versprach
-oeffentlich `>=18` - eine Laufzeit ohne Sicherheits-Patches seit 16 Monaten.
+At the same time the matrix ran on [18, 20, 22] while `engines.node` publicly
+promised `>=18`, a runtime without security patches for 16 months.
 
-Geaendert: Matrix -> [22, 24], drei Einzel-Pins '20' -> '24', engines '>=22'.
+Changed: matrix -> [22, 24], three individual pins '20' -> '24', engines '>=22'.
 
-**Der Mutationsbeweis hat einen Fehler in der eigenen Zusicherung gefunden.** Die
-erste Fassung der Leerlauf-Sperre prueft die GLOBALE Pin-Liste; das Leeren der
-Matrix liess sie gruen, weil die Einzel-Pins der anderen Jobs die Liste nicht
-leer werden liessen. Die Mehr-Laufzeit-Abdeckung verschwand lautlos. `matrixPins()`
-liest jetzt ausschliesslich `strategy.matrix`. Vier Mutationen, alle rot bewiesen.
+**The mutation proof found a defect in its own assertion.** The first version of
+the empty-matrix guard read the GLOBAL pin list, so emptying the matrix left it
+green: the individual pins of the other jobs kept that list from ever being
+empty, and multi-runtime coverage would have disappeared silently. `matrixPins()`
+now reads `strategy.matrix` and nothing else. Four mutations, all proved red.
 
-Offen und Emres: Tag-Schutz fehlt weiterhin (`tags/protection` -> 404, rulesets
-leer), also kann ein v-Tag weiterhin auf einen beliebigen Commit zeigen.
+Open, and Emre's: tag protection is still absent (`tags/protection` -> 404,
+rulesets empty), so a v-tag can still point at any commit.
 
 > Note (2026-08-21, claude-opus-5): THE RELEASE PATH WAS GUARDED AND UNWALKABLE. `package.json` last moved its version on 2026-03-31 (b6d4c17, the initial skeleton). `1.2.4` was published on 2026-04-15. `main` then took 35 commits without the number changing, two of them security fixes: the command-injection remediation of 2026-06-28 (fb7b76a, 9 findings) and the `--channel` escaping fix of 2026-08-19 (ef82cb5, PR 56). Both are correct, both are merged, and neither could ever be installed by anyone. npm refuses a duplicate version, and `v1.2.4` already exists and points at the April tree, so re-tagging is not a way out either. An April tarball cannot contain a June fix, so for four months every `npm install` of the estate's only public package served the vulnerable code while the tree said it was fixed. Bumped to 1.3.0, in `package.json` and in both root entries of `package-lock.json`.
 >
