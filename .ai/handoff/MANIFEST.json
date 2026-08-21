@@ -3,17 +3,17 @@
   "project": "elvatis-mcp",
   "last_session": {
     "agent": "cli-tool",
-    "session_id": "cli-1787331395",
-    "timestamp": "2026-08-21T16:56:35Z",
-    "commit": "1c3972c",
+    "session_id": "cli-1787331791",
+    "timestamp": "2026-08-21T17:03:11Z",
+    "commit": "74dba23",
     "phase": "idle",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:db7b31082a2c16e120577b8ec7bc07a480066b9d541f58070b776762a9d2b93f",
-      "updated": "2026-08-21T16:56:24Z",
-      "lines": 212,
+      "checksum": "sha256:69dd38fe64affb3aff4653e6df66fce63e0d5cc88f32b473996c338e42ef80b3",
+      "updated": "2026-08-21T17:03:00Z",
+      "lines": 214,
       "summary": "(no summary available)"
     },
     "NEXT_ACTIONS.md": {
@@ -74,7 +74,7 @@
   "quick_context": "(no summary available) (no summary available) ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 8927,
-    "full_read": 13730
+    "manifest_plus_core": 9196,
+    "full_read": 13999
   }
 }
