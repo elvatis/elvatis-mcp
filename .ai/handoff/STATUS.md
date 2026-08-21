@@ -87,6 +87,36 @@ for scanner bumps, `action-pin.test.ts` asserts it still exists, and with no
 required checks the practical exposure today is nil. Worth revisiting together with
 the branch-protection question rather than separately.
 
+### Backlog triage, the 15 open issues
+
+Measured against the source rather than against the titles: all ten issues asking
+for a new MCP tool are genuinely unimplemented. `src/index.ts` registers 37 tools,
+and `home_presence`, `git_status`, `mcp_stats`, `openclaw_memory_update`,
+`openclaw_session_spawn`, `image_generate`, `http_request`, `calendar_event`,
+`db_query` and `home_camera_snapshot` are none of them. So nothing in this backlog
+is stale in the already-done sense, and none of it can simply be closed.
+
+None was a safe drive-by in this session, and the reason is worth stating rather
+than left to be assumed. Each one either needs live infrastructure a session cannot
+reach (Home Assistant for T-028, T-026 and T-016; an SSH tunnel for T-015; Google
+OAuth for T-014; Cursor and Windsurf clients for T-007), or a product decision
+nobody has made yet (which provider T-019 generates images through, which API T-005
+trades against), or - and this covers the ones that look cheapest - shells out to a
+remote host, which is the exact surface that produced this repository's last two
+security fixes. T-020 is documentation only, but it is a per-CLI model support
+matrix on a public repository, and model strings expire silently; publishing one
+that is wrong is worse than publishing none, because it reads as authoritative.
+
+TWO METADATA FACTS, both the owner's call rather than an agent's:
+
+- Six issues still carry the `v1.2` target label. 1.2.0 through 1.2.4 all shipped
+  and 1.3.0 is now published, so that label names a release train that closed two
+  trains ago while still reading as "next up" in any filtered view. Whether those
+  should be retargeted or untargeted is a roadmap decision, so they are left alone.
+- No open issue carries a `product:` or a `priority:` label, against the estate
+  convention. Applying them would mean inventing a priority order for someone
+  else's backlog, so they are left alone too.
+
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
 Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen

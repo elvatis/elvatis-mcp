@@ -3,17 +3,17 @@
   "project": "elvatis-mcp",
   "last_session": {
     "agent": "claude-opus-5",
-    "session_id": "cli-1787341216",
-    "timestamp": "2026-08-21T19:40:16Z",
-    "commit": "7c4527b",
-    "phase": "implementation",
+    "session_id": "cli-1787341650",
+    "timestamp": "2026-08-21T19:47:30Z",
+    "commit": "b2ea777",
+    "phase": "documentation",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:180f59977763f694833a0790059e6980a675bb68be1020ae12a3e18dec114515",
-      "updated": "2026-08-21T19:39:51Z",
-      "lines": 331,
+      "checksum": "sha256:32236d975df16df31c753556374a397f70b90de6d3860dcc6add18e3de074052",
+      "updated": "2026-08-21T19:47:20Z",
+      "lines": 361,
       "summary": "This repository was the last `@elvatis_com/aahp` 3.8.1 consumer in the estate,"
     },
     "NEXT_ACTIONS.md": {
@@ -71,10 +71,10 @@
       "summary": "{"
     }
   },
-  "quick_context": "AAHP 3.8.1 to 3.10.0; Layer 2 base wiring; aahp-gate test",
+  "quick_context": "AAHP 3.10.0 bump; Layer 2 base wiring; backlog triage",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 10635,
-    "full_read": 15438
+    "manifest_plus_core": 11032,
+    "full_read": 15835
   }
 }
