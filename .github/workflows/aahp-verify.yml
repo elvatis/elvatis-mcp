@@ -11,6 +11,21 @@
 # The gate is driven by the pinned @elvatis_com/aahp CLI (devDependencies), not a
 # vendored copy of the scripts, so it stays in lockstep with the published protocol.
 #
+# LAYER 2 IS FAIL-CLOSED FROM AAHP 3.10.0, and that is what changed this file.
+# The drift gate now REFUSES to run without an explicit `--base SHA` /
+# `AAHP_BASE_SHA` instead of diffing against an implicit base, and it separately
+# refuses a base that resolves to HEAD, "which would make Layer 2 vacuous". So
+# every trigger below has to name its own base:
+#   pull_request      -> github.event.pull_request.base.sha
+#   push              -> github.event.before
+#   workflow_dispatch -> the REQUIRED `base` input declared under `on:`
+# A manual run has no event base to fall back on; without that input every
+# dispatch fails closed and reads as a broken workflow rather than as a missing
+# argument. `scripts/require-layer2-base.mjs` rejects an absent, empty, all-zero
+# or non-SHA base with exit 2 BEFORE `aahp verify` is reached, and
+# `tests/security/aahp-gate.test.ts` executes that script in both directions and
+# enumerates the triggers here against the base expression.
+#
 # Dependabot exemption: a pure dependency bump introduces no handoff-state change,
 # so the AAHP handoff gate does not apply to it. The job no-ops to success when the
 # change originates from dependabot[bot] - on both the PR (github.actor) and the
@@ -49,6 +64,14 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      base:
+        description: >-
+          Layer 2 base commit (full 40-character SHA). Required: at --level ci
+          the content-drift gate fails closed without an explicit base, and a
+          manual run carries no event base to fall back on.
+        required: true
+        type: string
 
 jobs:
   aahp-verify:
@@ -60,13 +83,15 @@ jobs:
         run: |
           echo "Dependabot change detected: the AAHP handoff gate does not apply."
           echo "A pure dependency bump introduces no handoff-state change."
-          echo "Security and build remain gated by the supply-chain-guard and CodeQL checks."
+          echo "Build stays gated by the CI workflow and the supply chain by the Scan check."
 
       - name: Checkout code
         if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
         uses: actions/checkout@v7
         with:
           # Full history so the content-drift gate can diff against the base.
+          # The base is an ancestor COMMIT rather than a ref, so under a shallow
+          # clone a real comparison degrades into "base not found".
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -81,7 +106,21 @@ jobs:
 
       - name: Run aahp verify (CI level, no escape hatch)
         if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
-        run: npx --no-install aahp verify . --level ci
+        env:
+          # ONE expression, covering every trigger declared under `on:` above. An
+          # event matching none of them yields the empty string, and the guard
+          # script turns that into exit 2 rather than into an unbased gate that
+          # passes. Keep this list and the `on:` list in step: the test
+          # enumerates one against the other, so adding a trigger without adding
+          # its base here goes red.
+          AAHP_BASE_SHA: >-
+            ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha
+            || github.event_name == 'push' && github.event.before
+            || github.event_name == 'workflow_dispatch' && inputs.base
+            || '' }}
+        run: |
+          node scripts/require-layer2-base.mjs
+          npx --no-install aahp verify . --level ci --base "$AAHP_BASE_SHA"
 
       - name: Emit conformance record
         if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
