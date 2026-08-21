@@ -10,7 +10,7 @@ and the tags in this repository.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.1] - 2026-08-21
 
 ### Changed
 
@@ -84,5 +84,5 @@ The version is dated here when it is frozen; it reaches the registry when a
 [SECURITY.md](SECURITY.md#release-integrity) sets out what the release path does
 and does not guarantee, and how to verify a version you have installed.
 
-[Unreleased]: https://github.com/elvatis/elvatis-mcp/compare/v1.3.0...HEAD
+[1.3.1]: https://github.com/elvatis/elvatis-mcp/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/elvatis/elvatis-mcp/releases/tag/v1.3.0

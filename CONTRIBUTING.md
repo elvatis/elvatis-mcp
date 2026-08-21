@@ -35,8 +35,9 @@ version ships, the number is raised past it.
 If `npm run version-guard` fails on your pull request, read it as a statement
 about `main` rather than about your branch: the default branch is carrying an
 already-published version, so nothing merged into it can be installed until the
-number moves. Raise `version`, and record the change under `## [Unreleased]` in
-[CHANGELOG.md](CHANGELOG.md).
+number moves. Raise `version`, and open the matching section in
+[CHANGELOG.md](CHANGELOG.md) in the same change: the changelog gate requires the
+topmost dated release heading to equal the version in `package.json`.
 
 ## Code Style
 

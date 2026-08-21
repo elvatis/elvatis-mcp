@@ -72,9 +72,14 @@ The convention is therefore:
 
 Raise it to the next patch by default. If a change that lands later warrants a
 minor or a major, raise it again then. The placeholder exists so that `main` is
-always releasable; it is not a prediction of the next release's size. What the
-next release contains is accumulated under `## [Unreleased]` in
-[CHANGELOG.md](CHANGELOG.md) and given its number when the tag is pushed.
+always releasable; it is not a prediction of the next release's size.
+
+Opening that number's section in [CHANGELOG.md](CHANGELOG.md) is part of the
+same step rather than a follow-up. The changelog gate requires the topmost
+dated release heading to equal the version in `package.json`, so the number and
+its entry move together or the gate fails; what the release contains then
+accumulates under that heading until the tag is pushed. The date is the day the
+section was opened, and it is corrected at freeze time if the release slips.
 
 **Why this is a rule and not a preference.** Between 2026-04-15 and 2026-08-21
 this package sat on a published `1.2.4` while two security fixes were merged to

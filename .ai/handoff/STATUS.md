@@ -37,6 +37,18 @@ merge conflict there by construction. #64 collides on STATUS.md as well. Resolve
 MANIFEST.json by rerunning `npx aahp manifest .` after each merge rather than
 hand-editing it; resolve STATUS.md by keeping both sides.
 
+**The convention collides with the AAHP changelog grammar, and the collision is
+the part worth knowing.** `aahp doctor` runs `changelog-format`, whose R6 requires
+the topmost dated release heading in CHANGELOG.md to equal `package.json`. So
+vacating the version turns that gate red until the new number also has its own
+`## [X.Y.Z] - YYYY-MM-DD` section. `## [Unreleased]` does not satisfy R6, and
+`## [1.3.1] - Unreleased` violates R1, which demands a real calendar date.
+Measured rather than guessed: main's own CHANGELOG passes with `package.json` at
+1.3.0 and fails with it at 1.3.1, nothing else changed. Both documents now say the
+version and its changelog section move together, because a gate enforces exactly
+that, and the next person to apply the convention would otherwise meet a red check
+with no idea why.
+
 Open and Emre's: no status check is required on this repository
 (`required_status_checks` is null, recorded in aahp-verify.yml), so the
 version-guard, CI and Scan are all advisory and a red pull request can still be
