@@ -97,19 +97,31 @@ export function validateAgentName(value: string): string {
  *   --every: "30m", "6h", "1d" (number + unit)
  *   --at: ISO-8601 timestamp "2026-04-01T14:00:00", "+20m" relative offset
  * Rejects anything with shell metacharacters, spaces (except inside a
- * well-formed value), or traversal sequences.
+ * well-formed value), leading hyphens, or traversal sequences.
+ *
+ * The leading-character rule is separate from the character allow-list on
+ * purpose. Every documented form starts with a digit, a letter, or a plus
+ * ("30m", "2026-04-01T14:00:00", "+20m"), so a leading hyphen is never a
+ * legitimate schedule; it is a flag. This value is the one place on the
+ * `openclaw cron add` command line that reaches the remote shell as a bare
+ * token, so a value the remote CLI reads as another flag is argument
+ * injection even though no shell metacharacter is involved. Every sibling
+ * validator in this module already refuses a leading hyphen, and this
+ * module's own header names that as the contract; this one did not.
  */
 export function validateScheduleValue(value: string): string {
   if (!value || value.length === 0) throw new Error('Schedule value must not be empty.');
   if (value.length > 64) throw new Error('Schedule value too long (max 64 chars).');
   // Allow: alphanumerics, hyphens, colons, dots, plus, underscores, slashes.
   // This covers ISO timestamps, relative offsets (+20m), and interval specs.
-  if (!/^[a-zA-Z0-9\-:.+_/]+$/.test(value)) {
+  if (!/^[a-zA-Z0-9+][a-zA-Z0-9\-:.+_/]*$/.test(value)) {
     throw new Error(
       `Invalid schedule value "${value}". Only alphanumerics, hyphens, colons, dots, ` +
-      'plus signs, underscores, and forward slashes are allowed.',
+      'plus signs, underscores, and forward slashes are allowed, and the value must ' +
+      'start with an alphanumeric character or a plus sign.',
     );
   }
+  if (value.includes('..')) throw new Error('Schedule value must not contain "..".');
   return value;
 }
 

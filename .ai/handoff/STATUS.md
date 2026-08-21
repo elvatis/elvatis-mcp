@@ -1,3 +1,443 @@
+## 2026-08-21 - The four open pull requests are one linear stack, and all four are green
+
+WHAT WAS RED AND WHY. All three of #63, #64 and #65 failed `version is not
+already published` without having touched a version. `main` carries 1.3.0,
+1.3.0 reached the registry at 17:34 UTC today, and the guard runs on every pull
+request, so every open branch inherited a statement about `main`. Nothing was
+wrong with any of the three branches.
+
+THE BUMP WAS NOT WHERE IT WAS REPORTED TO BE. The 1.3.0 to 1.3.1 bump was
+described as having been pushed onto `chore/aahp-3.10.0`. It was not on that
+branch, and it was not on any of the three. It exists only on
+`docs/release-version-convention` (#66), which was opened later and is the only
+branch that was green. Checked by reading `package.json` out of each of the four
+remote refs rather than by trusting the report: three read 1.3.0, one reads
+1.3.1.
+
+THE STACK. `main` <- #66 <- #64 <- #63 <- #65, each branch merging the one
+below it. All four are now green on all five checks and all four report
+CLEAN/MERGEABLE. Ancestry was asserted with `git merge-base --is-ancestor` in
+all three links rather than inferred from the diffs.
+
+It is a stack rather than four independent branches because all four rewrite
+`.ai/handoff/MANIFEST.json`, whose checksums and line counts regenerate every
+session. Any two of them collide there by construction, so without sequencing
+the second, third and fourth merges each hit the same conflict on `main`.
+Sequencing pays that cost once, on the branches, where it can be verified.
+
+HOW, AND WHAT THAT COSTS THE REVIEWER. Assembled with `git merge`, not `git
+rebase`: no branch history was rewritten and every push was a fast-forward.
+The price is that each branch now CONTAINS the ones below it, so merging one
+merges those too. That is the shape that put an unfixed defect on a main branch
+elsewhere in the estate on 2026-08-01, carried by a small pull request whose
+body did not say what it carried. Every one of the four bodies now opens with
+the merge order and names, explicitly, which pull requests it carries. The
+carry is not the hazard; an unannounced carry is.
+
+CONFLICT RESOLUTION, both files, both append-logs. STATUS.md: BOTH sides kept
+every time, since each side is a whole dated section prepended by a different
+branch and neither supersedes the other. Line endings were asserted equal in
+and out on each resolution (422, 464 and 582 CRLF respectively), because this
+tree is CRLF locally and LF on CI and a checksum taken over the wrong one
+passes here and fails there. MANIFEST.json: regenerated with `aahp manifest .`
+rather than hand-edited, then diffed field by field against the pre-merge file
+and asserted that `project` still reads `elvatis-mcp`. 3.8.1 rewrites that
+field to the directory name it runs in, which is the defect #65 exists to fix;
+it did not fire only because the worktree happened to be named correctly.
+
+VERIFIED ON EACH MERGE RESULT, not on either parent: typecheck clean, the suite
+green (189, 189, then 199 with #65's ten new gate assertions), the version guard
+OK, and `aahp verify --level ci` passing all four layers, under 3.10.0 with an
+explicit `--base` on the top of the stack.
+
+The guard's new failure message was ticked by EXECUTING it in both directions,
+not by reading the diff: `version` set back to 1.3.0 exits 1 and prints the
+paragraph naming the convention and pointing the fix at `main`; restored, exit
+0. The mutation asserted its substitution had actually applied first.
+`scripts/require-layer2-base.mjs` was executed the same way, with its real exit
+code read rather than a pipeline's: valid base 0, and absent, empty, all-zero
+and non-SHA all 2, distinct from the 1 `aahp verify` uses for a real failure.
+
+### One correction to yesterday's backlog triage
+
+The triage recorded above is right that all ten tool requests are genuinely
+unimplemented. One of its reasons does not survive checking against the source.
+
+**T-023 / #17 (`mcp_stats`) needs no live infrastructure and no product
+decision.** It was swept up in the reason "shells out to a remote host". It does
+not. `src/rate-limiter.ts:223` already writes `usage.json` into the configured
+data directory, and `src/config.ts:65` and `:104` already resolve that directory
+from `ELVATIS_DATA_DIR`. The tool reads a local file this package itself writes,
+and the issue specifies its parameters and return shape, so the product decision
+is made. It is ordinary local technical work and it is the only one of the
+fifteen that is.
+
+It was NOT implemented in this session, deliberately. Every new branch cut today
+is either red on the version guard, because `main` still carries 1.3.0, or has
+to become a fifth link on a stack that exists precisely to unblock a broken
+release path. Neither is a good home for a new public tool surface. It is ready
+the moment #66 reaches `main`.
+
+### Open, and Emre's rather than an agent's
+
+- **Merge order.** #66 first. It is the only one that vacates 1.3.0, and until
+  it lands every pull request in this repository is red on a condition none of
+  them caused.
+- **No status check is required on this repository.** `required_status_checks`
+  is null, so all five green checks are advisory and a red pull request can
+  still be merged by anyone with push access. Green here is a fact about the
+  checks, not a gate.
+- **Six issues still carry the `v1.2` target label** while 1.2.4 shipped in
+  April and 1.3.0 shipped today. Retargeting or untargeting them is a roadmap
+  decision.
+- **Priorities were not invented.** Every open issue now carries `product:
+  fleet`, which is a fact about this repository. None was given a `priority:`
+  label, because ordering someone else's backlog is not an agent's call.
+- **The benchmark tables still publish the workstation CPU and GPU** on purpose,
+  and #63 says so rather than implying it fixed that. Note that `BENCHMARKS.md`
+  also carries what reads as a machine name in a section heading, which is a
+  different class of detail from a part number and worth a separate look.
+
+## 2026-08-21 - AAHP 3.8.1 to 3.10.0: the one consumer the fleet rollout skipped
+
+This repository was the last `@elvatis_com/aahp` 3.8.1 consumer in the estate,
+and that single fact explains the stray `project` values seen across the fleet.
+
+**3.8.1 rewrites `MANIFEST.json`'s `project` to the name of the DIRECTORY the CLI
+ran in.** Reproduced here rather than inferred: in a worktree named
+`elvatis-mcp-aahp`, a plain `aahp manifest .` turned `"project": "elvatis-mcp"`
+into `"project": "elvatis-mcp-aahp"`. Reinstalling 3.10.0 and running the same
+command in the same directory left the field untouched. Both bad values observed
+in the estate, `elvatis-mcp-scg-pin` and `mcp-node-eol`, are agent worktree
+directory names, and both originated here, because here was the only place still
+running 3.8.1. Nothing ever went red: a rewritten `project` is a well-formed
+string in a well-formed file, and the checksum layer re-blesses whatever the tool
+just wrote.
+
+**Layer 2 is fail-closed from 3.10.0, and that is the part that changed this
+repository's workflow.** The content-drift gate now refuses to run without an
+explicit `--base SHA` / `AAHP_BASE_SHA` instead of diffing against an implicit
+base, and it separately refuses a base that resolves to HEAD, "which would make
+Layer 2 vacuous". Measured here: `verify --level ci` with no base exits 1 naming
+the missing argument; with `--base $(git rev-parse origin/main)` on an unchanged
+tree it exits 1 naming the vacuous base. So `aahp-verify.yml` now supplies a base
+per trigger: `pull_request` from `github.event.pull_request.base.sha`, `push` from
+`github.event.before`, and `workflow_dispatch` from a new REQUIRED `base` input.
+That input is not decoration. A manual run has neither event field, so without it
+every dispatch fails closed and reads as a broken workflow rather than as a
+missing argument.
+
+**The base is validated before `aahp verify` is reached.**
+`scripts/require-layer2-base.mjs` refuses an absent, empty, all-zero or non-SHA
+base with exit 2, deliberately distinct from the 1 that `aahp verify` exits on a
+real gate failure, so "no base" and "gate failed" stay tellable apart. It is a
+script rather than an inline `run:` block for one reason: a test can EXECUTE it in
+both directions, the way `version-guard.test.ts` already executes its own script.
+A guard asserted only by grepping the workflow that contains it has never been run.
+
+**`tests/security/aahp-gate.test.ts` (10 assertions, new, wired into `npm test`)
+asserts the consequence rather than the configuration.** The load-bearing one is
+that `MANIFEST.json`'s `project` still equals this package's unscoped name: that
+goes red for a stale pin, for a regression, or for a hand-edit, without needing to
+know which, and it is the assertion that would have caught the fleet-wide defect
+at its first occurrence. Around it: the pin is exact and at or after 3.10.0; the
+verify command carries `--base`; every trigger declared under `on:` appears in the
+base expression, so adding a trigger without adding its arm goes red; the
+`workflow_dispatch` input exists and is `required: true`; the guard is actually
+invoked, and before `aahp verify` rather than after; and the gate carries no
+`continue-on-error`, no job-level `if:`, no `|| true`, no unconditional `exit 0`
+and no `paths`/`paths-ignore` on the workflow the gate itself lives in.
+
+Ten mutations, proved one at a time, fix committed first so `git checkout --`
+could not eat it, tree restored and re-verified between each, with the driver
+asserting that each substitution actually changed the file on disk before running
+anything. Every one turned its own named assertion red and no other. Restored
+tree: `npm test` 185 pass 0 fail in 5.9s, `npm run typecheck` clean.
+
+One measurement worth keeping, because it cost time and will cost it again:
+`core.autocrlf` is `true` here and the repository has no `.gitattributes`, so
+`git checkout --` restores an LF blob as CRLF and a byte comparison then reports a
+restore that did not fail. The MANIFEST checksums are over the LF blob, not over
+the working-tree bytes (`STATUS.md` hashes `636ed482...` as stored and
+`32d63b6f...` on disk, and the MANIFEST holds the former), so AAHP normalises line
+endings when checksumming. Compare in LF space and let `git status` be the proof.
+
+### Open, and Emre's
+
+**The AAHP pin has no bump lane, so this staleness will recur.**
+`.github/dependabot.yml` deliberately omits the `npm` ecosystem, pending a
+runner-budget decision that is still open. That is exactly the "a pin with nothing
+to bump it freezes a VERSION" argument this repository already wrote down for
+`homeofe/supply-chain-guard`, and it now applies to the repository's own handoff
+protocol: 3.8.1 shipped, the fleet moved to 3.10.x, and nothing here could notice.
+The new `project` assertion turns the next occurrence red instead of silent, but it
+is a detector, not a lane. A single-package `npm` entry grouped to
+`@elvatis_com/aahp` alone would cost roughly one pull request per AAHP release.
+
+**`required_status_checks` is still `null` on `main`** (unchanged from the previous
+three sessions), so AAHP Verify, CI, Scan and version-guard remain advisory. Every
+gate added this month is a gate nobody is required to read.
+
+**The dependabot exemption can be reached by commit-author spoofing.** The gate
+no-ops to success when `github.event.head_commit.author.username` is
+`dependabot[bot]`, and on a push that field is resolved from the commit author's
+email. A commit authored as dependabot therefore skips the handoff gate on the
+push to `main`. Left as measured rather than changed: the exemption is load-bearing
+for scanner bumps, `action-pin.test.ts` asserts it still exists, and with no
+required checks the practical exposure today is nil. Worth revisiting together with
+the branch-protection question rather than separately.
+
+### Backlog triage, the 15 open issues
+
+Measured against the source rather than against the titles: all ten issues asking
+for a new MCP tool are genuinely unimplemented. `src/index.ts` registers 37 tools,
+and `home_presence`, `git_status`, `mcp_stats`, `openclaw_memory_update`,
+`openclaw_session_spawn`, `image_generate`, `http_request`, `calendar_event`,
+`db_query` and `home_camera_snapshot` are none of them. So nothing in this backlog
+is stale in the already-done sense, and none of it can simply be closed.
+
+None was a safe drive-by in this session, and the reason is worth stating rather
+than left to be assumed. Each one either needs live infrastructure a session cannot
+reach (Home Assistant for T-028, T-026 and T-016; an SSH tunnel for T-015; Google
+OAuth for T-014; Cursor and Windsurf clients for T-007), or a product decision
+nobody has made yet (which provider T-019 generates images through, which API T-005
+trades against), or - and this covers the ones that look cheapest - shells out to a
+remote host, which is the exact surface that produced this repository's last two
+security fixes. T-020 is documentation only, but it is a per-CLI model support
+matrix on a public repository, and model strings expire silently; publishing one
+that is wrong is worse than publishing none, because it reads as authoritative.
+
+TWO METADATA FACTS, both the owner's call rather than an agent's:
+
+- Six issues still carry the `v1.2` target label. 1.2.0 through 1.2.4 all shipped
+  and 1.3.0 is now published, so that label names a release train that closed two
+  trains ago while still reading as "next up" in any filtered view. Whether those
+  should be retargeted or untargeted is a roadmap decision, so they are left alone.
+- No open issue carries a `product:` or a `priority:` label, against the estate
+  convention. Applying them would mean inventing a priority order for someone
+  else's backlog, so they are left alone too.
+## 2026-08-21 - `main` must always carry an unreleased version, and the guard now says so
+
+`1.3.0` shipped today from the commit that is still `main`, and the number was
+never vacated. Within hours all three open pull requests were red on `version is
+not already published`, none of them having touched a version. The guard is right
+and stays: `main` carrying a published number means anything merged there is
+unpublishable, which is the state that left two security fixes uninstallable
+between 2026-04-15 and 2026-08-21 while every check stayed green.
+
+What was missing was the convention, not the gate. It is now written where a
+public reader meets it:
+
+- SECURITY.md gains step 4 of the release path and a section, `main` always
+  carries an unreleased version, stating the rule and the four-month incident
+  that motivates it.
+- CONTRIBUTING.md repeats it for contributors, including how to read a red
+  version-guard: it is a statement about `main`, not about your branch.
+- The guard's failure message now names the convention and says the fix belongs
+  on `main`. Mutation proof: reverting package.json to 1.3.0 returns exit 1 with
+  the new text present; restored, exit 0. Full suite 175/175 in 5.8s.
+- `package.json` moves to 1.3.1, which is the rule applied to today's state.
+
+Also corrected: SECURITY.md claimed the tree is built on Node 18, 20 and 22. The
+matrix moved to 22 and 24 in #62 and the prose stayed behind, inside a section
+whose own claim is that everything in it is checkable against the workflow. It
+now points at the matrix rather than restating it, so it cannot drift again. The
+five em dashes the file carried are gone; `aahp.config.json` forbids them and
+nothing was catching them in that file.
+
+**Measured, for whoever sequences the merges.** The 1.3.0 -> 1.3.1 bump reported
+as pushed to `chore/aahp-3.10.0` is NOT on that branch; all three PR heads still
+read 1.3.0, and #65's only `package.json` change is the AAHP devDependency and
+the test script. The three also do not rebase cleanly onto one another: every one
+of them rewrites `.ai/handoff/MANIFEST.json`, whose session id, timestamps,
+checksums and line counts are regenerated per session, so the second and third to
+merge conflict there by construction. #64 collides on STATUS.md as well. Resolve
+MANIFEST.json by rerunning `npx aahp manifest .` after each merge rather than
+hand-editing it; resolve STATUS.md by keeping both sides.
+
+**The convention collides with the AAHP changelog grammar, and the collision is
+the part worth knowing.** `aahp doctor` runs `changelog-format`, whose R6 requires
+the topmost dated release heading in CHANGELOG.md to equal `package.json`. So
+vacating the version turns that gate red until the new number also has its own
+`## [X.Y.Z] - YYYY-MM-DD` section. `## [Unreleased]` does not satisfy R6, and
+`## [1.3.1] - Unreleased` violates R1, which demands a real calendar date.
+Measured rather than guessed: main's own CHANGELOG passes with `package.json` at
+1.3.0 and fails with it at 1.3.1, nothing else changed. Both documents now say the
+version and its changelog section move together, because a gate enforces exactly
+that, and the next person to apply the convention would otherwise meet a red check
+with no idea why.
+
+Open and Emre's: no status check is required on this repository
+(`required_status_checks` is null, recorded in aahp-verify.yml), so the
+version-guard, CI and Scan are all advisory and a red pull request can still be
+merged by anyone with push access.
+## 2026-08-21 - The 1.3.0 tarball was checked against main, and the schedule value was still a flag
+
+THE PUBLISHED ARTIFACT WAS VERIFIED RATHER THAN ASSUMED, because assuming is
+what cost four months. `npm pack @elvatis_com/elvatis-mcp@1.3.0` fetched the
+tarball from the registry; `dist/validate.js` carries `validateChannel` and
+`validateScheduleValue`, `dist/tools/cron-manage.js` carries `escapeShell` and
+calls all three, and the raw `parts.push('--channel', args.channel)` is gone.
+The negative grep was itself guarded: the same pattern was run against a
+synthetic vulnerable line first and matched it, so its zero hits on the shipped
+file mean absence rather than a typo in the pattern.
+
+Stronger than the greps: `origin/main` at c12c6e5 was built into a clean
+worktree and the whole `dist/` tree compared file by file against the tarball.
+128 files on each side, none missing from either, and after normalising line
+endings the SHA-256 over the entire tree is identical
+(a64126de6ca9ab30c4c3c1e24fee08849dfbebcdac669f34a1c96e077919f5d8). The only
+three byte-level differences are CRLF inside template literals in
+dashboard.js, routing-rules.js and splitter.js, produced by the Windows
+checkout and not by the publish. **1.3.0 is exactly what main says it is.**
+
+The published validators were then EXECUTED, not just read: nine injection
+payloads against `validateChannel` are all refused and five legitimate channel
+names still pass.
+
+WHAT THAT EXERCISE FOUND. `validateScheduleValue` accepted `../../etc` and
+`-rf`. It was the only validator in the module that accepted a leading hyphen -
+`validateContainerName`, `validateServiceName`, `validateAgentName`,
+`validateDeployService` and `validateChannel` all refuse one, and the module
+header names leading hyphens and traversal as part of the contract it enforces.
+Its own docstring already claimed to reject traversal sequences.
+
+It matters at this call site because `--every` and `--at` are the only two
+values on the `openclaw cron add` line pushed as a bare token; every other one
+goes in as `'${escapeShell(x)}'`. A schedule of `every --announce` therefore put
+`--announce` on the remote command line as a flag. Impact is bounded - the
+allow-list still admits no space, quote or metacharacter, so this is argument
+injection into `openclaw cron add`, not arbitrary execution - but it is the
+class the module exists to prevent, and it is the same shape as the `--channel`
+defect fixed on 2026-08-19.
+
+Fixed by constraining the FIRST character to alphanumeric or `+` separately
+from the body allow-list, so `+20m` and the internal hyphens of an ISO
+timestamp keep working while `-6h` does not, plus a `..` check. The two call
+sites are now quoted like every other value.
+
+THREE MUTATIONS, AND THE THIRD ONE IS REPORTED AS IT CAME OUT. Reverting the
+leading-character rule turns 8 tests red including both handler-level cases;
+deleting the `..` check turns 2 red. **Reverting the call-site quoting turns
+NOTHING red.** That is the honest result and it is not a hole in the tests: the
+validator's allow-list already excludes every character quoting would defend
+against, so the quoting is only load-bearing if the allow-list is later widened,
+and this suite states in its own header that it runs no SSH and asserts no
+command string. Recorded here so nobody later reads "two layers" as "two
+proven layers". Each mutation asserted that its substitution actually applied,
+because a mutation that fails to apply looks exactly like a passing gate.
+
+The 15 new tests assert both directions - every documented schedule form is
+asserted to still be ACCEPTED - so a validator that simply rejected everything
+would fail the block rather than pass it.
+
+HARDWARE IN THE HANDOFF DOCS, AND WHY REMOVING IT DOES NOT CLOSE ANYTHING.
+`.ai/handoff/LOG.md` and `.claude/commands/build.md` named the workstation CPU
+and GPU; both are internal documents where the part number serves no reader, so
+it is removed in a separate PR. But `README.md` and `BENCHMARKS.md` publish the
+same CPU and GPU deliberately, as the reference hardware the benchmark numbers
+were measured on, and stripping them there would turn a reproducible benchmark
+into an anonymous one. So the hardware remains publicly readable in this
+repository on purpose. Treating the handoff edit as "the hardware is no longer
+public" would be wrong, and the recommendation is to keep the benchmark tables
+as they are.
+
+VERSION-GUARD IS NOW RED ON EVERY PULL REQUEST, INCLUDING ONES THAT SHIP
+NOTHING. This is the steady state rather than a one-off, and it is the item most
+worth a decision.
+
+The job has no `if:`, no `paths:` filter and no `continue-on-error` - all
+deliberate, and `tests/security/version-guard.test.ts` asserts each of them - so
+it runs on every pull request and asks one question: is the version in
+`package.json` already on the registry? After any release the answer is yes, and
+stays yes until someone bumps. So from the moment 1.3.0 was published, every
+pull request against this repository fails that check until the version moves.
+
+The docs-only PR opened today demonstrates it: it changes no shippable file at
+all and is still red, because the guard reads the version string rather than
+whether the branch changes anything shippable. Both of today's PRs are red on
+it, and so would be a README typo fix.
+
+The intent behind it is sound and should be kept - `publish` carries
+`needs: [build, version-guard]`, which is the one place a check can hold
+something up while `required_status_checks` is null. The misfire is the separate
+PR-visible job, not the gate on the release path. A permanently red check is one
+people stop reading, and this repository has no required checks, so the only
+thing that check currently does is train a reader to ignore red.
+
+Options, none taken here because they are release policy:
+
+  1. Bump `version` in whichever PR lands a shippable change. Matches the
+     original intent most closely; awkward with two PRs open at once, since both
+     would claim the same number and collide.
+  2. Fail on the pull request only when the branch touches shippable source
+     (`src/`, `package.json`), so docs and CI PRs stay green while a code change
+     still has to move the number.
+  3. Keep the guard only where it is already load-bearing - `needs:` on
+     `publish` - and drop the separate PR job, accepting that the version moves
+     at release time rather than at merge time.
+
+Open and Emre's:
+
+- **c12c6e5 has a German subject line on a public repository** ("Node 18 und 20
+  sind end of life, und der publish-Job lief auf einem davon"). The PR title and
+  body were corrected to English after the merge; the commit was not, and it is
+  the first thing a stranger sees in `git log` and on the commits page. It is
+  already on `main`, so correcting it means rewriting published history - a
+  force-push that changes that SHA and every SHA after it, breaking anyone's
+  clone and any link that names the old hash. Not done here, and the
+  recommendation is to leave it and keep future subjects in English rather than
+  to rewrite. Several older entries in this file and in LOG.md are German too;
+  that is the same question at a larger scale and is worth one deliberate
+  decision rather than a per-commit one.
+- Whether the reference-hardware tables in `README.md` and `BENCHMARKS.md` stay.
+  Recommendation above: keep them.
+- `required_status_checks` on `main` is still `null`, unchanged from the earlier
+  measurement today, so CI, Scan and AAHP Verify remain advisory on both of
+  today's PRs. Tag protection is likewise still absent.
+## 2026-08-21 - The handoff docs named the workstation, and the benchmark tables still do
+
+`.ai/handoff/LOG.md` and `.claude/commands/build.md` carried the exact CPU and
+GPU model of the machine this is worked from. Both are internal documents that
+happen to sit on a public repository, and in neither does the part number serve
+a reader: "use the dev PC" is the same instruction as "use the <model> dev PC".
+Removed. The maintainer's name and email stay, which was already decided.
+
+REMOVING IT DOES NOT MAKE THE HARDWARE PRIVATE, and this entry exists mostly to
+say so. `README.md` carries a Reference Hardware table with the same CPU and
+GPU, and `BENCHMARKS.md` carries the same table plus the model in roughly ten
+result headings. That is deliberate: they are the specs the published benchmark
+numbers were measured on, and a benchmark that does not say what it ran on is
+not a benchmark. So the hardware remains publicly readable here on purpose, and
+anyone reading the handoff edit as "that detail is no longer public" would be
+wrong. Recommendation is to keep the benchmark tables as they are; it is a
+maintainer decision, not a cleanup, and it stays open.
+
+THE LOCAL DRIFT GATE COMPARES A PUSHED BRANCH AGAINST ITSELF, so it passed
+locally and then failed on the pull request. This is worth knowing before it
+wastes someone's afternoon.
+
+`verify-handoff.sh` picks its base for Layer 2 as the branch's UPSTREAM
+tracking ref (`@{u}`), falling back to `origin/main` only when there is none.
+Once a branch has been pushed with `-u`, `@{u}` is that branch's own remote
+head, so `@{u}...HEAD` shows only the commits made since the last push - not
+the change set the pull request actually proposes. Measured on this branch:
+
+    git diff --name-only @{u}...HEAD        -> .ai/handoff/ only
+    git diff --name-only origin/main...HEAD -> also .claude/commands/build.md
+
+CI has no such upstream and diffs against the base branch, so it saw
+`.claude/commands/build.md` and correctly demanded a STATUS.md update. Both of
+the local runs here were vacuous, for two different reasons: the first ran
+before the edits were staged or committed (nothing in the diff at all), the
+second ran after the push (base had moved to the branch itself).
+
+So a green local `aahp verify` on a pushed branch is close to no evidence about
+Layer 2. To reproduce what CI will decide, compare against the base explicitly
+rather than trusting the default. Layers 1, 3 and 4 are unaffected - they do not
+depend on a diff range - and Layer 2 counts everything outside `.ai/handoff/` as
+source, `.claude/` included.
+
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
 Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen

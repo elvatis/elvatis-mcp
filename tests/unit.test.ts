@@ -689,6 +689,56 @@ describe('validateScheduleValue (security)', () => {
   it('rejects empty string', () => {
     assert.throws(() => validateScheduleValue(''), /must not be empty/);
   });
+
+  // Flag injection. The --every/--at value is the one token on the
+  // `openclaw cron add` command line that the remote CLI parses as a bare
+  // argument, so a value shaped like a flag is acted on as a flag. No shell
+  // metacharacter is involved, which is why the metacharacter tests above all
+  // passed while this class went through.
+  it('rejects a bare leading hyphen', () => {
+    assert.throws(() => validateScheduleValue('-rf'), /Invalid schedule value/);
+  });
+  it('rejects a long-form flag', () => {
+    assert.throws(() => validateScheduleValue('--announce'), /Invalid schedule value/);
+  });
+  it('rejects a flag that collides with a real openclaw cron add option', () => {
+    assert.throws(() => validateScheduleValue('--name'), /Invalid schedule value/);
+  });
+  it('rejects a hyphenated value that otherwise looks like an interval', () => {
+    assert.throws(() => validateScheduleValue('-6h'), /Invalid schedule value/);
+  });
+
+  // Traversal. The docstring claimed this was rejected before it was.
+  // Two different rules catch it depending on where the sequence sits, and the
+  // tests assert the specific message so that neither rule can quietly stop
+  // working behind the other one.
+  it('rejects a traversal sequence inside an otherwise valid value', () => {
+    assert.throws(() => validateScheduleValue('30m/../../etc'), /must not contain/);
+  });
+  it('rejects a value that begins with a traversal sequence', () => {
+    // Caught by the leading-character rule, before the '..' check is reached.
+    assert.throws(() => validateScheduleValue('../../etc/passwd'), /Invalid schedule value/);
+  });
+  it('rejects a bare traversal sequence', () => {
+    assert.throws(() => validateScheduleValue('..'), /Invalid schedule value/);
+  });
+
+  // The other direction: the tightened rule must not refuse a legitimate
+  // schedule. A validator that rejects everything passes every test above.
+  it('still accepts a hyphen inside the value (ISO timestamp)', () => {
+    assert.equal(validateScheduleValue('2026-04-01T14:00:00'), '2026-04-01T14:00:00');
+  });
+  it('still accepts a leading plus (relative offset)', () => {
+    assert.equal(validateScheduleValue('+20m'), '+20m');
+  });
+  it('still accepts every documented interval form', () => {
+    for (const v of ['30m', '6h', '1d']) {
+      assert.equal(validateScheduleValue(v), v);
+    }
+  });
+  it('still accepts a single dot, which is not traversal', () => {
+    assert.equal(validateScheduleValue('1.5h'), '1.5h');
+  });
 });
 
 describe('validateCronId (security)', () => {
@@ -807,6 +857,33 @@ describe('handleCronCreate schedule injection guard (security)', () => {
     );
     assert.equal(result.success, false);
     assert.match(result.error ?? '', /Invalid schedule value/);
+  });
+
+  it('rejects a flag-shaped --every value (argument injection)', async () => {
+    const result = await handleCronCreate(
+      { name: 'test', message: 'hello', schedule: 'every --announce' },
+      cronConfig,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid schedule value/);
+  });
+
+  it('rejects a flag-shaped --at value (argument injection)', async () => {
+    const result = await handleCronCreate(
+      { name: 'test', message: 'hello', schedule: 'at --name' },
+      cronConfig,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid schedule value/);
+  });
+
+  it('rejects a traversal-shaped --every value', async () => {
+    const result = await handleCronCreate(
+      { name: 'test', message: 'hello', schedule: 'every 30m/../../etc' },
+      cronConfig,
+    );
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /must not contain/);
   });
 });
 
