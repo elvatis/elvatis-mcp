@@ -16,15 +16,30 @@ anyone reading the handoff edit as "that detail is no longer public" would be
 wrong. Recommendation is to keep the benchmark tables as they are; it is a
 maintainer decision, not a cleanup, and it stays open.
 
-THE LOCAL GATE RUN DISAGREED WITH CI, AND CI WAS RIGHT. `aahp verify --level ci`
-passed locally and then failed on the pull request. The cause was the order of
-operations rather than the environment: Layer 2 compares COMMITTED state against
-the base, and the local run was made while the change was still unstaged, so it
-saw no source change and reported the drift gate as not triggered. Once
-committed, it correctly reported `.claude/commands/build.md` as a source file
-changed outside `.ai/handoff/`. Layer 2 counts everything outside the handoff
-directory as source, `.claude/` included. Run the gate AFTER committing, or it
-answers a question about a tree that is not the one being pushed.
+THE LOCAL DRIFT GATE COMPARES A PUSHED BRANCH AGAINST ITSELF, so it passed
+locally and then failed on the pull request. This is worth knowing before it
+wastes someone's afternoon.
+
+`verify-handoff.sh` picks its base for Layer 2 as the branch's UPSTREAM
+tracking ref (`@{u}`), falling back to `origin/main` only when there is none.
+Once a branch has been pushed with `-u`, `@{u}` is that branch's own remote
+head, so `@{u}...HEAD` shows only the commits made since the last push - not
+the change set the pull request actually proposes. Measured on this branch:
+
+    git diff --name-only @{u}...HEAD        -> .ai/handoff/ only
+    git diff --name-only origin/main...HEAD -> also .claude/commands/build.md
+
+CI has no such upstream and diffs against the base branch, so it saw
+`.claude/commands/build.md` and correctly demanded a STATUS.md update. Both of
+the local runs here were vacuous, for two different reasons: the first ran
+before the edits were staged or committed (nothing in the diff at all), the
+second ran after the push (base had moved to the branch itself).
+
+So a green local `aahp verify` on a pushed branch is close to no evidence about
+Layer 2. To reproduce what CI will decide, compare against the base explicitly
+rather than trusting the default. Layers 1, 3 and 4 are unaffected - they do not
+depend on a diff range - and Layer 2 counts everything outside `.ai/handoff/` as
+source, `.claude/` included.
 
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
