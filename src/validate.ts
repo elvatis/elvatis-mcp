@@ -6,6 +6,32 @@
  * (flag injection), and path traversal sequences before they reach any
  * command string.
  *
+ * TWO SEPARATE HAZARDS, AND QUOTING ONLY ANSWERS ONE OF THEM
+ * ---------------------------------------------------------------------------
+ * Single-quoting a value stops the SHELL from acting on it: no word splitting,
+ * no globbing, no command substitution. It does not stop the PROGRAM the shell
+ * then starts from acting on it, because the shell removes the quotes before
+ * the program ever sees the value. `--cron '--announce'` and `--cron
+ * --announce` hand the remote CLI byte-identical argv.
+ *
+ * So a value that arrives as its own argv token has a second question to
+ * answer: can the receiving program read it as an option? There are two
+ * answers, and which one applies depends on the position the value lands in.
+ *
+ *  - OPERAND position (a filename, a search pattern - anything the program
+ *    treats as data). Fixed at the SINK with the POSIX end-of-options marker
+ *    `--`, or with grep's `-e`. That is strictly better than a validator here:
+ *    paths and search terms are legitimately free-form, and `--` makes even a
+ *    file genuinely named `-rf` work correctly instead of rejecting it.
+ *
+ *  - OPTION-VALUE position (the token right after `--cron`, `--model`). `--`
+ *    cannot help there, so the leading character has to be refused, which is
+ *    what every validator below does.
+ *
+ * Grepping for a shell metacharacter finds neither. A value made entirely of
+ * alphanumerics and hyphens passes every metacharacter test ever written and
+ * is still a flag.
+ *
  * These validators are pure functions with no side-effects so they can be
  * unit-tested without SSH/network access.
  */
@@ -122,6 +148,35 @@ export function validateScheduleValue(value: string): string {
     );
   }
   if (value.includes('..')) throw new Error('Schedule value must not contain "..".');
+  return value;
+}
+
+/**
+ * Validate a raw cron expression, the value of the `--cron` flag.
+ *
+ * The sibling of validateScheduleValue on the very same command line. A
+ * schedule that does not open "every ", "at " or "+" falls through to `--cron`
+ * and is forwarded verbatim, so the leading-character rule `--every` and
+ * `--at` acquired has to hold here too. Otherwise the fix moves the value onto
+ * the same command line by a different flag and nothing has been closed.
+ *
+ * The rule is ONLY the leading character, deliberately. A cron expression
+ * legitimately carries spaces, asterisks, slashes, commas and interior hyphens
+ * ("0 9 * * 1-5", "@daily", a step expression), and an allow-list wide enough
+ * to admit all of them buys nothing beyond what single-quoting already buys.
+ * The leading character is the one thing single-quoting cannot buy. No cron
+ * form starts with a hyphen: every one starts with a digit, an asterisk or an
+ * at-sign.
+ */
+export function validateCronExpression(value: string): string {
+  if (!value || value.length === 0) throw new Error('Cron expression must not be empty.');
+  if (value.length > 128) throw new Error('Cron expression too long (max 128 chars).');
+  if (value.startsWith('-')) {
+    throw new Error(
+      `Invalid cron expression "${value}". A cron expression must not start with a hyphen; ` +
+      'the remote CLI reads such a value as another flag rather than as a schedule.',
+    );
+  }
   return value;
 }
 

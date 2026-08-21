@@ -63,17 +63,36 @@ export async function handleMemoryReadToday(_args: Record<string, never>, config
   };
 }
 
-export async function handleMemorySearch(args: { query: string; days: number }, config: Config) {
-  const cfg = toSshCfg(config);
-  const escaped = args.query.replace(/'/g, "'\\''");
-
+/**
+ * The single SSH command behind openclaw_memory_search.
+ *
+ * Exported so a test can read the command that would run. The search term is
+ * the reason: it lands where grep expects its PATTERN, which is an operand,
+ * and GNU grep permutes its arguments, so an operand opening with a hyphen is
+ * parsed as an option no matter how many operands precede it. Single-quoting
+ * does not reach that far - the shell strips the quotes, and grep is handed
+ * `--file=/etc/shadow` as cleanly as if it had been typed. `-e` says "this
+ * next token is the pattern" and `--` says "nothing after me is an option",
+ * which together take a free-form search term out of grep's option grammar
+ * without narrowing what a user is allowed to search for.
+ */
+export function buildMemorySearchCommand(query: string, days: number): string {
+  const escaped = query.replace(/'/g, "'\\''");
   // Single SSH call: list recent files, grep all of them at once, and format
   // output with filenames so we can extract date + excerpt per file.
   // This avoids N+1 SSH connections (which was the main reliability issue).
+  return (
+    `files=$(ls ${MEMORY_DIR}/*.md 2>/dev/null | sort -r | head -${days}) && `
+    + `[ -n "$files" ] && grep -i -H -m1 -A2 -B1 -e '${escaped}' -- $files 2>/dev/null || true`
+  );
+}
+
+export async function handleMemorySearch(args: { query: string; days: number }, config: Config) {
+  const cfg = toSshCfg(config);
+
   const output = await sshExec(
     cfg,
-    `files=$(ls ${MEMORY_DIR}/*.md 2>/dev/null | sort -r | head -${args.days}) && `
-    + `[ -n "$files" ] && grep -i -H -m1 -A2 -B1 '${escaped}' $files 2>/dev/null || true`,
+    buildMemorySearchCommand(args.query, args.days),
     20_000,
   );
 

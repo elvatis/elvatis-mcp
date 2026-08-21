@@ -33,20 +33,54 @@ function toSshCfg(config: Config): SshConfig {
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
+/**
+ * The four remote commands, as pure functions so a test can read what would run.
+ *
+ * `remote_path` reaches every one of them in an OPERAND position - the FILE
+ * argument of ls, stat, base64 and mkdir. Single-quoting stops the shell from
+ * acting on the value; it does not stop those programs from acting on it,
+ * because the shell has already removed the quotes by the time they are
+ * started. A path of `-rf` or `--help` is, to each of them, an option.
+ *
+ * `--` is the POSIX marker for "no option follows". It is the right fix rather
+ * than a validator because a remote path is legitimately free-form: `--` makes
+ * a file genuinely named `-rf` work as a path instead of rejecting it, which an
+ * allow-list could not do.
+ */
+export function buildListCommand(remotePath: string): string {
+  return `ls -lah -- ${shellQuote(remotePath)} 2>/dev/null || echo "(directory not found)"`;
+}
+
+export function buildSizeCommand(remotePath: string): string {
+  return `stat -c%s -- ${shellQuote(remotePath)} 2>/dev/null || echo -1`;
+}
+
+export function buildReadCommand(remotePath: string): string {
+  return `base64 -- ${shellQuote(remotePath)}`;
+}
+
+export function buildWriteCommand(remotePath: string, base64Content: string): string {
+  // b64 is pure base64 (A-Z a-z 0-9 + / =) - no shell metacharacters. The path
+  // values are quoted for defence-in-depth and the directory operand carries
+  // the same end-of-options marker as the readers above. The redirection
+  // target is a shell redirect rather than an argv token, so quoting is the
+  // whole defence there and no marker applies.
+  const remoteDir = remotePath.replace(/\/[^/]+$/, '') || '.';
+  return `mkdir -p -- ${shellQuote(remoteDir)} && printf '%s' ${shellQuote(base64Content)}`
+    + ` | base64 -d > ${shellQuote(remotePath)}`;
+}
+
 export async function handleFileTransfer(
   args: { action: string; remote_path: string; local_path?: string },
   config: Config,
 ) {
   const cfg = toSshCfg(config);
 
-  // Shell-quote the remote path once; reuse in every branch.
-  const qPath = shellQuote(args.remote_path);
-
   switch (args.action) {
     case 'list': {
       const output = await sshExec(
         cfg,
-        `ls -lah ${qPath} 2>/dev/null || echo "(directory not found)"`,
+        buildListCommand(args.remote_path),
         10000,
       );
       return { success: true, path: args.remote_path, listing: output.trim() };
@@ -56,7 +90,7 @@ export async function handleFileTransfer(
       // Get file size first
       const sizeOut = await sshExec(
         cfg,
-        `stat -c%s ${qPath} 2>/dev/null || echo -1`,
+        buildSizeCommand(args.remote_path),
         5000,
       );
       const size = parseInt(sizeOut.trim(), 10);
@@ -70,7 +104,7 @@ export async function handleFileTransfer(
       // Read file as base64
       const b64 = await sshExec(
         cfg,
-        `base64 ${qPath}`,
+        buildReadCommand(args.remote_path),
         30000,
       );
       const content = Buffer.from(b64.trim(), 'base64');
@@ -115,14 +149,10 @@ export async function handleFileTransfer(
 
       const content = fs.readFileSync(args.local_path);
       const b64 = content.toString('base64');
-      // b64 is pure base64 (A-Z a-z 0-9 + / =) — no shell metacharacters.
-      // We still use shellQuote on the path values for defence-in-depth.
-      const remoteDir = args.remote_path.replace(/\/[^/]+$/, '') || '.';
-      const qDir = shellQuote(remoteDir);
 
       await sshExec(
         cfg,
-        `mkdir -p ${qDir} && printf '%s' ${shellQuote(b64)} | base64 -d > ${qPath}`,
+        buildWriteCommand(args.remote_path, b64),
         30000,
       );
 

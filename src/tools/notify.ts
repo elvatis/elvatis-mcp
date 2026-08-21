@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, SshConfig } from '../ssh.js';
+import { validateChannel, shellQuote } from '../validate.js';
 
 export const openclawNotifySchema = z.object({
   message: z.string().describe(
@@ -32,11 +33,25 @@ export async function handleOpenclawNotify(
 ) {
   const cfg = toSshCfg(config);
 
-  // Build the openclaw message send command
+  // Build the openclaw message send command.
+  //
+  // `--channel` was the last caller value in this repository that reached a
+  // command string with neither quoting nor validation. The zod enum is what
+  // has been holding it, which makes the safety of the command line a property
+  // of a schema three files away rather than of the line itself. It is now
+  // quoted and validated like every other value here, and like the identical
+  // `--channel` on the `openclaw cron add` line.
+  let safeChannel: string;
+  try {
+    safeChannel = validateChannel(args.channel);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
   const escapedMsg = args.message.replace(/'/g, "'\\''");
   const parts = [
     'openclaw', 'message', 'send',
-    '--channel', args.channel,
+    '--channel', shellQuote(safeChannel),
     '--message', `'${escapedMsg}'`,
   ];
 

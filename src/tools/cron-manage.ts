@@ -8,7 +8,12 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { sshExec, SshConfig } from '../ssh.js';
-import { validateScheduleValue, validateCronId, validateChannel } from '../validate.js';
+import {
+  validateScheduleValue,
+  validateCronExpression,
+  validateCronId,
+  validateChannel,
+} from '../validate.js';
 
 // --- Schemas ---
 
@@ -68,53 +73,53 @@ function escapeShell(s: string): string {
 
 // --- Handlers ---
 
-export async function handleCronCreate(
-  args: {
-    name: string;
-    message: string;
-    schedule: string;
-    model?: string;
-    channel?: string;
-    target?: string;
-    timezone?: string;
-    disabled?: boolean;
-  },
-  config: Config,
-) {
-  const cfg = toSshCfg(config);
+export interface CronCreateArgs {
+  name: string;
+  message: string;
+  schedule: string;
+  model?: string;
+  channel?: string;
+  target?: string;
+  timezone?: string;
+  disabled?: boolean;
+}
 
+/**
+ * The `openclaw cron add` command line, as a pure function so a test can read
+ * the argv this tool would hand the remote CLI.
+ *
+ * All three schedule branches validate now. Two of them were fixed when
+ * `--every` and `--at` turned out to accept a leading hyphen; the third was
+ * not, and it is the branch every schedule that is neither "every ..." nor
+ * "at ..." falls into. Leaving it would have moved the same value onto the
+ * same command line under a different flag.
+ *
+ * Quoting is not what closes this. `--cron '--announce'` and `--cron
+ * --announce` produce identical argv once the shell has removed the quotes;
+ * the leading-character rule in the validator is the part that does the work,
+ * and the quoting continues to answer the separate metacharacter question.
+ *
+ * Throws on an invalid value; the caller turns that into the tool's error shape.
+ */
+export function buildCronCreateCommand(args: CronCreateArgs): string {
   const parts = ['openclaw', 'cron', 'add'];
   parts.push('--name', `'${escapeShell(args.name)}'`);
   parts.push('--message', `'${escapeShell(args.message)}'`);
 
-  // Parse schedule type and validate the extracted value before use.
   if (args.schedule.startsWith('every ')) {
     const rawEvery = args.schedule.replace(/^every\s+/, '');
-    try {
-      parts.push('--every', `'${escapeShell(validateScheduleValue(rawEvery))}'`);
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
+    parts.push('--every', `'${escapeShell(validateScheduleValue(rawEvery))}'`);
   } else if (args.schedule.startsWith('at ') || args.schedule.startsWith('+')) {
     const rawAt = args.schedule.replace(/^at\s+/, '');
-    try {
-      parts.push('--at', `'${escapeShell(validateScheduleValue(rawAt))}'`);
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
+    parts.push('--at', `'${escapeShell(validateScheduleValue(rawAt))}'`);
   } else {
-    parts.push('--cron', `'${escapeShell(args.schedule)}'`);
+    parts.push('--cron', `'${escapeShell(validateCronExpression(args.schedule))}'`);
   }
 
   if (args.model) parts.push('--model', `'${escapeShell(args.model)}'`);
   if (args.channel) {
-    // Validated AND quoted, like every other value on this command line. This
-    // was the one that was neither, and it is the only one that reaches sshExec raw.
-    try {
-      parts.push('--channel', `'${escapeShell(validateChannel(args.channel))}'`);
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
+    // Validated AND quoted, like every other value on this command line.
+    parts.push('--channel', `'${escapeShell(validateChannel(args.channel))}'`);
     parts.push('--announce');
   }
   if (args.target) parts.push('--to', `'${escapeShell(args.target)}'`);
@@ -122,8 +127,21 @@ export async function handleCronCreate(
   if (args.disabled) parts.push('--disabled');
   parts.push('--json');
 
+  return parts.join(' ');
+}
+
+export async function handleCronCreate(args: CronCreateArgs, config: Config) {
+  const cfg = toSshCfg(config);
+
+  let cmd: string;
   try {
-    const output = await sshExec(cfg, parts.join(' '), 15000);
+    cmd = buildCronCreateCommand(args);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  try {
+    const output = await sshExec(cfg, cmd, 15000);
     try {
       const result = JSON.parse(output.trim());
       return { success: true, action: 'created', job: result };
@@ -151,7 +169,14 @@ export async function handleCronEdit(
   const parts = ['openclaw', 'cron', 'edit', safeId];
   if (args.name) parts.push('--name', `'${escapeShell(args.name)}'`);
   if (args.message) parts.push('--message', `'${escapeShell(args.message)}'`);
-  if (args.schedule) parts.push('--cron', `'${escapeShell(args.schedule)}'`);
+  if (args.schedule) {
+    // Same flag, same hazard, same rule as the fall-through branch of create.
+    try {
+      parts.push('--cron', `'${escapeShell(validateCronExpression(args.schedule))}'`);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
   if (args.model) parts.push('--model', `'${escapeShell(args.model)}'`);
   parts.push('--json');
 
