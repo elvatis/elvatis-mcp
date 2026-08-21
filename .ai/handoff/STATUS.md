@@ -1,3 +1,104 @@
+## 2026-08-22 - The three blocked pull requests were already shipped, and the sweep #64 asked for
+
+#63, #64 AND #66 ARE ALREADY ON `main`, CARRIED BY #65. The instruction for this
+session was to rebase them onto current `main` and get them green. They do not
+need a rebase; they need closing. #65 was the top of the linear stack recorded
+in the section below (`main` <- #66 <- #64 <- #63 <- #65), and each branch
+contained the ones under it, so squash-merging #65 merged all four at once.
+
+Checked by TREE comparison, not by `git log`. After a squash-merge the original
+commits keep their SHAs and patch-ids, so `git rev-list`, `git cherry` and
+`git branch --merged` all report these branches as unmerged; they are not. For
+each branch, every file it touched relative to the common base `c12c6e5` was
+diffed against `origin/main`:
+
+  #66  CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, check-version-unpublished.mjs
+       -> all byte-identical on main
+  #64  the above, plus src/validate.ts, src/tools/cron-manage.ts,
+       tests/unit.test.ts -> all byte-identical on main
+  #63  the above, plus .ai/handoff/LOG.md, .claude/commands/build.md
+       -> all byte-identical on main
+
+What still differs is `main` being AHEAD: the branches carry
+`@elvatis_com/aahp` 3.8.1 where main now carries 3.10.0, and they lack main's
+later STATUS.md and MANIFEST.json entries. Rebasing any of them would produce an
+empty pull request; merging one would DOWNGRADE the pinned AAHP CLI and drop
+`scripts/require-layer2-base.mjs` and `tests/security/aahp-gate.test.ts`. They
+were left untouched, not being this session's to close, and the three green
+check-marks each still shows are stale: all three read CONFLICTING/DIRTY, and a
+conflicting pull request runs no CI at all, so "no checks reported" is showing
+as the last green run rather than as a fresh one.
+
+THE SWEEP #64 ASKED FOR. #64 fixed `validateScheduleValue`, the one validator
+accepting a leading hyphen, on the one sink reaching the remote command line
+unquoted. The class it belongs to was swept across all 42 process sinks in
+`src/`, counted by script rather than by eye: 42 sink call sites in 19 files, 43
+`args.*` interpolations into command templates, 22 argv tokens built from a
+caller value.
+
+The class in one line: single-quoting decides whether the SHELL acts on a value
+and says nothing about whether the PROGRAM the shell starts acts on it, because
+the quotes are gone before that program runs. `--cron '--announce'` and `--cron
+--announce` are identical argv. Such a value contains no shell metacharacter, so
+every metacharacter test in the suite passes over it.
+
+Still reachable in two positions, needing two different fixes:
+
+  OPERAND positions, fixed at the sink with the POSIX `--` marker (and grep's
+  `-e`), because a path and a search term are legitimately free-form and a
+  validator would reject real input: `openclaw_memory_search` (the term is
+  grep's PATTERN, and GNU grep permutes), `openclaw_logs` (`filter` likewise,
+  in both fallbacks of the gateway and agent branches; `path` is tail's FILE,
+  where `-f` turned a log read into a follow that holds the SSH connection open
+  until the timeout), and `file_transfer` (`remote_path` is an operand of ls,
+  stat, base64 and mkdir).
+
+  OPTION-VALUE positions, where `--` cannot help and the leading character has
+  to be refused: `openclaw cron add --cron`, the FALL-THROUGH BRANCH OF THE
+  FUNCTION #64 FIXED, three lines below it - every schedule that is not
+  "every ..." or "at ..." lands there and was forwarded verbatim; the same flag
+  on `cron edit`; and `openclaw_notify --channel`, the last caller value in the
+  tree that reached a command string with neither quoting nor validation, held
+  only by a zod enum three files away.
+
+TESTED BY CONSEQUENCE. The tests tokenise the command the way a POSIX shell
+does, find the token the caller controls, and assert the receiving program
+cannot read it as an option: `--` earlier in the SAME pipeline segment, or `-e`
+immediately before it. Presence is asserted before safety, so a builder that
+stopped emitting the value cannot leave the assertion passing while checking
+nothing. The assertion and the tokeniser have their own both-directions tests,
+including one that the assertion FAILS on an unprotected command.
+
+The assertion caught two of its own tests being wrong: `$files` is a shell
+variable rather than a caller value, and `-r` collides with the literal
+`sort -r` in the same command.
+
+MUTATION PROOF, run after committing rather than before, so restoring could not
+delete the fix. Three independent mutations, each asserting the substitution had
+actually changed the file before the suite was re-run: dropping `--` from the ls
+operand (2 red), dropping `-e` and `--` from the memory grep (3 red), and
+neutering the leading-hyphen refusal in `validateCronExpression` (3 red).
+Baseline and restore both 184 pass / 0 fail, and `git status` clean afterwards.
+
+FOUND AND NOT FIXED, deliberately:
+
+  - `--model` in claude_run, codex_run and gemini_run has no validator and
+    reaches argv as its own token. Issue #69 already covers the Windows half of
+    that sink (cmd.exe quoting in `spawnLocal`); the flag-injection facet is not
+    the same bug and is not covered by it.
+  - `src/tools/llama-server.ts` calls `spawn()` directly with `shell: true` on
+    Windows AND an args array - the exact pattern `src/spawn.ts` exists to avoid
+    (DEP0190) and documents as unsafe. `model_path`, `cache_type_k/v` and
+    `extra_args` all reach that line; `extra_args` is spread into argv verbatim
+    by design. This is a second instance of #69's root cause in a file #69 does
+    not name, and it is local execution on the MCP host rather than remote.
+  - `openclaw-deploy.ts` shell-quotes the default script dir `~/deploy`, which
+    stops the tilde expanding: `bash '~/deploy'/deploy-api.sh` looks for a
+    literal `~` directory. Functional, not security, and pre-existing.
+  - The em-dash forbidden pattern in `aahp.config.json` does not run. Measured,
+    not inferred: `tests/unit.test.ts` on `main` contains 10 U+2014 characters
+    and every gate is green. That is issue #67, now with a count behind it.
+
 ## 2026-08-21 - The four open pull requests are one linear stack, and all four are green
 
 WHAT WAS RED AND WHY. All three of #63, #64 and #65 failed `version is not
