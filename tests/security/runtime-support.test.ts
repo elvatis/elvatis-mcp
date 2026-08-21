@@ -107,6 +107,25 @@ function collectPins(): Pin[] {
   return pins
 }
 
+/**
+ * Only the majors that come from a `strategy.matrix.node-version`, ignoring the
+ * standalone step pins. Kept separate from collectPins() on purpose: the union
+ * of the two cannot answer "did the matrix survive", which is what let the first
+ * version of the vacuity guard pass over an emptied matrix.
+ */
+function matrixPins(): number[] {
+  const majors: number[] = []
+  for (const file of readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f))) {
+    const doc = parse(readFileSync(join(WORKFLOWS, file), 'utf8')) as Record<string, any>
+    for (const [jobName, job] of Object.entries(doc?.jobs ?? {})) {
+      const matrix = (job as any)?.strategy?.matrix?.['node-version']
+      if (!Array.isArray(matrix)) continue
+      for (const v of matrix) majors.push(majorOf(String(v), `${file}:${jobName} matrix`))
+    }
+  }
+  return majors
+}
+
 function majorOf(value: string, where: string): number {
   const m = /^v?(\d+)/.exec(value.trim())
   assert.ok(m, `${where}: cannot read a Node major out of ${JSON.stringify(value)}`)
@@ -133,12 +152,26 @@ function enginesFloor(): number {
   return Number(m![1])
 }
 
-test('every workflow that sets up Node pins at least one runtime', () => {
+test('the build matrix still exercises more than one runtime', () => {
   const pins = collectPins()
   assert.ok(
     pins.length > 0,
     'no node-version found in any workflow. Every other assertion in this file is ' +
       'vacuously true over an empty list, so this failing means the file is asserting nothing.',
+  )
+
+  // Measured 2026-08-21: the first version of this test asserted only that the
+  // GLOBAL pin list was non-empty. Emptying `matrix.node-version` left it green,
+  // because the standalone `node-version: '24'` pins in the other jobs kept the
+  // list non-empty on their own. The multi-runtime coverage vanished and nothing
+  // went red - the exact failure this test was written to prevent, in this test.
+  // So bind the matrix itself, not the union it contributes to.
+  const matrixMajors = matrixPins()
+  assert.ok(
+    matrixMajors.length >= 2,
+    `the build matrix exercises ${matrixMajors.length} runtime(s) (${matrixMajors.join(', ') || 'none'}). ` +
+      `A package that publishes a RANGE in engines.node and tests one point of it is asserting ` +
+      `compatibility it never checked. Emptying or single-valuing this matrix must not be silent.`,
   )
 })
 
