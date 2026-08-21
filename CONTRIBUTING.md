@@ -23,6 +23,22 @@ Thanks for your interest in contributing to elvatis-mcp!
 2. Import and register in `src/index.ts` using `registerTool()` (never call `server.tool()` directly).
 3. Update the tool table in `README.md`.
 
+## Releases
+
+Releases are cut from a pushed `v*` tag and published by GitHub Actions.
+[SECURITY.md](SECURITY.md#release-integrity) describes that path in full.
+
+One rule matters while you are working on `main`: **the version in
+`package.json` is always one that has not been published yet.** As soon as a
+version ships, the number is raised past it.
+
+If `npm run version-guard` fails on your pull request, read it as a statement
+about `main` rather than about your branch: the default branch is carrying an
+already-published version, so nothing merged into it can be installed until the
+number moves. Raise `version`, and open the matching section in
+[CHANGELOG.md](CHANGELOG.md) in the same change: the changelog gate requires the
+topmost dated release heading to equal the version in `package.json`.
+
 ## Code Style
 
 - Follow existing patterns in the codebase.

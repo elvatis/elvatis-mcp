@@ -1,3 +1,182 @@
+## 2026-08-21 - `main` must always carry an unreleased version, and the guard now says so
+
+`1.3.0` shipped today from the commit that is still `main`, and the number was
+never vacated. Within hours all three open pull requests were red on `version is
+not already published`, none of them having touched a version. The guard is right
+and stays: `main` carrying a published number means anything merged there is
+unpublishable, which is the state that left two security fixes uninstallable
+between 2026-04-15 and 2026-08-21 while every check stayed green.
+
+What was missing was the convention, not the gate. It is now written where a
+public reader meets it:
+
+- SECURITY.md gains step 4 of the release path and a section, `main` always
+  carries an unreleased version, stating the rule and the four-month incident
+  that motivates it.
+- CONTRIBUTING.md repeats it for contributors, including how to read a red
+  version-guard: it is a statement about `main`, not about your branch.
+- The guard's failure message now names the convention and says the fix belongs
+  on `main`. Mutation proof: reverting package.json to 1.3.0 returns exit 1 with
+  the new text present; restored, exit 0. Full suite 175/175 in 5.8s.
+- `package.json` moves to 1.3.1, which is the rule applied to today's state.
+
+Also corrected: SECURITY.md claimed the tree is built on Node 18, 20 and 22. The
+matrix moved to 22 and 24 in #62 and the prose stayed behind, inside a section
+whose own claim is that everything in it is checkable against the workflow. It
+now points at the matrix rather than restating it, so it cannot drift again. The
+five em dashes the file carried are gone; `aahp.config.json` forbids them and
+nothing was catching them in that file.
+
+**Measured, for whoever sequences the merges.** The 1.3.0 -> 1.3.1 bump reported
+as pushed to `chore/aahp-3.10.0` is NOT on that branch; all three PR heads still
+read 1.3.0, and #65's only `package.json` change is the AAHP devDependency and
+the test script. The three also do not rebase cleanly onto one another: every one
+of them rewrites `.ai/handoff/MANIFEST.json`, whose session id, timestamps,
+checksums and line counts are regenerated per session, so the second and third to
+merge conflict there by construction. #64 collides on STATUS.md as well. Resolve
+MANIFEST.json by rerunning `npx aahp manifest .` after each merge rather than
+hand-editing it; resolve STATUS.md by keeping both sides.
+
+**The convention collides with the AAHP changelog grammar, and the collision is
+the part worth knowing.** `aahp doctor` runs `changelog-format`, whose R6 requires
+the topmost dated release heading in CHANGELOG.md to equal `package.json`. So
+vacating the version turns that gate red until the new number also has its own
+`## [X.Y.Z] - YYYY-MM-DD` section. `## [Unreleased]` does not satisfy R6, and
+`## [1.3.1] - Unreleased` violates R1, which demands a real calendar date.
+Measured rather than guessed: main's own CHANGELOG passes with `package.json` at
+1.3.0 and fails with it at 1.3.1, nothing else changed. Both documents now say the
+version and its changelog section move together, because a gate enforces exactly
+that, and the next person to apply the convention would otherwise meet a red check
+with no idea why.
+
+Open and Emre's: no status check is required on this repository
+(`required_status_checks` is null, recorded in aahp-verify.yml), so the
+version-guard, CI and Scan are all advisory and a red pull request can still be
+merged by anyone with push access.
+## 2026-08-21 - The 1.3.0 tarball was checked against main, and the schedule value was still a flag
+
+THE PUBLISHED ARTIFACT WAS VERIFIED RATHER THAN ASSUMED, because assuming is
+what cost four months. `npm pack @elvatis_com/elvatis-mcp@1.3.0` fetched the
+tarball from the registry; `dist/validate.js` carries `validateChannel` and
+`validateScheduleValue`, `dist/tools/cron-manage.js` carries `escapeShell` and
+calls all three, and the raw `parts.push('--channel', args.channel)` is gone.
+The negative grep was itself guarded: the same pattern was run against a
+synthetic vulnerable line first and matched it, so its zero hits on the shipped
+file mean absence rather than a typo in the pattern.
+
+Stronger than the greps: `origin/main` at c12c6e5 was built into a clean
+worktree and the whole `dist/` tree compared file by file against the tarball.
+128 files on each side, none missing from either, and after normalising line
+endings the SHA-256 over the entire tree is identical
+(a64126de6ca9ab30c4c3c1e24fee08849dfbebcdac669f34a1c96e077919f5d8). The only
+three byte-level differences are CRLF inside template literals in
+dashboard.js, routing-rules.js and splitter.js, produced by the Windows
+checkout and not by the publish. **1.3.0 is exactly what main says it is.**
+
+The published validators were then EXECUTED, not just read: nine injection
+payloads against `validateChannel` are all refused and five legitimate channel
+names still pass.
+
+WHAT THAT EXERCISE FOUND. `validateScheduleValue` accepted `../../etc` and
+`-rf`. It was the only validator in the module that accepted a leading hyphen -
+`validateContainerName`, `validateServiceName`, `validateAgentName`,
+`validateDeployService` and `validateChannel` all refuse one, and the module
+header names leading hyphens and traversal as part of the contract it enforces.
+Its own docstring already claimed to reject traversal sequences.
+
+It matters at this call site because `--every` and `--at` are the only two
+values on the `openclaw cron add` line pushed as a bare token; every other one
+goes in as `'${escapeShell(x)}'`. A schedule of `every --announce` therefore put
+`--announce` on the remote command line as a flag. Impact is bounded - the
+allow-list still admits no space, quote or metacharacter, so this is argument
+injection into `openclaw cron add`, not arbitrary execution - but it is the
+class the module exists to prevent, and it is the same shape as the `--channel`
+defect fixed on 2026-08-19.
+
+Fixed by constraining the FIRST character to alphanumeric or `+` separately
+from the body allow-list, so `+20m` and the internal hyphens of an ISO
+timestamp keep working while `-6h` does not, plus a `..` check. The two call
+sites are now quoted like every other value.
+
+THREE MUTATIONS, AND THE THIRD ONE IS REPORTED AS IT CAME OUT. Reverting the
+leading-character rule turns 8 tests red including both handler-level cases;
+deleting the `..` check turns 2 red. **Reverting the call-site quoting turns
+NOTHING red.** That is the honest result and it is not a hole in the tests: the
+validator's allow-list already excludes every character quoting would defend
+against, so the quoting is only load-bearing if the allow-list is later widened,
+and this suite states in its own header that it runs no SSH and asserts no
+command string. Recorded here so nobody later reads "two layers" as "two
+proven layers". Each mutation asserted that its substitution actually applied,
+because a mutation that fails to apply looks exactly like a passing gate.
+
+The 15 new tests assert both directions - every documented schedule form is
+asserted to still be ACCEPTED - so a validator that simply rejected everything
+would fail the block rather than pass it.
+
+HARDWARE IN THE HANDOFF DOCS, AND WHY REMOVING IT DOES NOT CLOSE ANYTHING.
+`.ai/handoff/LOG.md` and `.claude/commands/build.md` named the workstation CPU
+and GPU; both are internal documents where the part number serves no reader, so
+it is removed in a separate PR. But `README.md` and `BENCHMARKS.md` publish the
+same CPU and GPU deliberately, as the reference hardware the benchmark numbers
+were measured on, and stripping them there would turn a reproducible benchmark
+into an anonymous one. So the hardware remains publicly readable in this
+repository on purpose. Treating the handoff edit as "the hardware is no longer
+public" would be wrong, and the recommendation is to keep the benchmark tables
+as they are.
+
+VERSION-GUARD IS NOW RED ON EVERY PULL REQUEST, INCLUDING ONES THAT SHIP
+NOTHING. This is the steady state rather than a one-off, and it is the item most
+worth a decision.
+
+The job has no `if:`, no `paths:` filter and no `continue-on-error` - all
+deliberate, and `tests/security/version-guard.test.ts` asserts each of them - so
+it runs on every pull request and asks one question: is the version in
+`package.json` already on the registry? After any release the answer is yes, and
+stays yes until someone bumps. So from the moment 1.3.0 was published, every
+pull request against this repository fails that check until the version moves.
+
+The docs-only PR opened today demonstrates it: it changes no shippable file at
+all and is still red, because the guard reads the version string rather than
+whether the branch changes anything shippable. Both of today's PRs are red on
+it, and so would be a README typo fix.
+
+The intent behind it is sound and should be kept - `publish` carries
+`needs: [build, version-guard]`, which is the one place a check can hold
+something up while `required_status_checks` is null. The misfire is the separate
+PR-visible job, not the gate on the release path. A permanently red check is one
+people stop reading, and this repository has no required checks, so the only
+thing that check currently does is train a reader to ignore red.
+
+Options, none taken here because they are release policy:
+
+  1. Bump `version` in whichever PR lands a shippable change. Matches the
+     original intent most closely; awkward with two PRs open at once, since both
+     would claim the same number and collide.
+  2. Fail on the pull request only when the branch touches shippable source
+     (`src/`, `package.json`), so docs and CI PRs stay green while a code change
+     still has to move the number.
+  3. Keep the guard only where it is already load-bearing - `needs:` on
+     `publish` - and drop the separate PR job, accepting that the version moves
+     at release time rather than at merge time.
+
+Open and Emre's:
+
+- **c12c6e5 has a German subject line on a public repository** ("Node 18 und 20
+  sind end of life, und der publish-Job lief auf einem davon"). The PR title and
+  body were corrected to English after the merge; the commit was not, and it is
+  the first thing a stranger sees in `git log` and on the commits page. It is
+  already on `main`, so correcting it means rewriting published history - a
+  force-push that changes that SHA and every SHA after it, breaking anyone's
+  clone and any link that names the old hash. Not done here, and the
+  recommendation is to leave it and keep future subjects in English rather than
+  to rewrite. Several older entries in this file and in LOG.md are German too;
+  that is the same question at a larger scale and is worth one deliberate
+  decision rather than a per-commit one.
+- Whether the reference-hardware tables in `README.md` and `BENCHMARKS.md` stay.
+  Recommendation above: keep them.
+- `required_status_checks` on `main` is still `null`, unchanged from the earlier
+  measurement today, so CI, Scan and AAHP Verify remain advisory on both of
+  today's PRs. Tag protection is likewise still absent.
 ## 2026-08-21 - The handoff docs named the workstation, and the benchmark tables still do
 
 `.ai/handoff/LOG.md` and `.claude/commands/build.md` carried the exact CPU and

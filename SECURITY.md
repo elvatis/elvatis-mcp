@@ -33,7 +33,7 @@ We appreciate responsible disclosure.
 `@elvatis_com/elvatis-mcp` is built and published by GitHub Actions from this
 repository. This section states what that path does and does not guarantee, so
 you can decide how much to rely on it. Everything here is checkable against
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — nothing depends on
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) - nothing depends on
 taking our word for it.
 
 ### How a release happens
@@ -41,12 +41,60 @@ taking our word for it.
 A maintainer pushes a tag of the form `v1.2.3`. That, and only that, starts the
 release path:
 
-1. **`build`** typechecks, builds and tests the tree on Node 18, 20 and 22.
+1. **`build`** typechecks, builds and tests the tree on every Node major in
+   the `build` matrix of [`ci.yml`](.github/workflows/ci.yml). This document
+   deliberately does not repeat those numbers. It used to, and when the matrix
+   dropped two end-of-life runtimes on 2026-08-21 the copy here stayed behind,
+   in a section whose whole claim is that you need not take our word for it.
+   [`tests/security/runtime-support.test.ts`](tests/security/runtime-support.test.ts)
+   holds the matrix itself to `engines.node` and refuses an end-of-life floor.
 2. **`publish`** runs only after `build` succeeds. It checks out the exact commit
    the tag pointed at, refuses to continue if `package.json` disagrees with the
    tag name, and publishes with npm OIDC trusted publishing and `--provenance`.
    No long-lived registry token is involved.
 3. **`release`** cuts the GitHub Release for the same commit.
+4. **The number that just shipped is vacated on `main`**, so the default branch
+   never carries a version the registry has already issued. This is a step of
+   the release, not preparation for the next one. See below.
+
+### `main` always carries an unreleased version
+
+A version number that has shipped is spent. npm never accepts a number twice,
+not even one that was unpublished, and the tag for it already points at the
+commit that shipped. So the moment `v1.3.0` reaches the registry, `1.3.0` in
+`package.json` stops describing something that can be released and starts
+describing something that cannot.
+
+The convention is therefore:
+
+> As soon as a version ships, raise `version` in `package.json` past it.
+> `main` carries an unreleased number at all times.
+
+Raise it to the next patch by default. If a change that lands later warrants a
+minor or a major, raise it again then. The placeholder exists so that `main` is
+always releasable; it is not a prediction of the next release's size.
+
+Opening that number's section in [CHANGELOG.md](CHANGELOG.md) is part of the
+same step rather than a follow-up. The changelog gate requires the topmost
+dated release heading to equal the version in `package.json`, so the number and
+its entry move together or the gate fails; what the release contains then
+accumulates under that heading until the tag is pushed. The date is the day the
+section was opened, and it is corrected at freeze time if the release slips.
+
+**Why this is a rule and not a preference.** Between 2026-04-15 and 2026-08-21
+this package sat on a published `1.2.4` while two security fixes were merged to
+`main`. Both were correct, both were reviewed, and for four months neither could
+be installed by anyone, because the only number the tree offered was one the
+registry had already issued. Nothing went red in that window: the build, the
+tests and the publish guards all passed, because each of them gates a release
+path that was never reached.
+
+`npm run version-guard` now fails a pull request whose `package.json` version is
+already on the registry, and it runs on every pull request rather than only at
+release time. Note where it points when it fires. The version it objects to is
+almost never something the branch under review introduced; it is whatever `main`
+carries. A pull request that is red on this check while touching nothing
+version-related is reporting that a release finished without step 4.
 
 ### What that path guarantees
 
@@ -62,7 +110,7 @@ which runs on every pull request:
 | The tag name must equal the `version` in `package.json` | The registry, the git tag and the GitHub Release cannot drift apart and name three different things. |
 
 The guard evaluates the workflow rather than pattern-matching it, and it scans
-every file in `.github/workflows/`, not one filename — this package's first 32
+every file in `.github/workflows/`, not one filename - this package's first 32
 versions were published from a second workflow file that no longer exists.
 
 ### What that path does NOT guarantee, today
@@ -85,7 +133,7 @@ that is an ordinary pushed tag, indistinguishable from a real release to every
 check described above.
 
 **Scope of that exposure.** It requires push access to this repository. It is not
-reachable from a fork or a pull request — neither can create a tag here — so it
+reachable from a fork or a pull request - neither can create a tag here - so it
 is not an avenue for an outside contributor. It is a statement about how much a
 compromised or mistaken maintainer account can do without a second pair of eyes,
 which is exactly the question a supply-chain consumer is entitled to ask.
@@ -102,7 +150,7 @@ which is exactly the question a supply-chain consumer is entitled to ask.
   mints carries that environment claim. Because the reviewer requirement is a
   repository setting rather than a line in the workflow, and because the registry
   is configured to accept only tokens carrying the claim, editing the workflow
-  cannot remove the gate — a job that drops the environment mints a token the
+  cannot remove the gate - a job that drops the environment mints a token the
   registry refuses. It fails closed. The cost is that every release waits for a
   human.
 
