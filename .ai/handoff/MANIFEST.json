@@ -11,9 +11,9 @@
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:636ed48213ebd5f0a52c7babb98c6d9adb7574361a8e96984145b8e9ea06118b",
-      "updated": "2026-08-21T17:24:08Z",
-      "lines": 242,
+      "checksum": "sha256:898fc4c0a800dccf939d0963e5037a3c5c6c48bd64e3703c115467830d1ca298",
+      "updated": "2026-08-21T18:28:01Z",
+      "lines": 332,
       "summary": "Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen"
     },
     "NEXT_ACTIONS.md": {

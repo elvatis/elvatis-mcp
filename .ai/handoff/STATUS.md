@@ -1,3 +1,93 @@
+## 2026-08-21 - The 1.3.0 tarball was checked against main, and the schedule value was still a flag
+
+THE PUBLISHED ARTIFACT WAS VERIFIED RATHER THAN ASSUMED, because assuming is
+what cost four months. `npm pack @elvatis_com/elvatis-mcp@1.3.0` fetched the
+tarball from the registry; `dist/validate.js` carries `validateChannel` and
+`validateScheduleValue`, `dist/tools/cron-manage.js` carries `escapeShell` and
+calls all three, and the raw `parts.push('--channel', args.channel)` is gone.
+The negative grep was itself guarded: the same pattern was run against a
+synthetic vulnerable line first and matched it, so its zero hits on the shipped
+file mean absence rather than a typo in the pattern.
+
+Stronger than the greps: `origin/main` at c12c6e5 was built into a clean
+worktree and the whole `dist/` tree compared file by file against the tarball.
+128 files on each side, none missing from either, and after normalising line
+endings the SHA-256 over the entire tree is identical
+(a64126de6ca9ab30c4c3c1e24fee08849dfbebcdac669f34a1c96e077919f5d8). The only
+three byte-level differences are CRLF inside template literals in
+dashboard.js, routing-rules.js and splitter.js, produced by the Windows
+checkout and not by the publish. **1.3.0 is exactly what main says it is.**
+
+The published validators were then EXECUTED, not just read: nine injection
+payloads against `validateChannel` are all refused and five legitimate channel
+names still pass.
+
+WHAT THAT EXERCISE FOUND. `validateScheduleValue` accepted `../../etc` and
+`-rf`. It was the only validator in the module that accepted a leading hyphen -
+`validateContainerName`, `validateServiceName`, `validateAgentName`,
+`validateDeployService` and `validateChannel` all refuse one, and the module
+header names leading hyphens and traversal as part of the contract it enforces.
+Its own docstring already claimed to reject traversal sequences.
+
+It matters at this call site because `--every` and `--at` are the only two
+values on the `openclaw cron add` line pushed as a bare token; every other one
+goes in as `'${escapeShell(x)}'`. A schedule of `every --announce` therefore put
+`--announce` on the remote command line as a flag. Impact is bounded - the
+allow-list still admits no space, quote or metacharacter, so this is argument
+injection into `openclaw cron add`, not arbitrary execution - but it is the
+class the module exists to prevent, and it is the same shape as the `--channel`
+defect fixed on 2026-08-19.
+
+Fixed by constraining the FIRST character to alphanumeric or `+` separately
+from the body allow-list, so `+20m` and the internal hyphens of an ISO
+timestamp keep working while `-6h` does not, plus a `..` check. The two call
+sites are now quoted like every other value.
+
+THREE MUTATIONS, AND THE THIRD ONE IS REPORTED AS IT CAME OUT. Reverting the
+leading-character rule turns 8 tests red including both handler-level cases;
+deleting the `..` check turns 2 red. **Reverting the call-site quoting turns
+NOTHING red.** That is the honest result and it is not a hole in the tests: the
+validator's allow-list already excludes every character quoting would defend
+against, so the quoting is only load-bearing if the allow-list is later widened,
+and this suite states in its own header that it runs no SSH and asserts no
+command string. Recorded here so nobody later reads "two layers" as "two
+proven layers". Each mutation asserted that its substitution actually applied,
+because a mutation that fails to apply looks exactly like a passing gate.
+
+The 15 new tests assert both directions - every documented schedule form is
+asserted to still be ACCEPTED - so a validator that simply rejected everything
+would fail the block rather than pass it.
+
+HARDWARE IN THE HANDOFF DOCS, AND WHY REMOVING IT DOES NOT CLOSE ANYTHING.
+`.ai/handoff/LOG.md` and `.claude/commands/build.md` named the workstation CPU
+and GPU; both are internal documents where the part number serves no reader, so
+it is removed in a separate PR. But `README.md` and `BENCHMARKS.md` publish the
+same CPU and GPU deliberately, as the reference hardware the benchmark numbers
+were measured on, and stripping them there would turn a reproducible benchmark
+into an anonymous one. So the hardware remains publicly readable in this
+repository on purpose. Treating the handoff edit as "the hardware is no longer
+public" would be wrong, and the recommendation is to keep the benchmark tables
+as they are.
+
+Open and Emre's:
+
+- **c12c6e5 has a German subject line on a public repository** ("Node 18 und 20
+  sind end of life, und der publish-Job lief auf einem davon"). The PR title and
+  body were corrected to English after the merge; the commit was not, and it is
+  the first thing a stranger sees in `git log` and on the commits page. It is
+  already on `main`, so correcting it means rewriting published history - a
+  force-push that changes that SHA and every SHA after it, breaking anyone's
+  clone and any link that names the old hash. Not done here, and the
+  recommendation is to leave it and keep future subjects in English rather than
+  to rewrite. Several older entries in this file and in LOG.md are German too;
+  that is the same question at a larger scale and is worth one deliberate
+  decision rather than a per-commit one.
+- Whether the reference-hardware tables in `README.md` and `BENCHMARKS.md` stay.
+  Recommendation above: keep them.
+- `required_status_checks` on `main` is still `null`, unchanged from the earlier
+  measurement today, so CI, Scan and AAHP Verify remain advisory on both of
+  today's PRs. Tag protection is likewise still absent.
+
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
 Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
