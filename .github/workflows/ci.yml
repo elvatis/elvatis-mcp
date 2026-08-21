@@ -64,6 +64,23 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
+      - name: Refuse to publish a version that disagrees with the tag
+        # `publish.yml` carried this check from the first release until it was
+        # deleted on 2026-06-27 in the move to OIDC trusted publishing, and the
+        # move did not bring it across. Without it the tag and the version it
+        # ships are free to disagree: tagging `v1.3.0` on a tree whose
+        # package.json still reads `1.2.5` republishes 1.2.5 - or fails as
+        # already-published - while the GitHub Release announces v1.3.0. The
+        # registry, the tag and the release then name three different things.
+        # tests/security/publish-guard.test.ts EXECUTES this script.
+        run: |
+          pkg="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pkg" != "$tag" ]; then
+            echo "package.json version ($pkg) does not match tag $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "publishing $pkg from tag $GITHUB_REF_NAME"
       - run: npm ci
       - run: npm run build --if-present
       - name: Upgrade npm for OIDC trusted publishing
