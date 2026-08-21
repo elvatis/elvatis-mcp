@@ -3,78 +3,78 @@
   "project": "elvatis-mcp",
   "last_session": {
     "agent": "cli-tool",
-    "session_id": "cli-1787351238",
-    "timestamp": "2026-08-21T22:27:18Z",
-    "commit": "d77c13d",
+    "session_id": "cli-1787353896",
+    "timestamp": "2026-08-21T23:11:37Z",
+    "commit": "87c6cd4",
     "phase": "idle",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:0f6bad3ae16faabb6489af3f862342efd4ae40217334c6178ace52e4402105dc",
-      "updated": "2026-08-21T22:25:25Z",
-      "lines": 783,
-      "summary": "session was to rebase them onto current `main` and get them green. They do not"
+      "checksum": "sha256:51b44581847ba319cab684d085d4ba31d199bf05a32871db2dc677f07f5f9405",
+      "updated": "2026-08-21T23:11:34Z",
+      "lines": 853,
+      "summary": "ISSUE #70, CLOSED BY MEASUREMENT RATHER THAN BY ASSERTION. The `test` script"
     },
     "NEXT_ACTIONS.md": {
       "checksum": "sha256:3e439ec837911971a3d5303d76c072d06f0c7897ed2e4a2f8575baa900f8f7ff",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 163,
       "summary": "- `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json`"
     },
     "LOG.md": {
       "checksum": "sha256:dc616ac063fa4368d704bb55a4e631df15ece4a6dd3f71e8f38ca6207ed58ac5",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 24,
       "summary": "**What happened:**"
     },
     "LOG-ARCHIVE.md": {
       "checksum": "sha256:7f4fcbe216b91b869ae80004c9ad17e46987b2ff173c069cbae0da7aee7db1f5",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 10,
       "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
       "checksum": "sha256:443b83555b9597eb5d124dd7f53b5948790a597c1d52fefef9874205a9a7236d",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 51,
       "summary": "```"
     },
     "TRUST.md": {
       "checksum": "sha256:050cc4dde9249cd2a49bb0f4d00ee65722b0890937ead51a4bc37e1867b07620",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 84,
       "summary": "| Level | Meaning |"
     },
     "CONVENTIONS.md": {
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 38,
       "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 167,
       "summary": "| Agent | Model | Role | Responsibility |"
     },
     "GROUNDING.md": {
       "checksum": "sha256:7ef8cece585dc5defb4285175b9ba560d5469675df553d4ce28ec9e7aec24343",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 209,
       "summary": "This register EXTENDS existing AAHP machinery; it does not fork or replace it. It"
     },
     "pii-allowlist.json": {
       "checksum": "sha256:7c1051f6e2bc3943b7c1dbe4da229694455681b8875a346c99279e555edb733f",
-      "updated": "2026-08-21T22:07:18Z",
+      "updated": "2026-08-21T23:06:11Z",
       "lines": 4,
       "summary": "{"
     }
   },
-  "quick_context": "session was to rebase them onto current `main` and get them green. They do not - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
+  "quick_context": "ISSUE #70, CLOSED BY MEASUREMENT RATHER THAN BY ASSERTION. The `test` script - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 16461,
-    "full_read": 21256
+    "manifest_plus_core": 17350,
+    "full_read": 22145
   }
 }
