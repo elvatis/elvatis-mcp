@@ -3,78 +3,78 @@
   "project": "elvatis-mcp",
   "last_session": {
     "agent": "cli-tool",
-    "session_id": "cli-1787333051",
-    "timestamp": "2026-08-21T17:24:11Z",
-    "commit": "af3084b",
+    "session_id": "cli-1787346739",
+    "timestamp": "2026-08-21T21:12:19Z",
+    "commit": "1ea3944",
     "phase": "idle",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:770c55e2114b34b245276ee41063477318a41920175b48239672c2174848dfc0",
-      "updated": "2026-08-21T18:36:23Z",
-      "lines": 367,
-      "summary": "Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen"
+      "checksum": "sha256:38ea291e8b785636da6930cc8a18a6f36cdca7549883b965697d700ed8b62701",
+      "updated": "2026-08-21T21:11:38Z",
+      "lines": 422,
+      "summary": "`1.3.0` shipped today from the commit that is still `main`, and the number was"
     },
     "NEXT_ACTIONS.md": {
       "checksum": "sha256:3e439ec837911971a3d5303d76c072d06f0c7897ed2e4a2f8575baa900f8f7ff",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 163,
       "summary": "(no summary available)"
     },
     "LOG.md": {
       "checksum": "sha256:318c39119af5704c4e2cbc7ba47869958fb20f59e7c0d10c5a627f38c07df31f",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 24,
       "summary": "(no summary available)"
     },
     "LOG-ARCHIVE.md": {
       "checksum": "sha256:7f4fcbe216b91b869ae80004c9ad17e46987b2ff173c069cbae0da7aee7db1f5",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 10,
       "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
       "checksum": "sha256:443b83555b9597eb5d124dd7f53b5948790a597c1d52fefef9874205a9a7236d",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 51,
       "summary": "(no summary available)"
     },
     "TRUST.md": {
       "checksum": "sha256:050cc4dde9249cd2a49bb0f4d00ee65722b0890937ead51a4bc37e1867b07620",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 84,
       "summary": "(no summary available)"
     },
     "CONVENTIONS.md": {
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 38,
       "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 167,
       "summary": "(no summary available)"
     },
     "GROUNDING.md": {
       "checksum": "sha256:7ef8cece585dc5defb4285175b9ba560d5469675df553d4ce28ec9e7aec24343",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 209,
       "summary": "(no summary available)"
     },
     "pii-allowlist.json": {
       "checksum": "sha256:7c1051f6e2bc3943b7c1dbe4da229694455681b8875a346c99279e555edb733f",
-      "updated": "2026-08-21T17:18:37Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 4,
       "summary": "{"
     }
   },
-  "quick_context": "Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen (no summary available) ",
+  "quick_context": "`1.3.0` shipped today from the commit that is still `main`, and the number was (no summary available) ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 9469,
-    "full_read": 14272
+    "manifest_plus_core": 11777,
+    "full_read": 16580
   }
 }
