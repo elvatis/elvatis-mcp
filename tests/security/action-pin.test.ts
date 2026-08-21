@@ -43,7 +43,8 @@
  * WHAT THIS FILE CANNOT PROVE, SO IT DOES NOT CLAIM IT: that a bump ever gets
  * MERGED. `allow_auto_merge` is `false` on this repository and `main` has no
  * required status checks (both measured 2026-08-21, both repository settings,
- * both unreachable from any file here). That gap is elvatis/ideabase#337.
+ * both unreachable from any file here). That gap is open with the maintainer,
+ * and SECURITY.md records the same class of gap on the release path.
  *
  * The YAML files are PARSED, never grepped. A `dependency-name` may be quoted,
  * a wildcard may match without spelling the action out, and the strings
@@ -171,13 +172,13 @@ describe('the supply-chain scanner is pinned, and the pin can still be bumped', 
   });
 
   it('bumps that ecosystem daily, because under a pin the schedule is the feed', () => {
-    // D-065. The action carries its malware indicator set inside the release the
+    // The action carries its malware indicator set inside the release the
     // SHA names, so the interval IS the indicator freshness. v5.26.4 through
     // v5.26.7 shipped on four consecutive days, 2026-08-16 to -19.
     assert.equal(
       actionsEntry()?.schedule?.interval,
       'daily',
-      'D-065 sets the github-actions ecosystem to daily. On weekly the pinned scanner runs on indicators up to six days old and nothing anywhere goes red about it.',
+      'This repository sets the github-actions ecosystem to daily. On weekly the pinned scanner runs on indicators up to six days old and nothing anywhere goes red about it.',
     );
   });
 

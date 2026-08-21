@@ -74,17 +74,35 @@
  *   - "checkout is bound to the triggering commit": delete the
  *     `ref: ${{ github.sha }}` line, or change it to `${{ github.ref }}`.
  *   - "publish waits for the build job": delete `needs: build`, which would let
- *     a tag publish a tree whose typecheck and tests never ran.
+ *     a tag publish a tree whose typecheck and tests never ran. The candidate
+ *     build jobs are scoped to the publisher's OWN file, because `needs:` cannot
+ *     name a job in another workflow.
+ *   - "the tag agrees with the version it would publish": delete the check step,
+ *     or make its comparison prefix-tolerant. That last mutation is why the
+ *     scenario set includes a tag which is a PREFIX of the shipped version: a
+ *     `startsWith` or `contains` comparison accepts `v1.2` for 1.2.5 and an
+ *     equality test does not, and only the prefix row tells them apart.
+ *
+ * EVERY WORKFLOW FILE, NOT ONE FILENAME
+ * ---------------------------------------------------------------------------
+ * All 32 published versions of this package came from a SEPARATE
+ * `.github/workflows/publish.yml`, deleted on 2026-06-27 when the publish moved
+ * into ci.yml. Restoring that file verbatim turns six of the eight assertions
+ * below red - it had no `if:`, no `ref:` on its checkout and no build job to
+ * depend on - and a guard keyed to the string "ci.yml" would have had nothing to
+ * say about any of it. The release path is therefore located by CAPABILITY
+ * across the whole directory: any file, any job name.
  *
  * WHAT THIS FILE CANNOT PROVE, SO IT DOES NOT CLAIM IT: that the commit under
- * the tag was ever reviewed. `main` has zero required status checks and
- * `enforce_admins` is `true`, so admin enforcement currently enforces nothing;
- * there are no environments to hold a reviewer, and no tag protection, so any
- * push-capable actor can point `v9.9.9` at any commit and that IS a pushed
- * v-tag. All four are repository settings, unreachable from any file here, and
- * are raised on elvatis/ideabase#337. This file closes the half that lives in
- * the workflow: no path that is not a pushed v-tag, and no tree but the tagged
- * commit's.
+ * the tag was ever reviewed. There is no required status check on the default
+ * branch, no environment to hold a reviewer, and no restriction on who may
+ * create `refs/tags/v*`, so an actor with push access can point `v9.9.9` at any
+ * commit - and that IS a pushed v-tag, so it passes every assertion here. Those
+ * are repository settings, unreachable from any file in this tree; SECURITY.md
+ * describes the residual exposure and the two controls that would close it. This
+ * file closes the half that lives in the workflow: no path that is not a pushed
+ * v-tag, no tree but the tagged commit's, and no version but the one the tag
+ * names.
  *
  * The workflow is PARSED, never grepped. `npm publish` appears in this
  * repository's own prose, `workflow_dispatch` legitimately remains among the

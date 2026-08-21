@@ -324,6 +324,11 @@ Or use directly via npx (no install required):
 npx @elvatis_com/elvatis-mcp
 ```
 
+Every release is built and published by GitHub Actions from a pushed `v*` tag,
+out of the exact commit that tag names.
+[SECURITY.md](SECURITY.md#release-integrity) sets out what that path does and
+does not guarantee, and how to verify a version you have installed.
+
 ---
 
 ## Where Can I Use It?

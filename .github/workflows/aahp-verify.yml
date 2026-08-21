@@ -37,9 +37,9 @@
 # "intended": measured 2026-08-21, `main` has branch protection but
 # `required_status_checks` is `null`. No check on this repository is required,
 # so this gate - and CI, and Scan - are advisory. That is a repository setting,
-# unreachable from any file here; recorded in .ai/handoff/STATUS.md and raised
-# with elvatis/ideabase#337, which asks the same question about who merges a
-# scanner bump.
+# unreachable from any file here; recorded in .ai/handoff/STATUS.md and open
+# with the maintainer, together with the same question about who merges a
+# scanner bump. SECURITY.md records the same class of gap on the release path.
 
 name: AAHP Verify
 
