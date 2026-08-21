@@ -24,6 +24,14 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The handoff notes under `.ai/` were partly German, in a public repository
+  whose contributor documentation had never said which language it uses.
+  `LOG.md` was a German session narrative, down to which machine the author
+  connected from; one session entry in `STATUS.md` was German prose. Both are
+  now English, and CONTRIBUTING.md states the rule so the next note does not
+  have to guess it. The one German string that remains is a citation of the
+  subject line of commit `c12c6e5`, which is on `main` and cannot be corrected
+  without rewriting published history.
 - The release section of SECURITY.md claimed the tree is built on Node 18, 20
   and 22. The matrix moved to 22 and 24 on 2026-08-21 when the two end-of-life
   runtimes were dropped, and the prose stayed behind, in a section that invites

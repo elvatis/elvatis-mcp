@@ -42,6 +42,9 @@ topmost dated release heading to equal the version in `package.json`.
 ## Code Style
 
 - Follow existing patterns in the codebase.
+- English, everywhere: code, comments, documentation, commit subjects, pull
+  request titles and the handoff notes under `.ai/`. This repository is public,
+  so a note written for the person who wrote it is read by everyone.
 - No em dashes in comments or documentation.
 - Tool names use `domain_action` format (e.g. `home_light`, `openclaw_memory_search`).
 - All secrets via environment variables only.
