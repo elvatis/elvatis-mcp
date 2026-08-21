@@ -1,3 +1,31 @@
+## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
+
+Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
+version-guard (der meldete 1.3.0 korrekt als frei), sondern an der Laufzeit:
+
+    npm error code EBADENGINE
+    npm error notsup Required: {"node":"^22.22.2 || ^24.15.0 || >=26.0.0"}
+    npm error notsup Actual:   {"npm":"10.8.2","node":"v20.20.2"}
+
+Der publish-Job holt `npm@latest` fuer OIDC Trusted Publishing. npm 12 hat Node
+20 fallen gelassen. Der Schritt, der das Veroeffentlichen ermoeglichen soll, ist
+also der, der es verweigert - bei JEDEM Release-Versuch seit npm 12. Gesehen hat
+es niemand, weil seit April nichts veroeffentlicht wurde.
+
+Gleichzeitig lief die Matrix auf [18, 20, 22] und `engines.node` versprach
+oeffentlich `>=18` - eine Laufzeit ohne Sicherheits-Patches seit 16 Monaten.
+
+Geaendert: Matrix -> [22, 24], drei Einzel-Pins '20' -> '24', engines '>=22'.
+
+**Der Mutationsbeweis hat einen Fehler in der eigenen Zusicherung gefunden.** Die
+erste Fassung der Leerlauf-Sperre prueft die GLOBALE Pin-Liste; das Leeren der
+Matrix liess sie gruen, weil die Einzel-Pins der anderen Jobs die Liste nicht
+leer werden liessen. Die Mehr-Laufzeit-Abdeckung verschwand lautlos. `matrixPins()`
+liest jetzt ausschliesslich `strategy.matrix`. Vier Mutationen, alle rot bewiesen.
+
+Offen und Emres: Tag-Schutz fehlt weiterhin (`tags/protection` -> 404, rulesets
+leer), also kann ein v-Tag weiterhin auf einen beliebigen Commit zeigen.
+
 > Note (2026-08-21, claude-opus-5): THE RELEASE PATH WAS GUARDED AND UNWALKABLE. `package.json` last moved its version on 2026-03-31 (b6d4c17, the initial skeleton). `1.2.4` was published on 2026-04-15. `main` then took 35 commits without the number changing, two of them security fixes: the command-injection remediation of 2026-06-28 (fb7b76a, 9 findings) and the `--channel` escaping fix of 2026-08-19 (ef82cb5, PR 56). Both are correct, both are merged, and neither could ever be installed by anyone. npm refuses a duplicate version, and `v1.2.4` already exists and points at the April tree, so re-tagging is not a way out either. An April tarball cannot contain a June fix, so for four months every `npm install` of the estate's only public package served the vulnerable code while the tree said it was fixed. Bumped to 1.3.0, in `package.json` and in both root entries of `package-lock.json`.
 >
 > MINOR, NOT PATCH, AND THE REASON IS IN THE DIFF RATHER THAN IN THE SEVERITY. Reading what the 35 commits actually contain: `src/validate.ts` is a new 165-line module exporting eight validators plus `shellQuote`, which is additive public surface that ships in `dist`; `src/index.ts` stops reporting `0.1.0` in the MCP initialize handshake and reports the real version, so a client sees a different string; and every hardened call site now REFUSES input that 1.2.4 accepted and passed to a remote shell. That last one is the load-bearing part. A patch release says "nothing you can observe has changed", and that is false here - a caller passing a channel or a cron id containing shell metacharacters gets an error where they previously got execution. It is not a major either: nothing documented was withdrawn, and the only inputs that stop working are the ones the option was never meant to carry. Minor is the honest signal, and it is the one that tells a consumer to read before upgrading.
