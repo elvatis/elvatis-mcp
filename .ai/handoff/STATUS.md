@@ -1,3 +1,103 @@
+## 2026-08-21 - The four open pull requests are one linear stack, and all four are green
+
+WHAT WAS RED AND WHY. All three of #63, #64 and #65 failed `version is not
+already published` without having touched a version. `main` carries 1.3.0,
+1.3.0 reached the registry at 17:34 UTC today, and the guard runs on every pull
+request, so every open branch inherited a statement about `main`. Nothing was
+wrong with any of the three branches.
+
+THE BUMP WAS NOT WHERE IT WAS REPORTED TO BE. The 1.3.0 to 1.3.1 bump was
+described as having been pushed onto `chore/aahp-3.10.0`. It was not on that
+branch, and it was not on any of the three. It exists only on
+`docs/release-version-convention` (#66), which was opened later and is the only
+branch that was green. Checked by reading `package.json` out of each of the four
+remote refs rather than by trusting the report: three read 1.3.0, one reads
+1.3.1.
+
+THE STACK. `main` <- #66 <- #64 <- #63 <- #65, each branch merging the one
+below it. All four are now green on all five checks and all four report
+CLEAN/MERGEABLE. Ancestry was asserted with `git merge-base --is-ancestor` in
+all three links rather than inferred from the diffs.
+
+It is a stack rather than four independent branches because all four rewrite
+`.ai/handoff/MANIFEST.json`, whose checksums and line counts regenerate every
+session. Any two of them collide there by construction, so without sequencing
+the second, third and fourth merges each hit the same conflict on `main`.
+Sequencing pays that cost once, on the branches, where it can be verified.
+
+HOW, AND WHAT THAT COSTS THE REVIEWER. Assembled with `git merge`, not `git
+rebase`: no branch history was rewritten and every push was a fast-forward.
+The price is that each branch now CONTAINS the ones below it, so merging one
+merges those too. That is the shape that put an unfixed defect on a main branch
+elsewhere in the estate on 2026-08-01, carried by a small pull request whose
+body did not say what it carried. Every one of the four bodies now opens with
+the merge order and names, explicitly, which pull requests it carries. The
+carry is not the hazard; an unannounced carry is.
+
+CONFLICT RESOLUTION, both files, both append-logs. STATUS.md: BOTH sides kept
+every time, since each side is a whole dated section prepended by a different
+branch and neither supersedes the other. Line endings were asserted equal in
+and out on each resolution (422, 464 and 582 CRLF respectively), because this
+tree is CRLF locally and LF on CI and a checksum taken over the wrong one
+passes here and fails there. MANIFEST.json: regenerated with `aahp manifest .`
+rather than hand-edited, then diffed field by field against the pre-merge file
+and asserted that `project` still reads `elvatis-mcp`. 3.8.1 rewrites that
+field to the directory name it runs in, which is the defect #65 exists to fix;
+it did not fire only because the worktree happened to be named correctly.
+
+VERIFIED ON EACH MERGE RESULT, not on either parent: typecheck clean, the suite
+green (189, 189, then 199 with #65's ten new gate assertions), the version guard
+OK, and `aahp verify --level ci` passing all four layers, under 3.10.0 with an
+explicit `--base` on the top of the stack.
+
+The guard's new failure message was ticked by EXECUTING it in both directions,
+not by reading the diff: `version` set back to 1.3.0 exits 1 and prints the
+paragraph naming the convention and pointing the fix at `main`; restored, exit
+0. The mutation asserted its substitution had actually applied first.
+`scripts/require-layer2-base.mjs` was executed the same way, with its real exit
+code read rather than a pipeline's: valid base 0, and absent, empty, all-zero
+and non-SHA all 2, distinct from the 1 `aahp verify` uses for a real failure.
+
+### One correction to yesterday's backlog triage
+
+The triage recorded above is right that all ten tool requests are genuinely
+unimplemented. One of its reasons does not survive checking against the source.
+
+**T-023 / #17 (`mcp_stats`) needs no live infrastructure and no product
+decision.** It was swept up in the reason "shells out to a remote host". It does
+not. `src/rate-limiter.ts:223` already writes `usage.json` into the configured
+data directory, and `src/config.ts:65` and `:104` already resolve that directory
+from `ELVATIS_DATA_DIR`. The tool reads a local file this package itself writes,
+and the issue specifies its parameters and return shape, so the product decision
+is made. It is ordinary local technical work and it is the only one of the
+fifteen that is.
+
+It was NOT implemented in this session, deliberately. Every new branch cut today
+is either red on the version guard, because `main` still carries 1.3.0, or has
+to become a fifth link on a stack that exists precisely to unblock a broken
+release path. Neither is a good home for a new public tool surface. It is ready
+the moment #66 reaches `main`.
+
+### Open, and Emre's rather than an agent's
+
+- **Merge order.** #66 first. It is the only one that vacates 1.3.0, and until
+  it lands every pull request in this repository is red on a condition none of
+  them caused.
+- **No status check is required on this repository.** `required_status_checks`
+  is null, so all five green checks are advisory and a red pull request can
+  still be merged by anyone with push access. Green here is a fact about the
+  checks, not a gate.
+- **Six issues still carry the `v1.2` target label** while 1.2.4 shipped in
+  April and 1.3.0 shipped today. Retargeting or untargeting them is a roadmap
+  decision.
+- **Priorities were not invented.** Every open issue now carries `product:
+  fleet`, which is a fact about this repository. None was given a `priority:`
+  label, because ordering someone else's backlog is not an agent's call.
+- **The benchmark tables still publish the workstation CPU and GPU** on purpose,
+  and #63 says so rather than implying it fixed that. Note that `BENCHMARKS.md`
+  also carries what reads as a machine name in a section heading, which is a
+  different class of detail from a part number and worth a separate look.
+
 ## 2026-08-21 - AAHP 3.8.1 to 3.10.0: the one consumer the fleet rollout skipped
 
 This repository was the last `@elvatis_com/aahp` 3.8.1 consumer in the estate,
