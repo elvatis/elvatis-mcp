@@ -1,3 +1,92 @@
+## 2026-08-21 - AAHP 3.8.1 to 3.10.0: the one consumer the fleet rollout skipped
+
+This repository was the last `@elvatis_com/aahp` 3.8.1 consumer in the estate,
+and that single fact explains the stray `project` values seen across the fleet.
+
+**3.8.1 rewrites `MANIFEST.json`'s `project` to the name of the DIRECTORY the CLI
+ran in.** Reproduced here rather than inferred: in a worktree named
+`elvatis-mcp-aahp`, a plain `aahp manifest .` turned `"project": "elvatis-mcp"`
+into `"project": "elvatis-mcp-aahp"`. Reinstalling 3.10.0 and running the same
+command in the same directory left the field untouched. Both bad values observed
+in the estate, `elvatis-mcp-scg-pin` and `mcp-node-eol`, are agent worktree
+directory names, and both originated here, because here was the only place still
+running 3.8.1. Nothing ever went red: a rewritten `project` is a well-formed
+string in a well-formed file, and the checksum layer re-blesses whatever the tool
+just wrote.
+
+**Layer 2 is fail-closed from 3.10.0, and that is the part that changed this
+repository's workflow.** The content-drift gate now refuses to run without an
+explicit `--base SHA` / `AAHP_BASE_SHA` instead of diffing against an implicit
+base, and it separately refuses a base that resolves to HEAD, "which would make
+Layer 2 vacuous". Measured here: `verify --level ci` with no base exits 1 naming
+the missing argument; with `--base $(git rev-parse origin/main)` on an unchanged
+tree it exits 1 naming the vacuous base. So `aahp-verify.yml` now supplies a base
+per trigger: `pull_request` from `github.event.pull_request.base.sha`, `push` from
+`github.event.before`, and `workflow_dispatch` from a new REQUIRED `base` input.
+That input is not decoration. A manual run has neither event field, so without it
+every dispatch fails closed and reads as a broken workflow rather than as a
+missing argument.
+
+**The base is validated before `aahp verify` is reached.**
+`scripts/require-layer2-base.mjs` refuses an absent, empty, all-zero or non-SHA
+base with exit 2, deliberately distinct from the 1 that `aahp verify` exits on a
+real gate failure, so "no base" and "gate failed" stay tellable apart. It is a
+script rather than an inline `run:` block for one reason: a test can EXECUTE it in
+both directions, the way `version-guard.test.ts` already executes its own script.
+A guard asserted only by grepping the workflow that contains it has never been run.
+
+**`tests/security/aahp-gate.test.ts` (10 assertions, new, wired into `npm test`)
+asserts the consequence rather than the configuration.** The load-bearing one is
+that `MANIFEST.json`'s `project` still equals this package's unscoped name: that
+goes red for a stale pin, for a regression, or for a hand-edit, without needing to
+know which, and it is the assertion that would have caught the fleet-wide defect
+at its first occurrence. Around it: the pin is exact and at or after 3.10.0; the
+verify command carries `--base`; every trigger declared under `on:` appears in the
+base expression, so adding a trigger without adding its arm goes red; the
+`workflow_dispatch` input exists and is `required: true`; the guard is actually
+invoked, and before `aahp verify` rather than after; and the gate carries no
+`continue-on-error`, no job-level `if:`, no `|| true`, no unconditional `exit 0`
+and no `paths`/`paths-ignore` on the workflow the gate itself lives in.
+
+Ten mutations, proved one at a time, fix committed first so `git checkout --`
+could not eat it, tree restored and re-verified between each, with the driver
+asserting that each substitution actually changed the file on disk before running
+anything. Every one turned its own named assertion red and no other. Restored
+tree: `npm test` 185 pass 0 fail in 5.9s, `npm run typecheck` clean.
+
+One measurement worth keeping, because it cost time and will cost it again:
+`core.autocrlf` is `true` here and the repository has no `.gitattributes`, so
+`git checkout --` restores an LF blob as CRLF and a byte comparison then reports a
+restore that did not fail. The MANIFEST checksums are over the LF blob, not over
+the working-tree bytes (`STATUS.md` hashes `636ed482...` as stored and
+`32d63b6f...` on disk, and the MANIFEST holds the former), so AAHP normalises line
+endings when checksumming. Compare in LF space and let `git status` be the proof.
+
+### Open, and Emre's
+
+**The AAHP pin has no bump lane, so this staleness will recur.**
+`.github/dependabot.yml` deliberately omits the `npm` ecosystem, pending a
+runner-budget decision that is still open. That is exactly the "a pin with nothing
+to bump it freezes a VERSION" argument this repository already wrote down for
+`homeofe/supply-chain-guard`, and it now applies to the repository's own handoff
+protocol: 3.8.1 shipped, the fleet moved to 3.10.x, and nothing here could notice.
+The new `project` assertion turns the next occurrence red instead of silent, but it
+is a detector, not a lane. A single-package `npm` entry grouped to
+`@elvatis_com/aahp` alone would cost roughly one pull request per AAHP release.
+
+**`required_status_checks` is still `null` on `main`** (unchanged from the previous
+three sessions), so AAHP Verify, CI, Scan and version-guard remain advisory. Every
+gate added this month is a gate nobody is required to read.
+
+**The dependabot exemption can be reached by commit-author spoofing.** The gate
+no-ops to success when `github.event.head_commit.author.username` is
+`dependabot[bot]`, and on a push that field is resolved from the commit author's
+email. A commit authored as dependabot therefore skips the handoff gate on the
+push to `main`. Left as measured rather than changed: the exemption is load-bearing
+for scanner bumps, `action-pin.test.ts` asserts it still exists, and with no
+required checks the practical exposure today is nil. Worth revisiting together with
+the branch-protection question rather than separately.
+
 ## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
 
 Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
