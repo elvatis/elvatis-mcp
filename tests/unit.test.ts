@@ -28,9 +28,18 @@ import {
   validateCronId,
   validateChannel,
   validateDeployService,
+  validateCronExpression,
   shellQuote,
 } from '../src/validate.js';
-import { handleCronCreate, handleCronDelete, handleCronHistory } from '../src/tools/cron-manage.js';
+import {
+  handleCronCreate, handleCronDelete, handleCronHistory, buildCronCreateCommand,
+} from '../src/tools/cron-manage.js';
+import { buildMemorySearchCommand } from '../src/tools/memory.js';
+import { buildLogsCommand } from '../src/tools/openclaw-logs.js';
+import {
+  buildListCommand, buildSizeCommand, buildReadCommand, buildWriteCommand,
+} from '../src/tools/file-transfer.js';
+import { handleOpenclawNotify } from '../src/tools/notify.js';
 import { handleCronRun } from '../src/tools/cron.js';
 import type { Config } from '../src/config.js';
 
@@ -1081,5 +1090,298 @@ describe('handleCronRun injection guard (security)', () => {
         'thrown error should be SSH-level, not UUID validation',
       );
     }
+  });
+});
+
+
+// ============================================================================
+// Argument injection - a caller value that arrives as a FLAG rather than data
+// ============================================================================
+//
+// The defect that opened this class had no shell metacharacter in it. A value
+// of "--announce" is alphanumerics and hyphens: it passes every metacharacter
+// assertion in this file and is still a flag by the time the receiving program
+// parses its argv, because the shell strips the quotes before that program is
+// started. `--cron '--announce'` and `--cron --announce` are byte-identical
+// argv.
+//
+// So these tests do not assert that a command string looks a particular way.
+// They tokenise it the way a shell would, find the token the caller controls,
+// and ask the only question that matters: is the receiving program still free
+// to read it as an option?
+
+/**
+ * Tokenise a command the way a POSIX shell would, for the one property these
+ * tests need - which argv tokens the receiving program is handed. Quotes and
+ * backslash escapes are removed, exactly as the shell removes them; operators
+ * survive as their own tokens so a pipeline can be split into segments.
+ */
+function shellTokens(command: string): string[] {
+  const tokens: string[] = [];
+  let current = '';
+  let started = false;
+  let i = 0;
+
+  while (i < command.length) {
+    const ch = command[i]!;
+
+    if (ch === "'") {
+      started = true;
+      i += 1;
+      while (i < command.length && command[i] !== "'") { current += command[i]; i += 1; }
+      i += 1;
+      continue;
+    }
+    if (ch === '"') {
+      started = true;
+      i += 1;
+      while (i < command.length && command[i] !== '"') { current += command[i]; i += 1; }
+      i += 1;
+      continue;
+    }
+    if (ch === '\\' && i + 1 < command.length) {
+      started = true;
+      current += command[i + 1];
+      i += 2;
+      continue;
+    }
+    if (ch === ' ' || ch === '\t' || ch === '\n') {
+      if (started) { tokens.push(current); current = ''; started = false; }
+      i += 1;
+      continue;
+    }
+
+    current += ch;
+    started = true;
+    i += 1;
+  }
+  if (started) tokens.push(current);
+  return tokens;
+}
+
+const SHELL_OPERATORS = new Set(['|', '||', '&&', ';', '&']);
+
+/**
+ * Assert a caller-controlled value reaches the program that receives it as
+ * DATA and not as an option.
+ *
+ * Data means one of exactly two things: an end-of-options marker ("--")
+ * appears earlier in the SAME pipeline segment, or the token immediately
+ * before it is grep's "-e", which names the next token as the pattern. The
+ * search is scoped to the segment so that a "--" belonging to another command
+ * on the same line cannot vouch for this one.
+ *
+ * Presence is asserted first, and every occurrence is then checked rather than
+ * only the first. Without the presence assertion a renamed builder, a typo in
+ * the expected value, or a builder that stopped emitting the value at all
+ * would leave this function passing while checking nothing - which is the same
+ * shape of mistake as the defect it is here to catch.
+ */
+function assertArrivesAsData(command: string, value: string): void {
+  const tokens = shellTokens(command);
+  const positions: number[] = [];
+  tokens.forEach((token, index) => { if (token === value) positions.push(index); });
+
+  assert.ok(
+    positions.length > 0,
+    `value ${JSON.stringify(value)} never appears as a token, so this assertion `
+    + `would have checked nothing. Command: ${command}`,
+  );
+
+  for (const at of positions) {
+    let segmentStart = 0;
+    for (let i = at - 1; i >= 0; i -= 1) {
+      if (SHELL_OPERATORS.has(tokens[i]!)) { segmentStart = i + 1; break; }
+    }
+    const before = tokens.slice(segmentStart, at);
+    assert.ok(
+      before.includes('--') || tokens[at - 1] === '-e',
+      `${JSON.stringify(value)} reaches ${JSON.stringify(tokens[segmentStart])} at token `
+      + `${at} with no end-of-options marker and no -e, so that program parses it as an `
+      + `option. Command: ${command}`,
+    );
+  }
+}
+
+describe('shellTokens (the tokeniser these assertions rest on)', () => {
+  it('removes quotes exactly as a shell does', () => {
+    assert.deepEqual(shellTokens("grep -e '--file=/etc/shadow' -- a b"),
+      ['grep', '-e', '--file=/etc/shadow', '--', 'a', 'b']);
+  });
+  it('keeps a quoted value with spaces as a single token', () => {
+    assert.deepEqual(shellTokens("cron add --cron '0 9 * * 1-5'"),
+      ['cron', 'add', '--cron', '0 9 * * 1-5']);
+  });
+  it("decodes the '\\'' escape back to a literal quote", () => {
+    assert.deepEqual(shellTokens("echo 'it'\\''s'"), ['echo', "it's"]);
+  });
+  it('keeps pipeline operators as their own tokens', () => {
+    assert.deepEqual(shellTokens('a | b && c'), ['a', '|', 'b', '&&', 'c']);
+  });
+});
+
+describe('assertArrivesAsData (the assertion itself must be able to fail)', () => {
+  it('fails when no end-of-options marker protects the value', () => {
+    assert.throws(() => assertArrivesAsData("ls -lah '-rf'", '-rf'), /parses it as an option/);
+  });
+  it('fails when the value is absent rather than passing vacuously', () => {
+    assert.throws(() => assertArrivesAsData('ls -lah -- x', '-rf'), /would have checked nothing/);
+  });
+  it('passes once the marker is there', () => {
+    assertArrivesAsData("ls -lah -- '-rf'", '-rf');
+  });
+});
+
+describe('openclaw_memory_search: the search term is grep\'s pattern operand', () => {
+  it('a term that is a grep option arrives as the pattern', () => {
+    assertArrivesAsData(buildMemorySearchCommand('--file=/etc/shadow', 14), '--file=/etc/shadow');
+  });
+  it('an ordinary term still arrives as the pattern', () => {
+    assertArrivesAsData(buildMemorySearchCommand('deployment', 14), 'deployment');
+  });
+  it('a term made only of hyphens and letters is still only a pattern', () => {
+    // The whole point of the class: this value carries no shell metacharacter,
+    // passes every metacharacter assertion in this file, and was still an
+    // option to grep. The value has to be one that does not also occur as a
+    // literal elsewhere in the command, or the assertion checks the wrong token.
+    assertArrivesAsData(buildMemorySearchCommand('--recursive', 14), '--recursive');
+  });
+});
+
+describe('openclaw_logs: filter is grep\'s pattern, path is tail\'s file', () => {
+  it('a filter that is a grep option arrives as the pattern, in every fallback', () => {
+    // The gateway branch pipes through grep twice, once per fallback. Both
+    // occurrences are checked; protecting only the first would be the same
+    // defect surviving in the branch that runs when journalctl is absent.
+    assertArrivesAsData(
+      buildLogsCommand({ source: 'gateway', lines: 50, filter: '--file=/etc/shadow' }),
+      '--file=/etc/shadow',
+    );
+  });
+  it('a path of "-f" is a path, not a follow that hangs the connection', () => {
+    assertArrivesAsData(buildLogsCommand({ source: 'custom', lines: 50, path: '-f' }), '-f');
+  });
+  it('an ordinary custom path still arrives as the file', () => {
+    assertArrivesAsData(
+      buildLogsCommand({ source: 'custom', lines: 50, path: '/var/log/syslog' }),
+      '/var/log/syslog',
+    );
+  });
+  it('reports an unusable request instead of building a command', () => {
+    assert.throws(() => buildLogsCommand({ source: 'custom', lines: 50 }), /"path" is required/);
+    assert.throws(() => buildLogsCommand({ source: 'nope', lines: 50 }), /Unknown source/);
+  });
+});
+
+describe('file_transfer: remote_path is an operand of ls, stat, base64 and mkdir', () => {
+  it('list refuses to hand ls its own flag', () => {
+    assertArrivesAsData(buildListCommand('-rf'), '-rf');
+  });
+  it('size refuses to hand stat its own flag', () => {
+    assertArrivesAsData(buildSizeCommand('--help'), '--help');
+  });
+  it('read refuses to hand base64 its own flag', () => {
+    assertArrivesAsData(buildReadCommand('-d'), '-d');
+  });
+  it('write protects the directory operand it derives from the path', () => {
+    assertArrivesAsData(buildWriteCommand('-rf/note.txt', 'QUFB'), '-rf');
+  });
+  it('ordinary paths are unaffected', () => {
+    assertArrivesAsData(buildListCommand('~/scripts'), '~/scripts');
+    assertArrivesAsData(buildReadCommand('/etc/hostname'), '/etc/hostname');
+  });
+  it('the redirection target stays quoted', () => {
+    // A redirect is consumed by the shell, not by a program's argv, so there
+    // is no option grammar to escape and no marker that would apply. Quoting
+    // is the whole defence there, and it is what is asserted.
+    assert.ok(buildWriteCommand('-rf/note.txt', 'QUFB').includes("> '-rf/note.txt'"));
+  });
+});
+
+describe('validateCronExpression (security)', () => {
+  it('accepts a five-field expression with spaces and asterisks', () => {
+    assert.equal(validateCronExpression('0 9 * * 1-5'), '0 9 * * 1-5');
+  });
+  it('accepts a shorthand expression', () => {
+    assert.equal(validateCronExpression('@daily'), '@daily');
+  });
+  it('accepts an interior hyphen, which is a range and not a flag', () => {
+    assert.equal(validateCronExpression('0 0 * * 1-5'), '0 0 * * 1-5');
+  });
+  it('rejects a leading hyphen', () => {
+    assert.throws(() => validateCronExpression('--announce'), /must not start with a hyphen/);
+  });
+  it('rejects a single-hyphen flag', () => {
+    assert.throws(() => validateCronExpression('-f'), /must not start with a hyphen/);
+  });
+  it('rejects an empty expression', () => {
+    assert.throws(() => validateCronExpression(''), /must not be empty/);
+  });
+  it('rejects an over-long expression', () => {
+    assert.throws(() => validateCronExpression('0'.repeat(129)), /too long/);
+  });
+});
+
+describe('openclaw cron add: every schedule branch, not only the two that were fixed', () => {
+  const base = { name: 'nightly', message: 'run the report' };
+
+  it('refuses a --cron value that opens with a hyphen', () => {
+    assert.throws(
+      () => buildCronCreateCommand({ ...base, schedule: '--announce' }),
+      /must not start with a hyphen/,
+    );
+  });
+  it('still refuses the --every value this class was found through (regression)', () => {
+    assert.throws(
+      () => buildCronCreateCommand({ ...base, schedule: 'every --announce' }),
+      /Invalid schedule value/,
+    );
+  });
+  it('still refuses an --at value that opens with a hyphen (regression)', () => {
+    assert.throws(
+      () => buildCronCreateCommand({ ...base, schedule: 'at --announce' }),
+      /Invalid schedule value/,
+    );
+  });
+  it('refuses a channel that opens with a hyphen', () => {
+    assert.throws(
+      () => buildCronCreateCommand({ ...base, schedule: '0 9 * * *', channel: '--to=+490000' }),
+      /Invalid channel/,
+    );
+  });
+
+  it('keeps a real cron expression intact as one token', () => {
+    const cmd = buildCronCreateCommand({ ...base, schedule: '0 9 * * 1-5' });
+    assert.ok(
+      shellTokens(cmd).includes('0 9 * * 1-5'),
+      `the schedule did not survive quoting as a single token: ${cmd}`,
+    );
+  });
+  it('keeps a real "every" schedule working', () => {
+    assert.ok(shellTokens(buildCronCreateCommand({ ...base, schedule: 'every 30m' })).includes('30m'));
+  });
+
+  it('puts --announce on the line only when a channel was asked for', () => {
+    // Both directions. Without this the assertion above could be satisfied by
+    // a builder that never emits --announce at all.
+    const without = shellTokens(buildCronCreateCommand({ ...base, schedule: '0 9 * * *' }));
+    assert.ok(!without.includes('--announce'), '--announce appeared with no channel');
+
+    const withChannel = shellTokens(
+      buildCronCreateCommand({ ...base, schedule: '0 9 * * *', channel: 'whatsapp' }),
+    );
+    assert.ok(withChannel.includes('--announce'), '--announce missing with a channel');
+    assert.ok(withChannel.includes('whatsapp'));
+  });
+});
+
+describe('openclaw_notify: the channel is validated before the line is built', () => {
+  it('rejects a channel that would arrive as a flag, without reaching SSH', async () => {
+    const result = await handleOpenclawNotify(
+      { message: 'hello', channel: '--announce' },
+      { ...stubConfig, sshHost: '0.0.0.1' },
+    ) as { success: boolean; error?: string };
+    assert.equal(result.success, false);
+    assert.match(result.error ?? '', /Invalid channel/);
   });
 });
