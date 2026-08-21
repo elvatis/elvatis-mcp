@@ -39,9 +39,44 @@ jobs:
       - name: Build and unit tests
         run: npm test
 
+  # A SEPARATE check from `build`, and from the release path it protects.
+  #
+  # `package.json` sat at 1.2.4 from 2026-03-31 to 2026-08-21 while `main` took
+  # 35 commits, two of them security fixes. Both were correct, both were merged,
+  # and neither could ever be installed: npm refuses a duplicate version and the
+  # tag already existed, so re-tagging was no way out either. Nothing went red,
+  # because nothing asked whether the release path could be walked at all - only
+  # whether it was guarded. This job asks the consequence: can the code in this
+  # tree reach a user, yes or no.
+  #
+  # It answers from the public registry, over the network, and it FAILS CLOSED:
+  # a refused connection, a timeout, a 5xx, a body that is not JSON and a 200
+  # carrying no `versions` map all exit non-zero. An unreachable registry is not
+  # a neutral moment; it is exactly when a bad publish slips through.
+  #
+  # No `if:`, no `continue-on-error`, no `paths:` filter on this workflow, and no
+  # `--registry` on the command below. tests/security/version-guard.test.ts
+  # asserts each of those, and executes the script itself in both directions.
+  version-guard:
+    name: version is not already published
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - name: Refuse a version the registry has already issued
+        run: npm run version-guard
+
   publish:
     name: Publish to npm
-    needs: build
+    # `version-guard` as well as `build`, so the gate is load-bearing on the
+    # release path rather than advisory beside it. There is no required status
+    # check on this repository (SECURITY.md#release-integrity), so `needs:` is
+    # the only place a check can be made to actually hold something up.
+    needs: [build, version-guard]
     runs-on: ubuntu-latest
     # Only a PUSHED v-tag publishes. `workflow_dispatch` used to be an OR-branch
     # here, and the Run-workflow dialog accepts any branch, so a manual dispatch
@@ -103,6 +138,9 @@ jobs:
           # verified, and under a manual dispatch it was the dispatched branch.
           ref: ${{ github.sha }}
       - name: Create GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" --title "elvatis-mcp $GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME. See the README changelog."
+        # Pointed at CHANGELOG.md. This read "See the README changelog" while the
+        # README had no changelog section and no CHANGELOG.md existed, so every
+        # release note sent readers to a register that was not there.
+        run: gh release create "$GITHUB_REF_NAME" --title "elvatis-mcp $GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME. See CHANGELOG.md for what changed."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

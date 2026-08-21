@@ -328,6 +328,7 @@ Every release is built and published by GitHub Actions from a pushed `v*` tag,
 out of the exact commit that tag names.
 [SECURITY.md](SECURITY.md#release-integrity) sets out what that path does and
 does not guarantee, and how to verify a version you have installed.
+[CHANGELOG.md](CHANGELOG.md) records what each release contains.
 
 ---
 
