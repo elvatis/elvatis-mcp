@@ -12,7 +12,23 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **`main` carries `1.3.1`, an unreleased number, now that `1.3.0` has shipped.**
+  [SECURITY.md](SECURITY.md#release-integrity) states the convention this
+  follows: a version is vacated as soon as it is published, so the default
+  branch is always releasable. The version guard already refused the previous
+  state and was right to; what was missing was the written rule and the step
+  that satisfies it. The guard's failure message now names the convention and
+  says that the fix belongs on `main`, rather than only stating the fact.
+
+### Fixed
+
+- The release section of SECURITY.md claimed the tree is built on Node 18, 20
+  and 22. The matrix moved to 22 and 24 on 2026-08-21 when the two end-of-life
+  runtimes were dropped, and the prose stayed behind, in a section that invites
+  the reader to check it against the workflow. It now points at the matrix
+  instead of restating it, so it cannot drift again.
 
 ## [1.3.0] - 2026-08-21
 
