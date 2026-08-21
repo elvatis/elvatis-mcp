@@ -355,6 +355,13 @@ async function main() {
         '  This is not a warning about a future release; it is a statement that the code\n' +
         '  here, including any security fix in it, cannot reach anyone.\n' +
         '\n' +
+        '  This check runs on every pull request, so the number it objects to usually\n' +
+        '  did not come from the branch under review: it is whatever `main` carries. The\n' +
+        '  convention that prevents this is in SECURITY.md#release-integrity - a version\n' +
+        '  is raised past a number as soon as that number ships, so `main` always holds\n' +
+        '  an unreleased one. Reaching this message means a release finished without\n' +
+        '  that step, and the fix belongs on `main` rather than here.\n' +
+        '\n' +
         `  Fix: raise \`version\` in ${options.packagePath} above ${registry.latest ?? version},\n` +
         '  and say what changed in CHANGELOG.md.\n',
     );

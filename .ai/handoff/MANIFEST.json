@@ -2,79 +2,79 @@
   "aahp_version": "3.0",
   "project": "elvatis-mcp",
   "last_session": {
-    "agent": "claude-opus-5",
-    "session_id": "cli-1787341650",
-    "timestamp": "2026-08-21T19:47:30Z",
-    "commit": "b2ea777",
-    "phase": "documentation",
+    "agent": "cli-tool",
+    "session_id": "cli-1787347120",
+    "timestamp": "2026-08-21T21:18:41Z",
+    "commit": "c6bcdd3",
+    "phase": "idle",
     "duration_minutes": 0
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:32236d975df16df31c753556374a397f70b90de6d3860dcc6add18e3de074052",
-      "updated": "2026-08-21T19:47:20Z",
-      "lines": 361,
+      "checksum": "sha256:f106c4ce100a7a402d302c2f3c7f3b52385cf48fbb1e052ce1c4d7b507ac5d86",
+      "updated": "2026-08-21T21:18:34Z",
+      "lines": 582,
       "summary": "This repository was the last `@elvatis_com/aahp` 3.8.1 consumer in the estate,"
     },
     "NEXT_ACTIONS.md": {
       "checksum": "sha256:3e439ec837911971a3d5303d76c072d06f0c7897ed2e4a2f8575baa900f8f7ff",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 163,
       "summary": "- `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json`"
     },
     "LOG.md": {
-      "checksum": "sha256:318c39119af5704c4e2cbc7ba47869958fb20f59e7c0d10c5a627f38c07df31f",
-      "updated": "2026-08-21T19:25:56Z",
+      "checksum": "sha256:dc616ac063fa4368d704bb55a4e631df15ece4a6dd3f71e8f38ca6207ed58ac5",
+      "updated": "2026-08-21T21:17:56Z",
       "lines": 24,
       "summary": "**What happened:**"
     },
     "LOG-ARCHIVE.md": {
       "checksum": "sha256:7f4fcbe216b91b869ae80004c9ad17e46987b2ff173c069cbae0da7aee7db1f5",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 10,
       "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
       "checksum": "sha256:443b83555b9597eb5d124dd7f53b5948790a597c1d52fefef9874205a9a7236d",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 51,
       "summary": "```"
     },
     "TRUST.md": {
       "checksum": "sha256:050cc4dde9249cd2a49bb0f4d00ee65722b0890937ead51a4bc37e1867b07620",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 84,
       "summary": "| Level | Meaning |"
     },
     "CONVENTIONS.md": {
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 38,
       "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 167,
       "summary": "| Agent | Model | Role | Responsibility |"
     },
     "GROUNDING.md": {
       "checksum": "sha256:7ef8cece585dc5defb4285175b9ba560d5469675df553d4ce28ec9e7aec24343",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 209,
       "summary": "This register EXTENDS existing AAHP machinery; it does not fork or replace it. It"
     },
     "pii-allowlist.json": {
       "checksum": "sha256:7c1051f6e2bc3943b7c1dbe4da229694455681b8875a346c99279e555edb733f",
-      "updated": "2026-08-21T19:25:56Z",
+      "updated": "2026-08-21T21:08:22Z",
       "lines": 4,
       "summary": "{"
     }
   },
-  "quick_context": "AAHP 3.10.0 bump; Layer 2 base wiring; backlog triage",
+  "quick_context": "This repository was the last `@elvatis_com/aahp` 3.8.1 consumer in the estate, - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 11032,
-    "full_read": 15835
+    "manifest_plus_core": 13896,
+    "full_read": 18691
   }
 }

@@ -11,8 +11,8 @@
 - Skeleton implementiert: MCP server, stdio + HTTP transport, 12 Tools in 3 Domains
 - GitHub Repo angelegt (elvatis/elvatis-mcp, private)
 - AAHP Handoff + Claude-Struktur eingerichtet
-- Build auf Server gescheitert (tsc OOM) — wird auf Threadripper 3960X gemacht
-- Emre verbindet sich vom Dev-PC (Threadripper 3960X + RX 9070 XT Elite)
+- Build auf Server gescheitert (tsc OOM) — wird lokal auf dem Dev-PC gemacht
+- Emre verbindet sich vom Dev-PC
 
 **Decisions:**
 - MCP SDK 1.x (v2 noch pre-alpha)
