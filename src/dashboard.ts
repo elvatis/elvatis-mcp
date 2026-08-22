@@ -32,26 +32,54 @@ async function gatherData(config: Config): Promise<DashboardData> {
   };
 }
 
+/**
+ * Escape a value for interpolation into HTML text or an attribute.
+ *
+ * ONE HELPER, USED BY EVERY INTERPOLATION, ON PURPOSE. Before this existed the
+ * `detail` cell escaped `<` and nothing else, and the model row three lines
+ * below escaped nothing at all. That inconsistency inside a single function is
+ * what marks the omission as an oversight rather than a decision about trusted
+ * input: `m.id` comes from whatever the configured local LLM endpoint returns
+ * from `/models`, so it is not this process's own data, and these routes are
+ * served without authentication. A model id containing markup was a stored
+ * cross-site scripting path from that endpoint into this page.
+ *
+ * Escaping only `<` is not enough even where it looks sufficient. `&` must be
+ * replaced FIRST or it double-escapes the entities the later replacements
+ * produce, and `"` matters because values here also land inside attributes.
+ */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderHtml(data: DashboardData): string {
   const services = (data.services as any)?.services ?? [];
   const models = (data.models as any)?.models ?? [];
-  const summary = (data.services as any)?.summary ?? 'unknown';
+  const summaryRaw = String((data.services as any)?.summary ?? 'unknown');
+  const summary = escapeHtml(summaryRaw);
 
   const serviceRows = services.map((s: any) => {
     const icon = s.status === 'ok' ? '&#9679;' : s.status === 'unconfigured' ? '&#9675;' : '&#9679;';
     const color = s.status === 'ok' ? '#22c55e' : s.status === 'unconfigured' ? '#a3a3a3' : '#ef4444';
-    const latency = s.latency_ms ? `${s.latency_ms}ms` : '';
-    const detail = (s.detail || '').replace(/</g, '&lt;').substring(0, 120);
+    const latency = s.latency_ms ? `${escapeHtml(s.latency_ms)}ms` : '';
+    // Truncate BEFORE escaping: escaping first lets the cut land inside an
+    // entity and put a bare `&#3` into the page.
+    const detail = escapeHtml(String(s.detail ?? '').substring(0, 120));
     return `<tr>
-      <td><span style="color:${color}">${icon}</span> ${s.service}</td>
-      <td>${s.status}</td>
+      <td><span style="color:${color}">${icon}</span> ${escapeHtml(s.service)}</td>
+      <td>${escapeHtml(s.status)}</td>
       <td>${latency}</td>
       <td class="detail">${detail}</td>
     </tr>`;
   }).join('\n');
 
   const modelRows = models.map((m: any) => {
-    return `<tr><td>${m.id}</td><td>${m.owned_by || ''}</td></tr>`;
+    return `<tr><td>${escapeHtml(m.id)}</td><td>${escapeHtml(m.owned_by || '')}</td></tr>`;
   }).join('\n');
 
   return `<!DOCTYPE html>
@@ -88,7 +116,7 @@ function renderHtml(data: DashboardData): string {
   <h1>elvatis-mcp</h1>
   <div class="subtitle">Status dashboard &middot; auto-refreshes every 30s &middot; ${data.timestamp.replace('T', ' ').substring(0, 19)}</div>
 
-  <div class="summary ${summary.startsWith('5/5') ? '' : summary.includes('0/') ? 'down' : 'degraded'}">${summary}</div>
+  <div class="summary ${summaryRaw.startsWith('5/5') ? '' : summaryRaw.includes('0/') ? 'down' : 'degraded'}">${summary}</div>
 
   <h2>Services</h2>
   <table>

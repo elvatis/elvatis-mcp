@@ -35,6 +35,28 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The status dashboard rendered one value unescaped and served SSH connection
+  parameters through its error path.** `src/dashboard.ts` interpolated `m.id`
+  into the models table with no escaping while the `detail` cell ten lines above
+  escaped `<`, and that inconsistency inside a single function is what marked it
+  as an oversight rather than a decision about trusted input: `m.id` is whatever
+  the configured local LLM endpoint returns from `/models`, so it was a stored
+  cross-site scripting path from that endpoint into a page served without
+  authentication. Every interpolation now goes through one `escapeHtml` helper
+  that replaces `&` first, then `<`, `>`, `"` and `'`. Separately,
+  `system_status` embedded the SSH host, port, username and key path in its
+  `detail` field on the failure path, and `/status`, `/` and `/api/status`
+  serialise that field to any caller. The messages in `src/ssh.ts` are good
+  messages for an operator reading a terminal, so they are unchanged and still
+  go to stderr; the value that crosses into the response body is now redacted at
+  that boundary by `redactConnectionParams`, and `checkService` takes the config
+  as a REQUIRED argument so a new check cannot skip it. Note the shape of the
+  exposure: the disclosure only happens when the SSH check fails, which is
+  exactly the state an unconfigured or unreachable install is in.
+  [#72](https://github.com/elvatis/elvatis-mcp/issues/72) also asks whether the
+  dashboard should bind loopback or gain authentication; that is an access
+  control decision that can break a working setup and is deliberately NOT
+  changed here.
 - **`prompt_split` sent a one-line request to Gemini on every Windows call.**
   `splitViaGemini` passed the multi-line analysis prompt as a command-line
   ARGUMENT, and on Windows `spawnLocal` joins the arguments into one `cmd.exe`
