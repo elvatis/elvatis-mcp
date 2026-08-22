@@ -1,3 +1,83 @@
+## 2026-08-22 - The em-dash gate was declared, never run, and could not have seen the code
+
+ISSUE #67, AND THE SECOND DEFECT THAT ONLY APPEARS ONCE THE FIRST IS FIXED.
+`aahp.config.json` has declared a `forbiddenPatterns` rule banning U+2014 since
+this repository was created, and nothing ever evaluated it: the two AAHP steps
+in `aahp-verify.yml` are `verify --level ci` and `doctor --json`, and neither
+reads `forbiddenPatterns`. The command that does is `aahp check`, which no
+workflow called and no npm script wrapped. Re-measured on `main` at `df66e15`
+before touching anything: **112 occurrences across 35 of 101 tracked files**,
+while `CONTRIBUTING.md` published the rule in prose and every check was green.
+
+THE PART WORTH REMEMBERING IS NOT THE EM DASHES. Wiring `aahp check` in would
+NOT have been enough. Read from the CLI's own source rather than inferred, the
+default file list is:
+
+  *.md *.mjs *.js *.json *.sh *.bash *.bats *.yml *.yaml *.txt
+
+There is no `*.ts` entry, and this is a TypeScript project. The gate, once
+wired, would have reported CLEAN over the whole of `src/` by construction: 49 of
+the 112 occurrences sat in files it could not open. A gate that runs, passes and
+is structurally incapable of seeing its subject is worse than one that never
+runs, because now the passing tick is evidence. That is the same failure this
+repository keeps producing in new forms, one layer further in each time.
+
+`aahp.config.json` now declares an explicit `include` that restates the defaults
+and adds `*.ts`. A new test then found FIVE MORE unscanned text types nobody had
+thought about (`*.py`, `*.example`, `*.gitignore`, `*.aiignore`, `LICENSE`), so
+those are in the list too. The list is a widening throughout; nothing was
+relaxed and nothing is excluded.
+
+THREE FILES NEEDED JUDGEMENT RATHER THAN A SWEEP:
+
+- `CLAUDE.md` and `.ai/handoff/CONVENTIONS.md` both stated the ban and quoted
+  the banned character while doing it. Deleting the quotation would weaken the
+  rule, so both sentences now name the codepoint instead of showing it.
+- `benchmarks/results/subagents-1774986597513.json` contains it inside a
+  captured model response. That is a recorded measurement, and editing it would
+  falsify a record. The literal became a JSON escape: the parsed document is
+  asserted identical, the file carries no literal, and no exclusion was needed.
+  Doctoring a benchmark result to satisfy a lint rule would have been the wrong
+  trade in the other direction.
+
+THE TEST ASSERTS THE CONSEQUENCE, NOT THE CONFIGURATION.
+`tests/security/forbidden-patterns.test.ts` enumerates the tracked tree itself
+and counts, so a narrowed `include`, a replaced CLI or a deleted CI job cannot
+make it pass. It separately asserts that the include list, expanded through
+`git ls-files`, covers every tracked text file, which is the row that catches a
+narrowing the count alone cannot.
+
+MUTATION PROOF, 17 ROWS, ALL AS EXPECTED, run after committing the fix. The pair
+that carries the argument:
+
+  em dash in src/index.ts                        aahp check exit 1, suite red
+  ...and then the include widening reverted      aahp check exit 0, suite STILL RED
+
+That is the state #67 would have left behind had only the wiring been fixed: the
+gate running, reporting success, blind to the file. Also covered: a markdown
+match, `aahp check` removed from the workflow, and the pattern relaxed to an
+unmatchable codepoint (which `aahp check` passes and the suite refuses).
+
+MEASURED WHILE THERE, WORTH KNOWING: `aahp check`'s aggregated output names the
+rule and the match COUNT but not the offending file or line. Reproduced twice.
+The repository-local test lists every file with its count, so that is the one to
+read when this goes red.
+
+Full suite locally: 244 tests, 0 failures, 11.4 seconds. `npm run typecheck`
+clean. `npx --no-install aahp check .` exits 0.
+
+NOT EXERCISED: the new `governance gates (aahp check)` job has never run on a
+GitHub runner from this session. CI decides.
+
+Open, and Emre's:
+
+- **`required_status_checks` on `main` is still `null`**, so this gate reports
+  rather than blocks, like every other one here.
+- **An explicit `include` list stops inheriting future AAHP defaults.** If a
+  later release adds a file type to `DEFAULT_INCLUDE`, this repository will not
+  pick it up. The "scans every tracked text file" row is the compensation: a new
+  type appearing in the tree goes red until it is added deliberately.
+
 ## 2026-08-22 - The three stranded pull requests carry nothing main lacks, and the handoff notes were German
 
 RE-MEASURED #63, #64 AND #66 AGAINST `main`, LINE BY LINE, AND ALL THREE ARE
