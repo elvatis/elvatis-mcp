@@ -43,6 +43,13 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   have to guess it. The one German string that remains is a citation of the
   subject line of commit `c12c6e5`, which is on `main` and cannot be corrected
   without rewriting published history.
+- **A test file under `tests/` could exist and never run, and the suite still
+  reported a full pass.** The `test` script selected files by name and nothing
+  compared that list against the directory, so an always-failing probe dropped
+  into `tests/security/` left `npm test` at exit 0. `npm run test-registration`
+  now compares the two, `tests/integration.test.ts` is declared excluded with
+  the reason it is not run, and CI invokes the guard by path in a step of its
+  own rather than through the `package.json` it audits.
 - The release section of SECURITY.md claimed the tree is built on Node 18, 20
   and 22. The matrix moved to 22 and 24 on 2026-08-21 when the two end-of-life
   runtimes were dropped, and the prose stayed behind, in a section that invites
@@ -69,6 +76,27 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   literal.
 - `.ai/handoff/CONVENTIONS.md` claimed Node.js 18+ while `engines.node` has
   been `>=22` since the end-of-life runtimes were dropped.
+
+### Security
+
+- **A caller-supplied `model` string could run as a second command on
+  Windows.** `spawnLocal` builds one command string for `cmd.exe` rather than
+  passing an argv array, and its escaper rewrites an inner `"` as `\"` on the
+  assumption that a backslash escapes a quote. cmd.exe has no backslash escape:
+  it toggles quote state on every `"`, so `\"` closed the quoted region and the
+  remainder was parsed as command text, where `&`, `&&`, `|` and `>` are
+  operators. Measured on Windows 11 with Node v22.12.0 against `main` at
+  94d0418: a `model` value of `x" & echo INJECTED_MARKER & "` executed
+  `echo INJECTED_MARKER` as its own command. The realistic trigger is prompt
+  injection, because the caller of these tools is a language model.
+  `validateModel` now refuses anything outside the alphabet real model
+  identifiers use, and the four sites that push `--model` into an argv
+  (`claude_run`, `codex_run`, `gemini_run` and the prompt splitter) pass the
+  validated value. `tests/security/model-injection.test.ts` exercises the
+  validator in both directions and calls each handler, so removing the wiring
+  fails the suite even though the validator would still pass its own tests.
+  This does not make `src/spawn.ts` safe for arguments added later; see
+  SECURITY.md and the open issue on the splitter's `-p` path.
 
 ## [1.3.0] - 2026-08-21
 

@@ -29,6 +29,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { spawnLocal } from '../spawn.js';
+import { validateModel } from '../validate.js';
 import { getOrCreateSession, recordSuccess, invalidateSession, isNewSession } from '../session-registry.js';
 
 // --- Schemas ---
@@ -117,7 +118,10 @@ export async function handleCodexRun(
   },
   config: Config,
 ) {
-  const model = args.model ?? config.codexModel ?? 'default';
+  // Validated before it reaches the argv: on Windows spawnLocal joins the
+  // arguments into one cmd.exe command string, where an unvalidated value can
+  // close its own quoting and be parsed as command text. See validateModel.
+  const model = validateModel(args.model ?? config.codexModel ?? 'default');
   const session = getOrCreateSession('codex', model);
 
   // Codex resume uses a subcommand: `codex exec resume <session-id>`
@@ -134,7 +138,7 @@ export async function handleCodexRun(
     cliArgs.push('--full-auto');
   }
 
-  if (args.model) cliArgs.push('--model', args.model);
+  if (args.model) cliArgs.push('--model', model);
 
   let raw: string;
   try {
