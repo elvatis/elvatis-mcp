@@ -55,11 +55,22 @@ have changed the file before the suite ran:
 Each was restored and the suite returned to 40 passing.
 
 WHAT IS NOT FIXED, AND IS NOW FILED SEPARATELY. `src/spawn.ts` is still wrong
-for any argument added later, and `splitViaGemini` passes the caller's prompt
-through `-p` on the command line rather than over stdin the way `gemini_run`
-does - the same sink, reached by a free-form field that cannot be validated.
-Issue #69 states "prompt is not affected: it travels over stdin", which is true
-of the three run tools and false of the splitter.
+for any argument added later, and `splitViaGemini` puts the analysis prompt into
+`-p` as a command-line argument instead of over stdin the way `gemini_run` does.
+
+That one was measured before it was written down, and the first answer was
+wrong. It is NOT a live injection: `buildAnalysisPrompt` places the caller's
+text after several newlines, and cmd.exe ends the command at the first newline,
+so the payload never reaches a position where it could run. What it IS, today,
+is a functional break - the command is cut at that newline, so `--output-format`,
+`--model` and all but the first line of the prompt are silently dropped, and the
+Gemini split strategy cannot be doing what it claims on Windows. With the same
+argv position and no leading newline the marker executes, so the sink is
+injectable and only the template's shape is holding it shut.
+
+Issue #69 states "prompt is not affected: it travels over stdin". That is true
+of the three run tools and false of the splitter, in a way that happens not to
+be exploitable rather than by design.
 
 ## 2026-08-22 - The changelog gate that two documents described now exists, and one of those documents is public
 
