@@ -17,7 +17,7 @@
       "summary": "ISSUE #71, HALF CLOSED, AND THE HALF THAT REMAINS IS NOT REACHABLE FROM THIS"
     },
     "NEXT_ACTIONS.md": {
-      "checksum": "sha256:3e439ec837911971a3d5303d76c072d06f0c7897ed2e4a2f8575baa900f8f7ff",
+      "checksum": "sha256:ca50aeddc5d8554505879affb60d87473e9f174213d61f442555cd11bbaaeab7",
       "updated": "2026-08-22T09:36:30Z",
       "lines": 163,
       "summary": "- `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json`"
@@ -35,7 +35,7 @@
       "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
-      "checksum": "sha256:443b83555b9597eb5d124dd7f53b5948790a597c1d52fefef9874205a9a7236d",
+      "checksum": "sha256:b39a95f60edee0e9fa78dd3fd0f384f0f9105e9ba2ca8e11368dd39c8136913e",
       "updated": "2026-08-22T09:36:30Z",
       "lines": 51,
       "summary": "```"
@@ -47,7 +47,7 @@
       "summary": "| Level | Meaning |"
     },
     "CONVENTIONS.md": {
-      "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
+      "checksum": "sha256:f953a2d748484fd9163552ca4be53df18ccc27e39878161c2d5d9c3f03cf89a7",
       "updated": "2026-08-22T09:36:30Z",
       "lines": 38,
       "summary": "- **TypeScript strict** - no `any`, no ts-ignore"
