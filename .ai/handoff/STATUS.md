@@ -1,3 +1,64 @@
+## 2026-08-22 - The dashboard rendered one value raw, and the status API handed out the SSH target
+
+ISSUE #72, HALF OF IT, ON PURPOSE. That issue names three things that compose
+into a bigger exposure than any one looks like alone: both servers bind 0.0.0.0
+while the startup line prints `localhost`, the three routes are
+unauthenticated, and the SSH check leaks its connection parameters through the
+error path. The first is an access-control change that can break a working setup
+and #72 records it as needing a decision between "loopback only" and
+"authenticated and reachable". THAT DECISION IS EMRE'S AND IS NOT MADE HERE.
+Nothing in this change touches a `listen()` call or the startup message, and no
+test asserts anything about the bind address.
+
+What landed is the half #72 itself calls safe either way, and both halves of it
+shrink what an already-reachable endpoint gives away.
+
+ESCAPING. `src/dashboard.ts` interpolated `m.id` with no escaping while the
+`detail` cell ten lines above escaped `<`. The inconsistency INSIDE ONE FUNCTION
+is the tell: it is an oversight, not a judgement that the value is trusted.
+`m.id` is whatever the configured local LLM endpoint returns from `/models`, so
+it is not this process's data, and the page needs no credentials to fetch. One
+`escapeHtml` helper now covers every interpolation. It replaces `&` FIRST,
+otherwise it double-escapes the entities its own later replacements produce, and
+it covers `"` because these values also land in attributes. `detail` is
+truncated BEFORE escaping so a cut cannot land inside an entity.
+
+DISCLOSURE, AND THE CLASS WORTH REMEMBERING. `src/ssh.ts` puts host, port,
+username and key path into its timeout message, and `username@host:port` plus an
+SSH_HOST/SSH_USER/SSH_KEY_PATH hint into its exit-255 message. Those are GOOD
+messages for the person they were written for: someone debugging a broken key in
+a terminal. They stop being good the moment the same string becomes a field in
+an HTTP response body, which is what `system-status.ts` did with it and what
+`index.ts` serialises. So ssh.ts is unchanged and still writes the full text to
+stderr; the redaction sits at the boundary the string crosses.
+
+An error message written for an operator becomes an API response the moment the
+same value is surfaced over HTTP. Verbose diagnostics and an open endpoint are
+each defensible alone.
+
+FAIL-CLOSED SHAPE. `checkService` now takes `config` as a REQUIRED parameter
+rather than an optional one. Optional would have meant a new check added later
+silently skips redaction and still compiles; required means it cannot.
+
+The redaction is exact substring replacement of values this process already
+holds, not a guess at what a secret looks like, so it does not have to be right
+about an unknown pattern. Composites are replaced before their parts, or
+`user@host:port` would survive as `[redacted]@host:port`. A test covers the empty
+config case, because a naive replace of the empty string splices the token
+between every character of an unconfigured install's message.
+
+NOTE THE SHAPE OF THE EXPOSURE: the disclosure only fires when the SSH check
+FAILS, which is exactly the state an unconfigured or unreachable install is in.
+The reachable case and the leaking case were the same case.
+
+MUTATION PROOF, both directions, run after committing the fix:
+  unescape `m.id`                    -> 12/13, the model-row assertion goes red
+  short-circuit redactConnectionParams -> 10/13, all three disclosure tests red
+  restore both                       -> 13/13
+
+STILL OPEN AND STILL EMRE'S: the bind address and whether these routes should
+require a token. #72 stays open for that.
+
 ## 2026-08-22 - Zero of two secret-scanning layers, on a public repository
 
 ISSUE #71, HALF CLOSED, AND THE HALF THAT REMAINS IS NOT REACHABLE FROM THIS
