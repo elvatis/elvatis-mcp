@@ -1,5 +1,5 @@
 /**
- * Lightweight status dashboard — single HTML page served at /status.
+ * Lightweight status dashboard - single HTML page served at /status.
  *
  * Fetches service health, loaded models, cron jobs, and memory stats
  * via internal function calls (same as the MCP tools). Auto-refreshes

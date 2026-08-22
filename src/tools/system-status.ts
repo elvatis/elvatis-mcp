@@ -1,5 +1,5 @@
 /**
- * system_status — single health check across all connected services.
+ * system_status - single health check across all connected services.
  *
  * Pings Home Assistant, OpenClaw (SSH), local LLM, and reports connectivity
  * for Gemini and Codex CLIs. Returns a unified status overview.

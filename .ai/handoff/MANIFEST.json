@@ -11,9 +11,9 @@
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:e0ef92f8891a86845eb3415c454b1a4bb0ac7c6917a8227fc7b551536f0df0ee",
+      "checksum": "sha256:7a4ccb586759a11a394e4e4ad13c7a3933bdbcec1cb179260450158cfd3b4087",
       "updated": "2026-08-22T09:41:43Z",
-      "lines": 980,
+      "lines": 1201,
       "summary": "ISSUE #71, HALF CLOSED, AND THE HALF THAT REMAINS IS NOT REACHABLE FROM THIS"
     },
     "NEXT_ACTIONS.md": {
@@ -50,7 +50,7 @@
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
       "updated": "2026-08-22T09:36:30Z",
       "lines": 38,
-      "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
+      "summary": "- **TypeScript strict** - no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",

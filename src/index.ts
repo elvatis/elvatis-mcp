@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * elvatis-mcp — MCP server exposing OpenClaw tools to Claude Desktop, Cursor, Windsurf, and any MCP client.
+ * elvatis-mcp - MCP server exposing OpenClaw tools to Claude Desktop, Cursor, Windsurf, and any MCP client.
  *
  * Transports:
- *   stdio (default)  — for Claude Desktop / local clients
- *   http             — for remote clients (set MCP_TRANSPORT=http)
+ *   stdio (default)  - for Claude Desktop / local clients
+ *   http             - for remote clients (set MCP_TRANSPORT=http)
  *
  * Configuration:
  *   Copy .env.example to .env and fill in your values.
@@ -15,14 +15,14 @@
  *   MCP_TRANSPORT=http MCP_HTTP_PORT=3333 npx @elvatis_com/elvatis-mcp
  */
 
-// Load .env — try multiple locations so it works regardless of cwd or client:
-//   1. <project-root>/.env  — resolved via __dirname from dist/index.js (most reliable)
-//   2. cwd/.env             — fallback for local dev (`node dist/index.js` from repo root)
+// Load .env - try multiple locations so it works regardless of cwd or client:
+//   1. <project-root>/.env  - resolved via __dirname from dist/index.js (most reliable)
+//   2. cwd/.env             - fallback for local dev (`node dist/index.js` from repo root)
 // dotenv.config() is a no-op if the file doesn't exist, so ordering is safe.
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
-dotenv.config(); // cwd fallback — only loads vars not already set above
+dotenv.config(); // cwd fallback - only loads vars not already set above
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -286,7 +286,7 @@ async function main() {
   // --- Gemini sub-agent (local spawn) ---
 
   registerTool(server, 'gemini_run',
-    'Send a prompt to Google Gemini via the local gemini CLI. Fast, direct LLM call with no OpenClaw overhead. Uses cached Google auth — no API key required.',
+    'Send a prompt to Google Gemini via the local gemini CLI. Fast, direct LLM call with no OpenClaw overhead. Uses cached Google auth - no API key required.',
     geminiRunSchema.shape,
     async (args) => {
       const quota = checkRateLimit('gemini_run');
@@ -300,7 +300,7 @@ async function main() {
   // --- Codex sub-agent (local spawn) ---
 
   registerTool(server, 'codex_run',
-    'Send a task to OpenAI Codex via the local codex CLI. Specializes in coding tasks, file operations, and technical analysis. Uses cached OpenAI auth — no API key required.',
+    'Send a task to OpenAI Codex via the local codex CLI. Specializes in coding tasks, file operations, and technical analysis. Uses cached OpenAI auth - no API key required.',
     codexRunSchema.shape,
     async (args) => {
       const quota = checkRateLimit('codex_run');

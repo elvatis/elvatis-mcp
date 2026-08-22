@@ -54,6 +54,79 @@ public repository that difference is the whole point. #71 stays open for that
 half, next to the same class of gap already recorded for
 `required_status_checks`, which is `null`, so every gate in this repository
 reports rather than blocks.
+## 2026-08-22 - A model name could become a second command, and the rule that forbade it was already written
+
+ISSUE #69, CLOSED AT THE BOUNDARY RATHER THAN AT THE SINK, BECAUSE THE SINK
+CANNOT CURRENTLY BE BOTH SAFE AND FAITHFUL. On Windows `spawnLocal` does not
+pass an argv array: it joins the arguments into one command string for cmd.exe.
+The escaper rewrites an inner `"` as `\"`, assuming backslash escapes a quote.
+cmd.exe has no backslash escape - it toggles quote state on every `"` it meets -
+so `\"` CLOSES the quoted region and the rest is command text, where `&`, `&&`,
+`|` and `>` are operators.
+
+REPRODUCED, NOT INFERRED. Windows 11 (10.0.26200), Node v22.12.0, against `main`
+at 94d0418. `model` = `x" & echo INJECTED_MARKER & "` produced
+
+  echo "exec" "--json" "--model" "x\" & echo INJECTED_MARKER & \""
+
+and `echo INJECTED_MARKER` ran as its own command. The marker appeared in the
+output.
+
+THE RULE WAS ALREADY THERE. `src/validate.ts` opens with "All values that reach
+a shell command (even via SSH) must be validated here before use", and its own
+header names `--model` as an example of the option-value position that `--`
+cannot protect. There was no model validator. Nothing compared the set of
+validators against the set of values that reach a command string, so the file
+read as evidence while the value it names travelled unchecked. Same shape as
+#67 and #70: a rule that is stated and not executed.
+
+THREE ROUTES WERE MEASURED BEFORE CHOOSING, and the issue's own recommendation
+is not implementable:
+
+  A  spawn(shim, argv, {shell:false})     EINVAL against a .cmd shim
+  C  cmd.exe /d /s /c + verbatim + ^esc   no injection, but the payload arrived
+                                          split across six argv entries
+  D  today's escaper                      injected
+
+A is Node's CVE-2024-27980 mitigation, and all three agent CLIs here are `.cmd`
+shims, so it cannot be written as the issue describes. C is safe and wrong. So
+the value was constrained at the boundary instead, which is the route #73
+already took for `--channel` in this repository.
+
+`validateModel` refuses everything outside the alphabet real model identifiers
+use, and the four `--model` push sites pass the validated local.
+`tests/security/model-injection.test.ts` runs the validator in both directions,
+CALLS each of the three handlers so the wiring is load-bearing, and refuses a
+raw `args.model` push reappearing next to a validated local - with a control
+asserting that last scan can actually fire.
+
+MUTATION PROOF, RUN AFTER COMMITTING THE FIX, every substitution asserted to
+have changed the file before the suite ran:
+
+  validateModel body replaced with `return value;`      13 rejection tests red
+  claude.ts push reverted to `args.model`               scan + handler test red
+  gemini.ts validateModel( call removed                 handler test red
+  import of validateModel removed from splitter.ts      import test red
+
+Each was restored and the suite returned to 40 passing.
+
+WHAT IS NOT FIXED, AND IS NOW FILED SEPARATELY. `src/spawn.ts` is still wrong
+for any argument added later, and `splitViaGemini` puts the analysis prompt into
+`-p` as a command-line argument instead of over stdin the way `gemini_run` does.
+
+That one was measured before it was written down, and the first answer was
+wrong. It is NOT a live injection: `buildAnalysisPrompt` places the caller's
+text after several newlines, and cmd.exe ends the command at the first newline,
+so the payload never reaches a position where it could run. What it IS, today,
+is a functional break - the command is cut at that newline, so `--output-format`,
+`--model` and all but the first line of the prompt are silently dropped, and the
+Gemini split strategy cannot be doing what it claims on Windows. With the same
+argv position and no leading newline the marker executes, so the sink is
+injectable and only the template's shape is holding it shut.
+
+Issue #69 states "prompt is not affected: it travels over stdin". That is true
+of the three run tools and false of the splitter, in a way that happens not to
+be exploitable rather than by design.
 
 ## 2026-08-22 - The changelog gate that two documents described now exists, and one of those documents is public
 
@@ -132,6 +205,85 @@ Open, and Emre's:
   a base that no longer exists. It edits the same `test` script line this change
   appends to, so the two will conflict textually; keeping both filenames on that
   line is the whole resolution. Not this session's pull request to touch.
+## 2026-08-22 - The em-dash gate was declared, never run, and could not have seen the code
+
+ISSUE #67, AND THE SECOND DEFECT THAT ONLY APPEARS ONCE THE FIRST IS FIXED.
+`aahp.config.json` has declared a `forbiddenPatterns` rule banning U+2014 since
+this repository was created, and nothing ever evaluated it: the two AAHP steps
+in `aahp-verify.yml` are `verify --level ci` and `doctor --json`, and neither
+reads `forbiddenPatterns`. The command that does is `aahp check`, which no
+workflow called and no npm script wrapped. Re-measured on `main` at `df66e15`
+before touching anything: **112 occurrences across 35 of 101 tracked files**,
+while `CONTRIBUTING.md` published the rule in prose and every check was green.
+
+THE PART WORTH REMEMBERING IS NOT THE EM DASHES. Wiring `aahp check` in would
+NOT have been enough. Read from the CLI's own source rather than inferred, the
+default file list is:
+
+  *.md *.mjs *.js *.json *.sh *.bash *.bats *.yml *.yaml *.txt
+
+There is no `*.ts` entry, and this is a TypeScript project. The gate, once
+wired, would have reported CLEAN over the whole of `src/` by construction: 49 of
+the 112 occurrences sat in files it could not open. A gate that runs, passes and
+is structurally incapable of seeing its subject is worse than one that never
+runs, because now the passing tick is evidence. That is the same failure this
+repository keeps producing in new forms, one layer further in each time.
+
+`aahp.config.json` now declares an explicit `include` that restates the defaults
+and adds `*.ts`. A new test then found FIVE MORE unscanned text types nobody had
+thought about (`*.py`, `*.example`, `*.gitignore`, `*.aiignore`, `LICENSE`), so
+those are in the list too. The list is a widening throughout; nothing was
+relaxed and nothing is excluded.
+
+THREE FILES NEEDED JUDGEMENT RATHER THAN A SWEEP:
+
+- `CLAUDE.md` and `.ai/handoff/CONVENTIONS.md` both stated the ban and quoted
+  the banned character while doing it. Deleting the quotation would weaken the
+  rule, so both sentences now name the codepoint instead of showing it.
+- `benchmarks/results/subagents-1774986597513.json` contains it inside a
+  captured model response. That is a recorded measurement, and editing it would
+  falsify a record. The literal became a JSON escape: the parsed document is
+  asserted identical, the file carries no literal, and no exclusion was needed.
+  Doctoring a benchmark result to satisfy a lint rule would have been the wrong
+  trade in the other direction.
+
+THE TEST ASSERTS THE CONSEQUENCE, NOT THE CONFIGURATION.
+`tests/security/forbidden-patterns.test.ts` enumerates the tracked tree itself
+and counts, so a narrowed `include`, a replaced CLI or a deleted CI job cannot
+make it pass. It separately asserts that the include list, expanded through
+`git ls-files`, covers every tracked text file, which is the row that catches a
+narrowing the count alone cannot.
+
+MUTATION PROOF, 17 ROWS, ALL AS EXPECTED, run after committing the fix. The pair
+that carries the argument:
+
+  em dash in src/index.ts                        aahp check exit 1, suite red
+  ...and then the include widening reverted      aahp check exit 0, suite STILL RED
+
+That is the state #67 would have left behind had only the wiring been fixed: the
+gate running, reporting success, blind to the file. Also covered: a markdown
+match, `aahp check` removed from the workflow, and the pattern relaxed to an
+unmatchable codepoint (which `aahp check` passes and the suite refuses).
+
+MEASURED WHILE THERE, WORTH KNOWING: `aahp check`'s aggregated output names the
+rule and the match COUNT but not the offending file or line. Reproduced twice.
+The repository-local test lists every file with its count, so that is the one to
+read when this goes red.
+
+Full suite locally: 244 tests, 0 failures, 11.4 seconds. `npm run typecheck`
+clean. `npx --no-install aahp check .` exits 0.
+
+NOT EXERCISED: the new `governance gates (aahp check)` job has never run on a
+GitHub runner from this session. CI decides.
+
+Open, and Emre's:
+
+- **`required_status_checks` on `main` is still `null`**, so this gate reports
+  rather than blocks, like every other one here.
+- **An explicit `include` list stops inheriting future AAHP defaults.** If a
+  later release adds a file type to `DEFAULT_INCLUDE`, this repository will not
+  pick it up. The "scans every tracked text file" row is the compensation: a new
+  type appearing in the tree goes red until it is added deliberately.
 
 ## 2026-08-22 - The three stranded pull requests carry nothing main lacks, and the handoff notes were German
 
@@ -194,6 +346,75 @@ Open, and Emre's:
   on taking our word for it. Filed as its own issue.
 - #63, #64 and #66 are still open and still show stale green check marks. They
   are not this session's to close.
+## 2026-08-22 - A test file could exist under tests/ and never run, and the suite still said 234 passed
+
+ISSUE #70, CLOSED BY MEASUREMENT RATHER THAN BY ASSERTION. The `test` script
+named its files, nothing compared that list against the directory, and the drift
+ran in the dangerous direction: a file missing from the list was never reported
+as missing, it was simply never executed, and the run still reported a full
+pass. Reproduced here at 87c6cd4 before touching anything: an always-failing
+probe in `tests/security/` exits 1 on its own and leaves `npm test` at exit 0,
+with its filename absent from the output.
+
+THE GATE IS A SCRIPT WITH ITS OWN CI STEP, AND THE FIRST DRAFT GOT THAT WRONG.
+The obvious shape is a test file that reads `package.json` and walks `tests/`.
+It is also the one shape that cannot work here: a guard reached only through the
+enumerated list is removed by the same edit it exists to catch. So the deciding
+invocation is `node scripts/check-test-registration.mjs` as a step of its own in
+`ci.yml`, and `tests/security/test-registration.test.ts` executes that script as
+a child process instead of restating its logic.
+
+The first draft ran the step as `npm run test-registration`, and the test in
+this pull request went red on it. That is the correct verdict and worth
+recording, because the reasoning is not obvious: an npm script lives in
+`package.json`, which is the file the guard audits, so routing the invocation
+through it puts the gate inside its own subject. Rewriting `test-registration`
+to `echo ok` would then disable the check with the same edit that breaks the
+list. The step now names the script by path.
+
+The workflow assertion strips `#` comments before matching, for the same reason
+the last three matchers in this estate were defeated: a `run:` body whose only
+mention of the script sits in a comment names the gate without running it, and a
+substring match reads that as compliance.
+
+CONTRACT, ASSERTED EXACTLY AND NEVER AS "NON-ZERO". 0 registered, 1 drift, 2
+cannot determine. 1 is a real verdict here, so accepting any non-zero would let
+a deleted or renamed script - which exits 1 from node itself - impersonate a
+working gate on every drift row. Exit 2 covers a missing or unparseable
+`package.json`, no `test` script, a script passing no `--test`, an absent
+`tests/`, an unrecognised argument, an exclusion with no reason, and an
+exclusion map that is an array.
+
+A COMPLETE FILE LIST IS NOT A COMPLETE RUN, which is the second half and the
+half a list-versus-directory check misses entirely. `--test-name-pattern`,
+`--test-skip-pattern`, `--test-only` and `--test-shard` each leave the list
+correct while the run skips most of what it names, and `||`, `;` and `|` after
+the runner discard its exit status. All seven exit 2. `&&` is accepted, and
+there is a row asserting that, because it propagates failure.
+
+`tests/integration.test.ts` IS NOW DECLARED RATHER THAN FORGOTTEN. It is not a
+`node:test` file at all: it carries its own `assert`/`test` helpers, runs as a
+plain program, and calls live SSH, Home Assistant and a local LLM. It is
+excluded in `package.json` under `testRegistration.excluded` with that reason,
+and the guard requires an exclusion to name a file that exists and to carry a
+non-empty reason. A stale exclusion is a standing permission for a future file
+to arrive under that name and never run, so it exits 1.
+
+Mutation proofs recorded in the pull request body: five, each red, each restored
+green, each guarded by an assertion that the substitution actually changed the
+file.
+
+Suite: 234 tests before, 263 after, 0 failed.
+
+Open, and Emre's:
+
+- **The changelog gate described in `CONTRIBUTING.md` and `SECURITY.md` does not
+  exist.** Filed as its own issue. Same class as #67 and as this one, and worst
+  placed of the three: it is asserted in a public `SECURITY.md` section whose
+  opening claim is that nothing depends on taking our word for it.
+- `required_status_checks` on `main` is still `null`, so this gate reports
+  rather than blocks, exactly like CI, Scan and AAHP Verify. Unreachable from
+  any file in this tree.
 
 ## 2026-08-22 - The three blocked pull requests were already shipped, and the sweep #64 asked for
 
@@ -845,21 +1066,21 @@ rulesets empty), so a v-tag can still point at any commit.
 |-------|--------|-------|
 | `build` | ✅ Passing (prev session) | 0.85s, 148 MB, 30k instantiations |
 | `typecheck` | ⏳ Needs re-run | New files added this session (ssh.ts, openclaw.ts) |
-| `lint` | — | Not configured yet |
+| `lint` | - | Not configured yet |
 | `integration test` | ✅ Passing (prev session) | Claude Desktop smoke test passed (2026-03-31) |
 
 ---
 
 ## Architecture Change (2026-03-31)
 
-**Problem:** cron tools used REST (`/api/cron/jobs`) — OpenClaw has no REST API, only WebSocket. Memory tools read from local Windows filesystem — actual memory files are on the OpenClaw server.
+**Problem:** cron tools used REST (`/api/cron/jobs`) - OpenClaw has no REST API, only WebSocket. Memory tools read from local Windows filesystem - actual memory files are on the OpenClaw server.
 
 **Solution:** SSH-based transport layer.
 
 - New `src/ssh.ts`: SSH exec helper using `child_process.spawn('ssh', ...)`. No extra npm deps, uses built-in OpenSSH (available on Windows 10+, macOS, Linux).
 - `src/tools/cron.ts`: Rewritten to read `~/.openclaw/cron/jobs.json` via SSH.
 - `src/tools/memory.ts`: Rewritten to read/write `~/.openclaw/workspace/memory/` via SSH. Uses base64 encoding for safe writes.
-- New `src/tools/openclaw.ts`: Sub-agent orchestration — SSH-executes `openclaw agents send --message "<prompt>" --local --timeout <seconds>` and returns the response synchronously. Also: `openclaw_status`, `openclaw_plugins`.
+- New `src/tools/openclaw.ts`: Sub-agent orchestration - SSH-executes `openclaw agents send --message "<prompt>" --local --timeout <seconds>` and returns the response synchronously. Also: `openclaw_status`, `openclaw_plugins`.
 - `src/config.ts`: All IPs/hosts removed from hardcoded defaults. `SSH_HOST` and `HA_URL` are now required env vars. Dotenv loaded at startup.
 - New `.env.example`: Template for all required env vars.
 
@@ -948,7 +1169,7 @@ Claude Desktop / Cursor / Windsurf
 | `src/tools/memory.ts` | Memory read/write/search (SSH) |
 | `src/tools/cron.ts` | OpenClaw cron management (SSH) |
 | `src/tools/openclaw.ts` | Sub-agent orchestration + status (SSH) |
-| `.env.example` | Template — copy to .env and fill values |
+| `.env.example` | Template - copy to .env and fill values |
 
 <!-- aahp-gate -->
 _AAHP verify gate: v3.0.2 synced 2026-06-20._

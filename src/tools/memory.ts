@@ -1,5 +1,5 @@
 /**
- * Memory tools — reads and writes daily memory logs on the OpenClaw server via SSH.
+ * Memory tools - reads and writes daily memory logs on the OpenClaw server via SSH.
  *
  * Files live at: ~/.openclaw/workspace/memory/YYYY-MM-DD.md
  * This replaces the previous local-filesystem implementation because the

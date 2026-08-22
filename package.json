@@ -1,7 +1,7 @@
 {
   "name": "@elvatis_com/elvatis-mcp",
   "version": "1.3.1",
-  "description": "MCP server for OpenClaw — expose smart home, memory, cron, and more to Claude Desktop, Cursor, Windsurf, and any MCP client",
+  "description": "MCP server for OpenClaw - expose smart home, memory, cron, and more to Claude Desktop, Cursor, Windsurf, and any MCP client",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -11,12 +11,19 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "test": "npm run build && npx --no-install tsx --test tests/unit.test.ts tests/security/action-pin.test.ts tests/security/publish-guard.test.ts tests/security/version-guard.test.ts tests/security/runtime-support.test.ts tests/security/aahp-gate.test.ts tests/security/changelog-guard.test.ts tests/security/secret-scan.test.ts",
+    "test": "npm run build && npx --no-install tsx --test tests/unit.test.ts tests/security/action-pin.test.ts tests/security/publish-guard.test.ts tests/security/version-guard.test.ts tests/security/runtime-support.test.ts tests/security/aahp-gate.test.ts tests/security/changelog-guard.test.ts tests/security/secret-scan.test.ts tests/security/forbidden-patterns.test.ts tests/security/model-injection.test.ts tests/security/test-registration.test.ts",
     "test:integration": "npx --no-install tsx tests/integration.test.ts",
+    "test-registration": "node scripts/check-test-registration.mjs",
     "version-guard": "node scripts/check-version-unpublished.mjs",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "testRegistration": {
+    "_comment": "Files under tests/ that `npm test` deliberately does not run. scripts/check-test-registration.mjs requires every entry to name a file that exists and to carry a reason, and fails when a file under tests/ appears in neither this map nor the `test` script.",
+    "excluded": {
+      "tests/integration.test.ts": "Live integration script, not a node:test file: it has its own assert/test helpers and is run as a plain program by `npm run test:integration`. It calls real services and needs SSH_HOST, HA_URL and a running local LLM, none of which exist on a CI runner, so it would fail there for reasons unrelated to the change under review."
+    }
   },
   "keywords": [
     "mcp",

@@ -57,7 +57,7 @@ const stubConfig: Config = {
 };
 
 // ============================================================================
-// matchRules() — keyword routing engine
+// matchRules() - keyword routing engine
 // ============================================================================
 
 describe('matchRules', () => {
@@ -156,7 +156,7 @@ describe('matchRules', () => {
 });
 
 // ============================================================================
-// ROUTING_RULES / KNOWN_AGENTS / ROUTING_GUIDE — structural checks
+// ROUTING_RULES / KNOWN_AGENTS / ROUTING_GUIDE - structural checks
 // ============================================================================
 
 describe('routing constants', () => {
@@ -195,7 +195,7 @@ describe('routing constants', () => {
 });
 
 // ============================================================================
-// handlePromptSplit (heuristic strategy) — splitting logic
+// handlePromptSplit (heuristic strategy) - splitting logic
 // ============================================================================
 
 describe('prompt_split heuristic', () => {
@@ -307,7 +307,7 @@ describe('prompt_split heuristic', () => {
 });
 
 // ============================================================================
-// handleMcpHelp — routing guide and task recommendations
+// handleMcpHelp - routing guide and task recommendations
 // ============================================================================
 
 describe('mcp_help', () => {
@@ -344,7 +344,7 @@ describe('mcp_help', () => {
 });
 
 // ============================================================================
-// Rate limiter — usage tracking and quota enforcement
+// Rate limiter - usage tracking and quota enforcement
 // ============================================================================
 
 describe('rate limiter', () => {
@@ -420,7 +420,7 @@ describe('rate limiter', () => {
 });
 
 // ============================================================================
-// remote_shell — config helpers
+// remote_shell - config helpers
 // ============================================================================
 
 describe('remote_shell', () => {
@@ -452,7 +452,7 @@ describe('remote_shell', () => {
 });
 
 // ============================================================================
-// remote_docker — argument validation (no SSH needed)
+// remote_docker - argument validation (no SSH needed)
 // ============================================================================
 
 describe('remote_docker', () => {
@@ -484,7 +484,7 @@ describe('remote_docker', () => {
 });
 
 // ============================================================================
-// remote_service — argument validation (no SSH needed)
+// remote_service - argument validation (no SSH needed)
 // ============================================================================
 
 describe('remote_service', () => {
@@ -515,7 +515,7 @@ describe('remote_service', () => {
 });
 
 // ============================================================================
-// openclaw_deploy — argument validation (no SSH needed)
+// openclaw_deploy - argument validation (no SSH needed)
 // ============================================================================
 
 describe('openclaw_deploy', () => {
@@ -540,7 +540,7 @@ describe('openclaw_deploy', () => {
 });
 
 // ============================================================================
-// Security regression tests — validate.ts (findings 1-8)
+// Security regression tests - validate.ts (findings 1-8)
 // All validators must reject shell metacharacters, leading hyphens, and "..".
 // ============================================================================
 

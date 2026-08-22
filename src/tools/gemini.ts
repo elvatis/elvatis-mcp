@@ -21,6 +21,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { spawnLocal } from '../spawn.js';
+import { validateModel } from '../validate.js';
 import { getOrCreateSession, recordSuccess, invalidateSession } from '../session-registry.js';
 
 // --- Schemas ---
@@ -47,7 +48,10 @@ export async function handleGeminiRun(
   args: { prompt: string; model?: string; timeout_seconds: number; working_directory?: string },
   config: Config,
 ) {
-  const model = args.model ?? config.geminiModel ?? 'gemini-2.5-flash';
+  // Validated before it reaches the argv: on Windows spawnLocal joins the
+  // arguments into one cmd.exe command string, where an unvalidated value can
+  // close its own quoting and be parsed as command text. See validateModel.
+  const model = validateModel(args.model ?? config.geminiModel ?? 'gemini-2.5-flash');
   const session = getOrCreateSession('gemini', model);
 
   // Gemini creates a new session when --resume is given an unknown UUID,
@@ -102,7 +106,7 @@ export async function handleGeminiRun(
       success: true,
       response: raw.trim(),
       model,
-      note: 'Response was plain text, not JSON — consider upgrading @google/gemini-cli',
+      note: 'Response was plain text, not JSON - consider upgrading @google/gemini-cli',
       session_id: session.sessionId,
     };
   }
