@@ -21,9 +21,28 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   state and was right to; what was missing was the written rule and the step
   that satisfies it. The guard's failure message now names the convention and
   says that the fix belongs on `main`, rather than only stating the fact.
+- **The changelog gate that CONTRIBUTING.md and SECURITY.md described now
+  exists.** Both documents stated that "the changelog gate requires the topmost
+  dated release heading to equal the version in `package.json`", and nothing
+  implemented it: the phrase appeared twice in 101 tracked files, in those two
+  sentences, and no script, workflow or test read a heading out of this file.
+  `node scripts/check-changelog-heading.mjs` now performs that comparison in its
+  own CI job on every pull request, and `publish` depends on that job. It fails
+  closed, so an unparseable heading, an `[Unreleased]` section above the dated
+  one, an impossible date or a duplicated version exits 2 rather than passing.
+  The SECURITY.md claim was the one that mattered: it sits in a public section
+  whose opening sentence invites the reader to check it against the workflow.
 
 ### Fixed
 
+- The handoff notes under `.ai/` were partly German, in a public repository
+  whose contributor documentation had never said which language it uses.
+  `LOG.md` was a German session narrative, down to which machine the author
+  connected from; one session entry in `STATUS.md` was German prose. Both are
+  now English, and CONTRIBUTING.md states the rule so the next note does not
+  have to guess it. The one German string that remains is a citation of the
+  subject line of commit `c12c6e5`, which is on `main` and cannot be corrected
+  without rewriting published history.
 - **A test file under `tests/` could exist and never run, and the suite still
   reported a full pass.** The `test` script selected files by name and nothing
   compared that list against the directory, so an always-failing probe dropped

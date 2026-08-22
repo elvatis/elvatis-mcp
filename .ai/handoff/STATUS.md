@@ -1,3 +1,142 @@
+## 2026-08-22 - The changelog gate that two documents described now exists, and one of those documents is public
+
+ISSUE #76 IS THE THIRD INSTANCE OF ONE CLASS IN THIS REPOSITORY AND THE ONLY ONE
+FACING OUTWARDS. `CONTRIBUTING.md` and `SECURITY.md` both stated that "the
+changelog gate requires the topmost dated release heading to equal the version
+in `package.json`". Re-measured on `main` at `df66e15` before writing anything:
+the phrase "changelog gate" appears exactly twice across 101 tracked files, in
+those two sentences, and nothing under `scripts/`, `.github/workflows/`,
+`tests/` or `aahp.config.json` reads a heading out of `CHANGELOG.md`. Two
+claims, zero implementations.
+
+The claim was never false about the tree. `## [1.3.1] - 2026-08-21` and
+`"version": "1.3.1"` agreed, and still agree. It was unenforced, not violated,
+which is the whole reason it survived: an unenforced rule that happens to hold
+is indistinguishable from an enforced one until the day it stops holding, and on
+that day nothing reports it. The same shape as #67 (`forbiddenPatterns`
+declared, `aahp check` invoked by nothing) and #70 (`npm test` naming its files,
+so an unregistered test never runs). The difference is the audience: the
+`SECURITY.md` instance sits in a public section whose opening sentence invites
+the reader to check every claim in it against `ci.yml`.
+
+IMPLEMENTED RATHER THAN DELETED. `scripts/check-changelog-heading.mjs` parses
+the file, takes the topmost second-level heading, and compares the version it
+names to `package.json`. Three decisions are worth recording because each is a
+way the gate could have been green and meaningless:
+
+- **"Topmost" is structural, not a search.** The first `##` heading has to BE
+  the dated release heading. A script that scanned downward for the first
+  heading that happens to parse would step over `## [Unreleased]` and report
+  agreement about a section nobody is editing. `[Unreleased]` was this file's
+  topmost heading until 2026-08-21, so this is not hypothetical.
+- **Fenced code blocks are excluded.** An example heading in a ``` block above
+  the real one would otherwise take the topmost position from a document that is
+  perfectly correct.
+- **Invoked by literal path in CI, never through `npm run`.** The acceptance
+  criterion is that the gate cannot be switched off by editing `package.json`,
+  and an npm script is a line in `package.json`. The version guard is allowed
+  npm indirection; this one is not, and the test enforces the difference.
+
+It exits 2 for a missing file, an unparseable heading, an impossible date
+(`2026-02-30` matches the digit shape and is not a day), a version that is not a
+version, and the same version heading twice. `publish` now lists the new job in
+`needs:`, which on a repository whose `required_status_checks` is `null` is the
+only place a check can hold anything up from inside this tree.
+
+MUTATION PROOF, 13 ROWS, ALL AS EXPECTED. Run after committing the fix, so no
+restore could delete it, and every substitution asserted that it had actually
+changed the file before the gate ran:
+
+  version raised to 1.3.2, heading left at 1.3.1     exit 1   (was 0)
+  heading raised to 1.4.0, version left at 1.3.1     exit 1   (the other direction)
+  [Unreleased] placed above the dated section        exit 2   (not a step-over)
+  CI step replaced with `echo skipped`               suite red
+  `needs:` edge on publish dropped                   suite red
+
+Each was restored and re-run to 0. The two workflow mutations matter most: they
+are the difference between this gate and `aahp check`, which passes its own
+scenarios perfectly and has been wired to nothing for the life of this
+repository.
+
+Full suite locally: 260 tests, 0 failures, 11.6 seconds. `npm test` here is
+node:test through tsx, not bats; the estate rule about never running a full
+suite on this machine was measured against bats and does not apply.
+
+NOT EXERCISED, AND SAID PLAINLY: the new job has never run on a GitHub runner
+from this session. Everything above is a local verdict. CI decides.
+
+Open, and Emre's:
+
+- **`required_status_checks` on `main` is still `null`.** Unchanged from the
+  previous session's note. Every gate in this repository reports rather than
+  blocks on a pull request. The `needs:` edge added here is a partial answer for
+  the release path only.
+- **#75 is open and CONFLICTING**, and its check marks are the last run against
+  a base that no longer exists. It edits the same `test` script line this change
+  appends to, so the two will conflict textually; keeping both filenames on that
+  line is the whole resolution. Not this session's pull request to touch.
+
+## 2026-08-22 - The three stranded pull requests carry nothing main lacks, and the handoff notes were German
+
+RE-MEASURED #63, #64 AND #66 AGAINST `main`, LINE BY LINE, AND ALL THREE ARE
+EMPTY. The session below reached this by tree comparison; this one repeated it at
+the granularity that answers the follow-up question, which is not "does the
+branch differ from main" but "does the branch carry anything main lacks". Those
+are different questions, and only the second one decides whether a branch is
+worth re-proposing. For each branch, every line it ADDS relative to the common
+base `c12c6e5` was looked up in main's copy of the same file:
+
+  #66   96 added lines, 0 absent from main
+  #64  190 added lines, 0 absent from main
+  #63  193 added lines, 0 absent from main
+
+Bookkeeping files (`MANIFEST.json`, `STATUS.md`, `package-lock.json`) excluded,
+since those three are regenerated or appended by every session and never carry a
+branch's argument.
+
+The reason this needed re-measuring rather than trusting the earlier note is that
+the assignment arrived with a per-branch list of things main was said to still
+lack: #63's `LOG.md` line, #66's release-convention section in `CONTRIBUTING.md`,
+#64's `SECURITY.md` wording. All three are on `main` already, and the
+`CONTRIBUTING.md` section is there verbatim. A two-dot diff makes the branches
+look enormous (each would delete 1,300 to 1,600 lines) and a three-dot diff makes
+them look small; neither says whether their content survives. Counting added
+lines against main does.
+
+WHAT MAIN DID STILL LACK IS A DIFFERENT DEFECT THAN THE ONE #63 FIXED. #63
+removed a CPU and GPU model from `LOG.md`, and that removal is on main. What it
+left behind is the rest of the line and the rest of the file: a German session
+narrative, in a public repository, recording which machine the author connected
+from. The hardware string was the smaller half.
+
+Measured before and after with a word-list scan over every tracked file, so the
+fix has a denominator rather than an impression: 12 German lines in 2 files
+before, 1 line in 1 file after. The one that remains is `STATUS.md` line 484,
+which quotes the German subject line of commit `c12c6e5` inside an English
+paragraph that exists to explain why that subject cannot be corrected. It is a
+citation of something immutable, not prose, and it stays.
+
+NO LANGUAGE GATE WAS ADDED, DELIBERATELY. A detector strong enough to catch
+German prose also catches that citation, so it would have to ship with an
+exception for it, and an exception carved into a matcher is the thing that
+swallows the next real instance. This repository already has one control that
+reads as active and cannot fire (issue #67, `forbiddenPatterns` declared in
+`aahp.config.json` with nothing invoking `aahp check`), and a second gate of that
+shape is worth less than no gate plus an accurate sentence in CONTRIBUTING.md.
+Recorded here so the choice is visible rather than looking like an omission.
+
+Open, and Emre's:
+
+- **`CONTRIBUTING.md` and `SECURITY.md` both describe a changelog gate that does
+  not exist.** Both state that "the changelog gate requires the topmost dated
+  release heading to equal the version in `package.json`". Nothing in `tests/`,
+  `scripts/`, `.github/workflows/` or `aahp.config.json` compares those two
+  values; `grep -rni changelog` over all four returns only prose and the npm
+  `files` entry. This is the same class as #67, and worse placed: it is asserted
+  in a public `SECURITY.md` section whose opening claim is that nothing depends
+  on taking our word for it. Filed as its own issue.
+- #63, #64 and #66 are still open and still show stale green check marks. They
+  are not this session's to close.
 ## 2026-08-22 - A test file could exist under tests/ and never run, and the suite still said 234 passed
 
 ISSUE #70, CLOSED BY MEASUREMENT RATHER THAN BY ASSERTION. The `test` script
@@ -609,33 +748,33 @@ rather than trusting the default. Layers 1, 3 and 4 are unaffected - they do not
 depend on a diff range - and Layer 2 counts everything outside `.ai/handoff/` as
 source, `.claude/` included.
 
-## 2026-08-21 - Node 18 und 20 sind end of life, und der publish-Job lief auf einem davon
+## 2026-08-21 - Node 18 and 20 are end of life, and the publish job ran on one of them
 
-Der v1.3.0-Release ist heute gescheitert, nicht am Paket und nicht am neuen
-version-guard (der meldete 1.3.0 korrekt als frei), sondern an der Laufzeit:
+The v1.3.0 release failed today. Not on the package, and not on the new
+version-guard, which correctly reported 1.3.0 as still free, but on the runtime:
 
     npm error code EBADENGINE
     npm error notsup Required: {"node":"^22.22.2 || ^24.15.0 || >=26.0.0"}
     npm error notsup Actual:   {"npm":"10.8.2","node":"v20.20.2"}
 
-Der publish-Job holt `npm@latest` fuer OIDC Trusted Publishing. npm 12 hat Node
-20 fallen gelassen. Der Schritt, der das Veroeffentlichen ermoeglichen soll, ist
-also der, der es verweigert - bei JEDEM Release-Versuch seit npm 12. Gesehen hat
-es niemand, weil seit April nichts veroeffentlicht wurde.
+The publish job fetches `npm@latest` for OIDC trusted publishing, and npm 12
+dropped Node 20. The step whose whole purpose is to make publishing possible is
+therefore the step refusing it, on EVERY release attempt since npm 12. Nobody
+saw it, because nothing had been published since April.
 
-Gleichzeitig lief die Matrix auf [18, 20, 22] und `engines.node` versprach
-oeffentlich `>=18` - eine Laufzeit ohne Sicherheits-Patches seit 16 Monaten.
+At the same time the matrix ran on [18, 20, 22] while `engines.node` publicly
+promised `>=18`, a runtime without security patches for 16 months.
 
-Geaendert: Matrix -> [22, 24], drei Einzel-Pins '20' -> '24', engines '>=22'.
+Changed: matrix -> [22, 24], three individual pins '20' -> '24', engines '>=22'.
 
-**Der Mutationsbeweis hat einen Fehler in der eigenen Zusicherung gefunden.** Die
-erste Fassung der Leerlauf-Sperre prueft die GLOBALE Pin-Liste; das Leeren der
-Matrix liess sie gruen, weil die Einzel-Pins der anderen Jobs die Liste nicht
-leer werden liessen. Die Mehr-Laufzeit-Abdeckung verschwand lautlos. `matrixPins()`
-liest jetzt ausschliesslich `strategy.matrix`. Vier Mutationen, alle rot bewiesen.
+**The mutation proof found a defect in its own assertion.** The first version of
+the empty-matrix guard read the GLOBAL pin list, so emptying the matrix left it
+green: the individual pins of the other jobs kept that list from ever being
+empty, and multi-runtime coverage would have disappeared silently. `matrixPins()`
+now reads `strategy.matrix` and nothing else. Four mutations, all proved red.
 
-Offen und Emres: Tag-Schutz fehlt weiterhin (`tags/protection` -> 404, rulesets
-leer), also kann ein v-Tag weiterhin auf einen beliebigen Commit zeigen.
+Open, and Emre's: tag protection is still absent (`tags/protection` -> 404,
+rulesets empty), so a v-tag can still point at any commit.
 
 > Note (2026-08-21, claude-opus-5): THE RELEASE PATH WAS GUARDED AND UNWALKABLE. `package.json` last moved its version on 2026-03-31 (b6d4c17, the initial skeleton). `1.2.4` was published on 2026-04-15. `main` then took 35 commits without the number changing, two of them security fixes: the command-injection remediation of 2026-06-28 (fb7b76a, 9 findings) and the `--channel` escaping fix of 2026-08-19 (ef82cb5, PR 56). Both are correct, both are merged, and neither could ever be installed by anyone. npm refuses a duplicate version, and `v1.2.4` already exists and points at the April tree, so re-tagging is not a way out either. An April tarball cannot contain a June fix, so for four months every `npm install` of the estate's only public package served the vulnerable code while the tree said it was fixed. Bumped to 1.3.0, in `package.json` and in both root entries of `package-lock.json`.
 >

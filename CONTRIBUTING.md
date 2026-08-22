@@ -48,12 +48,25 @@ If `npm run version-guard` fails on your pull request, read it as a statement
 about `main` rather than about your branch: the default branch is carrying an
 already-published version, so nothing merged into it can be installed until the
 number moves. Raise `version`, and open the matching section in
-[CHANGELOG.md](CHANGELOG.md) in the same change: the changelog gate requires the
-topmost dated release heading to equal the version in `package.json`.
+[CHANGELOG.md](CHANGELOG.md) in the same change:
+[`scripts/check-changelog-heading.mjs`](scripts/check-changelog-heading.mjs)
+requires the topmost dated release heading to equal the version in
+`package.json`, and runs as its own check on every pull request. Run it yourself
+with `node scripts/check-changelog-heading.mjs`; it prints which heading it read
+and which version it compared against.
+
+It fails closed rather than guessing. A heading it cannot parse, an
+`[Unreleased]` section sitting above the dated one, a date that is not a real
+day, or the same version heading twice all exit 2, which is a failure and not a
+pass. `[Unreleased]` in particular does not satisfy it: the rule above is that
+`main` carries a real unreleased *number*, with its section already open.
 
 ## Code Style
 
 - Follow existing patterns in the codebase.
+- English, everywhere: code, comments, documentation, commit subjects, pull
+  request titles and the handoff notes under `.ai/`. This repository is public,
+  so a note written for the person who wrote it is read by everyone.
 - No em dashes in comments or documentation.
 - Tool names use `domain_action` format (e.g. `home_light`, `openclaw_memory_search`).
 - All secrets via environment variables only.

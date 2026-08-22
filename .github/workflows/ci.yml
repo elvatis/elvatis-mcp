@@ -87,13 +87,48 @@ jobs:
       - name: Refuse a version the registry has already issued
         run: npm run version-guard
 
+  # The other half of the pair `version-guard` opens.
+  #
+  # CONTRIBUTING.md and SECURITY.md have both told readers, since the release
+  # convention was adopted, that "the changelog gate requires the topmost dated
+  # release heading to equal the version in package.json". Nothing implemented
+  # it. Measured on `main` at df66e15: the phrase appeared exactly twice in 101
+  # tracked files, in those two sentences, and no script, workflow or test read
+  # a heading out of CHANGELOG.md at all. The claim was unenforced rather than
+  # violated - the heading and the version agreed - which is precisely why it
+  # went unnoticed, and why the SECURITY.md instance is the serious one: that
+  # section opens by inviting the reader to verify every claim in it here.
+  #
+  # This job is the implementation. The script is invoked BY PATH rather than
+  # through `npm run`, because the acceptance criterion is that the gate is
+  # reachable without depending on a line in package.json - the file the gate
+  # reads. An npm script would put the off switch inside the subject.
+  #
+  # It FAILS CLOSED: a missing CHANGELOG.md, a topmost heading that does not
+  # parse, `[Unreleased]` above the dated section, an impossible date, or the
+  # same version twice all exit 2, never 0. tests/security/changelog-guard.test.ts
+  # executes the script in both directions and asserts each exit status exactly.
+  changelog-guard:
+    name: changelog opens the declared version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Refuse a version whose changelog section was never opened
+        run: node scripts/check-changelog-heading.mjs
+
   publish:
     name: Publish to npm
-    # `version-guard` as well as `build`, so the gate is load-bearing on the
-    # release path rather than advisory beside it. There is no required status
-    # check on this repository (SECURITY.md#release-integrity), so `needs:` is
-    # the only place a check can be made to actually hold something up.
-    needs: [build, version-guard]
+    # `version-guard` and `changelog-guard` as well as `build`, so those gates
+    # are load-bearing on the release path rather than advisory beside it. There
+    # is no required status check on this repository
+    # (SECURITY.md#release-integrity), so `needs:` is the only place a check can
+    # be made to actually hold something up.
+    needs: [build, version-guard, changelog-guard]
     runs-on: ubuntu-latest
     # Only a PUSHED v-tag publishes. `workflow_dispatch` used to be an OR-branch
     # here, and the Run-workflow dialog accepts any branch, so a manual dispatch
