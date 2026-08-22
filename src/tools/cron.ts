@@ -1,5 +1,5 @@
 /**
- * OpenClaw cron tools — reads from ~/.openclaw/cron/jobs.json via SSH.
+ * OpenClaw cron tools - reads from ~/.openclaw/cron/jobs.json via SSH.
  *
  * OpenClaw uses a WebSocket gateway (not REST), so we access cron state
  * directly from the server's filesystem over SSH.

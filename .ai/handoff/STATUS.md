@@ -710,21 +710,21 @@ rulesets empty), so a v-tag can still point at any commit.
 |-------|--------|-------|
 | `build` | ✅ Passing (prev session) | 0.85s, 148 MB, 30k instantiations |
 | `typecheck` | ⏳ Needs re-run | New files added this session (ssh.ts, openclaw.ts) |
-| `lint` | — | Not configured yet |
+| `lint` | - | Not configured yet |
 | `integration test` | ✅ Passing (prev session) | Claude Desktop smoke test passed (2026-03-31) |
 
 ---
 
 ## Architecture Change (2026-03-31)
 
-**Problem:** cron tools used REST (`/api/cron/jobs`) — OpenClaw has no REST API, only WebSocket. Memory tools read from local Windows filesystem — actual memory files are on the OpenClaw server.
+**Problem:** cron tools used REST (`/api/cron/jobs`) - OpenClaw has no REST API, only WebSocket. Memory tools read from local Windows filesystem - actual memory files are on the OpenClaw server.
 
 **Solution:** SSH-based transport layer.
 
 - New `src/ssh.ts`: SSH exec helper using `child_process.spawn('ssh', ...)`. No extra npm deps, uses built-in OpenSSH (available on Windows 10+, macOS, Linux).
 - `src/tools/cron.ts`: Rewritten to read `~/.openclaw/cron/jobs.json` via SSH.
 - `src/tools/memory.ts`: Rewritten to read/write `~/.openclaw/workspace/memory/` via SSH. Uses base64 encoding for safe writes.
-- New `src/tools/openclaw.ts`: Sub-agent orchestration — SSH-executes `openclaw agents send --message "<prompt>" --local --timeout <seconds>` and returns the response synchronously. Also: `openclaw_status`, `openclaw_plugins`.
+- New `src/tools/openclaw.ts`: Sub-agent orchestration - SSH-executes `openclaw agents send --message "<prompt>" --local --timeout <seconds>` and returns the response synchronously. Also: `openclaw_status`, `openclaw_plugins`.
 - `src/config.ts`: All IPs/hosts removed from hardcoded defaults. `SSH_HOST` and `HA_URL` are now required env vars. Dotenv loaded at startup.
 - New `.env.example`: Template for all required env vars.
 
@@ -813,7 +813,7 @@ Claude Desktop / Cursor / Windsurf
 | `src/tools/memory.ts` | Memory read/write/search (SSH) |
 | `src/tools/cron.ts` | OpenClaw cron management (SSH) |
 | `src/tools/openclaw.ts` | Sub-agent orchestration + status (SSH) |
-| `.env.example` | Template — copy to .env and fill values |
+| `.env.example` | Template - copy to .env and fill values |
 
 <!-- aahp-gate -->
 _AAHP verify gate: v3.0.2 synced 2026-06-20._

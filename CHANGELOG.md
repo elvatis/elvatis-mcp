@@ -37,6 +37,27 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   runtimes were dropped, and the prose stayed behind, in a section that invites
   the reader to check it against the workflow. It now points at the matrix
   instead of restating it, so it cannot drift again.
+- **The em-dash ban declared in `aahp.config.json` was never evaluated by
+  anything.** `aahp verify` and `aahp doctor` do not read `forbiddenPatterns`;
+  `aahp check` does, and no workflow ran it. 112 occurrences of U+2014 sat
+  across 35 of 101 tracked files while CONTRIBUTING.md published the rule and
+  every check was green. All 112 are gone, a `governance gates (aahp check)`
+  job now evaluates the rule on every pull request, and
+  `tests/security/forbidden-patterns.test.ts` asserts the consequence directly
+  by enumerating the tracked tree itself, so narrowing the config cannot make
+  it pass.
+
+  Wiring the gate in was not enough on its own: the AAHP default file list has
+  no `*.ts` entry, so on a TypeScript project the gate would have reported
+  clean over all of `src/` by construction, and 49 of the 112 occurrences were
+  in files it could not open. The rule now declares an explicit `include` that
+  restates the defaults and adds every text file type this repository actually
+  contains. The one recorded value that legitimately holds the character, a
+  captured model response under `benchmarks/results/`, stores it as a JSON
+  escape, so its parsed value is byte-identical and the file carries no
+  literal.
+- `.ai/handoff/CONVENTIONS.md` claimed Node.js 18+ while `engines.node` has
+  been `>=22` since the end-of-life runtimes were dropped.
 
 ## [1.3.0] - 2026-08-21
 

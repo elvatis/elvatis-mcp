@@ -1,5 +1,5 @@
 /**
- * prompt_split — analyze a complex prompt and split it into sub-tasks.
+ * prompt_split - analyze a complex prompt and split it into sub-tasks.
  *
  * Returns a structured plan showing which sub-agent handles each part,
  * dependency ordering, and the actual prompts to send. The LLM client

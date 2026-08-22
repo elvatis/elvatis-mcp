@@ -45,7 +45,13 @@ topmost dated release heading to equal the version in `package.json`.
 - English, everywhere: code, comments, documentation, commit subjects, pull
   request titles and the handoff notes under `.ai/`. This repository is public,
   so a note written for the person who wrote it is read by everyone.
-- No em dashes in comments or documentation.
+- No em dashes (U+2014) anywhere: code, comments, documentation, tool
+  descriptions and the handoff notes under `.ai/`. Use a hyphen.
+  `aahp.config.json` declares the rule and the `governance gates (aahp check)`
+  job in [`aahp-verify.yml`](.github/workflows/aahp-verify.yml) evaluates it on
+  every pull request, over every tracked text file including `*.ts`. If a value
+  legitimately contains the character because it is a recorded measurement,
+  escape it rather than editing it, as `benchmarks/results/` does.
 - Tool names use `domain_action` format (e.g. `home_light`, `openclaw_memory_search`).
 - All secrets via environment variables only.
 - Logs to stderr only in stdio mode (stdout is the MCP protocol stream).

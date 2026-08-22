@@ -8,6 +8,24 @@
     {
       "id": "em-dash",
       "pattern": "\\u2014",
+      "include": [
+        "*.md",
+        "*.mjs",
+        "*.js",
+        "*.ts",
+        "*.json",
+        "*.sh",
+        "*.bash",
+        "*.bats",
+        "*.yml",
+        "*.yaml",
+        "*.txt",
+        "*.py",
+        "*.example",
+        "*.gitignore",
+        "*.aiignore",
+        "LICENSE"
+      ],
       "message": "em dash (U+2014) is banned; use a hyphen"
     }
   ]

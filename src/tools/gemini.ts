@@ -102,7 +102,7 @@ export async function handleGeminiRun(
       success: true,
       response: raw.trim(),
       model,
-      note: 'Response was plain text, not JSON — consider upgrading @google/gemini-cli',
+      note: 'Response was plain text, not JSON - consider upgrading @google/gemini-cli',
       session_id: session.sessionId,
     };
   }

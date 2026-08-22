@@ -3,7 +3,7 @@
  * elvatis-mcp Sub-Agent + Orchestration Benchmark
  *
  * Measures latency and quality of each sub-agent in the elvatis-mcp stack:
- *   - local_llm_run  (LM Studio / Ollama — free, private)
+ *   - local_llm_run  (LM Studio / Ollama - free, private)
  *   - gemini_run     (Google Gemini CLI)
  *   - codex_run      (OpenAI Codex CLI)
  *   - claude_run     (Anthropic Claude CLI)

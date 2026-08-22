@@ -12,6 +12,6 @@ Then:
 ```bash
 git add -A && git commit -m "release: v0.1.0"
 git tag v0.1.0 && git push origin main --tags
-gh release create v0.1.0 --title "v0.1.0 — Initial release" --notes "First public release. 12 tools: Home Assistant (6), Memory (3), OpenClaw Cron (3)."
+gh release create v0.1.0 --title "v0.1.0 - Initial release" --notes "First public release. 12 tools: Home Assistant (6), Memory (3), OpenClaw Cron (3)."
 npm publish --access public
 ```

@@ -1,5 +1,5 @@
 /**
- * Local process spawner — runs a command on the same machine as the MCP server.
+ * Local process spawner - runs a command on the same machine as the MCP server.
  * Used by gemini_run, codex_run, and system_status tools.
  * No SSH required: these CLIs authenticate via their own local credential stores.
  */
@@ -100,7 +100,7 @@ export function spawnLocal(
     let killed = false;
 
     proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); lastOutputAt = Date.now(); });
-    // Codex streams progress to stderr during execution — collect but don't reject on it
+    // Codex streams progress to stderr during execution - collect but don't reject on it
     proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); lastOutputAt = Date.now(); });
 
     // Hard timeout
@@ -118,7 +118,7 @@ export function spawnLocal(
           killed = true;
           proc.kill('SIGTERM');
           clearInterval(staleTimer);
-          // Don't reject here — let the 'close' handler decide based on stdout
+          // Don't reject here - let the 'close' handler decide based on stdout
         }
       }, 10_000); // check every 10s
     }

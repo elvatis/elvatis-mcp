@@ -50,7 +50,7 @@
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
       "updated": "2026-08-21T22:52:13Z",
       "lines": 38,
-      "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
+      "summary": "- **TypeScript strict** - no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",

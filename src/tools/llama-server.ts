@@ -1,5 +1,5 @@
 /**
- * llama_server — manage a local llama.cpp server instance.
+ * llama_server - manage a local llama.cpp server instance.
  *
  * Start, stop, and configure a llama.cpp / llama-server process with
  * specific model paths, cache types (including TurboQuant formats),

@@ -1,7 +1,7 @@
 /**
  * remote_docker: manage Docker containers on a remote Linux server via SSH.
  *
- * No Docker API or open port needed — wraps docker CLI commands over SSH.
+ * No Docker API or open port needed - wraps docker CLI commands over SSH.
  * Requires REMOTE_HOST to be configured (shared with remote_shell).
  */
 

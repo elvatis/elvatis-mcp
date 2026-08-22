@@ -45,7 +45,7 @@
 
 ## Blockers / Next Steps
 
-- Run `npm install && npm run build` — picks up dotenv, no new npm deps for gemini/codex (local spawn)
+- Run `npm install && npm run build` - picks up dotenv, no new npm deps for gemini/codex (local spawn)
 - Test all new tools in Claude Desktop after build
 - `openclaw-cli-bridge-elvatis` plugin on server crashes (server-side npm fix needed, see NEXT_ACTIONS.md)
-- Verify `gemini_run` output format — `--output-format json` flag may behave differently across CLI versions
+- Verify `gemini_run` output format - `--output-format json` flag may behave differently across CLI versions

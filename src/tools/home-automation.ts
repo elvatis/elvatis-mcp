@@ -1,5 +1,5 @@
 /**
- * home_automation — list, trigger, and toggle Home Assistant automations.
+ * home_automation - list, trigger, and toggle Home Assistant automations.
  *
  * Uses the HA REST API to manage automations without editing YAML.
  * Creating new automations is complex (requires HA YAML knowledge),
