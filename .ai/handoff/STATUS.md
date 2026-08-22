@@ -1,3 +1,80 @@
+## 2026-08-22 - The changelog gate that two documents described now exists, and one of those documents is public
+
+ISSUE #76 IS THE THIRD INSTANCE OF ONE CLASS IN THIS REPOSITORY AND THE ONLY ONE
+FACING OUTWARDS. `CONTRIBUTING.md` and `SECURITY.md` both stated that "the
+changelog gate requires the topmost dated release heading to equal the version
+in `package.json`". Re-measured on `main` at `df66e15` before writing anything:
+the phrase "changelog gate" appears exactly twice across 101 tracked files, in
+those two sentences, and nothing under `scripts/`, `.github/workflows/`,
+`tests/` or `aahp.config.json` reads a heading out of `CHANGELOG.md`. Two
+claims, zero implementations.
+
+The claim was never false about the tree. `## [1.3.1] - 2026-08-21` and
+`"version": "1.3.1"` agreed, and still agree. It was unenforced, not violated,
+which is the whole reason it survived: an unenforced rule that happens to hold
+is indistinguishable from an enforced one until the day it stops holding, and on
+that day nothing reports it. The same shape as #67 (`forbiddenPatterns`
+declared, `aahp check` invoked by nothing) and #70 (`npm test` naming its files,
+so an unregistered test never runs). The difference is the audience: the
+`SECURITY.md` instance sits in a public section whose opening sentence invites
+the reader to check every claim in it against `ci.yml`.
+
+IMPLEMENTED RATHER THAN DELETED. `scripts/check-changelog-heading.mjs` parses
+the file, takes the topmost second-level heading, and compares the version it
+names to `package.json`. Three decisions are worth recording because each is a
+way the gate could have been green and meaningless:
+
+- **"Topmost" is structural, not a search.** The first `##` heading has to BE
+  the dated release heading. A script that scanned downward for the first
+  heading that happens to parse would step over `## [Unreleased]` and report
+  agreement about a section nobody is editing. `[Unreleased]` was this file's
+  topmost heading until 2026-08-21, so this is not hypothetical.
+- **Fenced code blocks are excluded.** An example heading in a ``` block above
+  the real one would otherwise take the topmost position from a document that is
+  perfectly correct.
+- **Invoked by literal path in CI, never through `npm run`.** The acceptance
+  criterion is that the gate cannot be switched off by editing `package.json`,
+  and an npm script is a line in `package.json`. The version guard is allowed
+  npm indirection; this one is not, and the test enforces the difference.
+
+It exits 2 for a missing file, an unparseable heading, an impossible date
+(`2026-02-30` matches the digit shape and is not a day), a version that is not a
+version, and the same version heading twice. `publish` now lists the new job in
+`needs:`, which on a repository whose `required_status_checks` is `null` is the
+only place a check can hold anything up from inside this tree.
+
+MUTATION PROOF, 13 ROWS, ALL AS EXPECTED. Run after committing the fix, so no
+restore could delete it, and every substitution asserted that it had actually
+changed the file before the gate ran:
+
+  version raised to 1.3.2, heading left at 1.3.1     exit 1   (was 0)
+  heading raised to 1.4.0, version left at 1.3.1     exit 1   (the other direction)
+  [Unreleased] placed above the dated section        exit 2   (not a step-over)
+  CI step replaced with `echo skipped`               suite red
+  `needs:` edge on publish dropped                   suite red
+
+Each was restored and re-run to 0. The two workflow mutations matter most: they
+are the difference between this gate and `aahp check`, which passes its own
+scenarios perfectly and has been wired to nothing for the life of this
+repository.
+
+Full suite locally: 260 tests, 0 failures, 11.6 seconds. `npm test` here is
+node:test through tsx, not bats; the estate rule about never running a full
+suite on this machine was measured against bats and does not apply.
+
+NOT EXERCISED, AND SAID PLAINLY: the new job has never run on a GitHub runner
+from this session. Everything above is a local verdict. CI decides.
+
+Open, and Emre's:
+
+- **`required_status_checks` on `main` is still `null`.** Unchanged from the
+  previous session's note. Every gate in this repository reports rather than
+  blocks on a pull request. The `needs:` edge added here is a partial answer for
+  the release path only.
+- **#75 is open and CONFLICTING**, and its check marks are the last run against
+  a base that no longer exists. It edits the same `test` script line this change
+  appends to, so the two will conflict textually; keeping both filenames on that
+  line is the whole resolution. Not this session's pull request to touch.
 ## 2026-08-22 - The em-dash gate was declared, never run, and could not have seen the code
 
 ISSUE #67, AND THE SECOND DEFECT THAT ONLY APPEARS ONCE THE FIRST IS FIXED.
