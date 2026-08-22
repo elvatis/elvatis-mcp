@@ -1,8 +1,37 @@
 name: Supply Chain Guard
 
+# THE TAG LINE BELOW IS NOT DECORATION. WITHOUT IT, THE PUBLISHED TREE IS THE
+# ONE TREE THIS SCANNER NEVER SAW.
+#
+# A `push:` block carrying a `branches:` filter does not match a tag push at
+# all. `ci.yml` triggers on `branches: [main]` AND on
+# `tags: ['v[0-9]+.[0-9]+.[0-9]+']`, and its `publish` job fires on exactly that
+# tag push and runs `npm publish --provenance`. So until this line existed, the
+# ref that becomes a public npm tarball was the one ref no supply-chain gate was
+# configured to see, and the provenance attestation was minted for a tree no
+# scan had inspected.
+#
+# It LOOKED covered, and that is the whole trap. A tag normally points at a
+# commit that also landed on `main`, which this workflow does scan, so the tree
+# usually had been scanned - by a different run, on a different ref, at a
+# different time. That is a CONVENTION, not a control: nothing here requires a
+# `v*` tag to point at a commit `main` ever carried, and
+# `gh api repos/elvatis/elvatis-mcp/rulesets` returns `[]`, so no tag ruleset
+# supplies it either. Measured on `c12c6e5`, which is also `v1.3.0`: of the
+# three workflows in this directory, one ran on the published tag ref and two
+# did not.
+#
+# The class is worth naming past this instance. Adding `tags:` to one workflow
+# does not extend it to the workflows beside it, and any gate added here later
+# inherits the same gap unless its trigger list is written against the release
+# path rather than against `main`.
+# `tests/security/publish-guard.test.ts` asserts the coverage relation between
+# the two trigger lists directly, so a publish trigger added without the
+# matching scan trigger goes red instead of going unnoticed for another release.
 on:
   push:
     branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
   pull_request:
     branches: [main]
   schedule:
