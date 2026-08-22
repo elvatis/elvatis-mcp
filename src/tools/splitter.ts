@@ -131,12 +131,42 @@ async function splitViaGemini(
   // arguments into one cmd.exe command string, where an unvalidated value can
   // close its own quoting and be parsed as command text. See validateModel.
   const model = validateModel(config.geminiModel ?? 'gemini-2.5-flash');
-  const cliArgs = ['-p', analysisPrompt, '--output-format', 'json'];
+
+  // THE PROMPT TRAVELS OVER STDIN, NEVER IN ARGV. This is the shape gemini_run
+  // has always used (src/tools/gemini.ts); this call site was the odd one out.
+  //
+  // On Windows spawnLocal joins the arguments into ONE cmd.exe command string,
+  // and buildAnalysisPrompt returns a multi-line template. cmd.exe ends the
+  // command at the first newline, so passing the prompt in argv truncated the
+  // request to its first line and discarded every argument after it. Measured
+  // on Windows 11 (10.0.26200), Node v22.12.0, against `f004c7c`, with a node
+  // script standing in for the CLI and reporting what it actually received:
+  //
+  //   prompt in argv  -> argvCount 1 of 5, first arg cut to 23 of 83 chars.
+  //                      `--output-format json` and `--model` never arrived.
+  //   prompt on stdin -> argvCount 5 of 5, stdin 83 chars over 6 lines.
+  //
+  // So on every Windows call the Gemini strategy sent `gemini -p "You are a
+  // task planner."` and nothing else: not the output format, not the model, and
+  // not the task the caller asked to split. splitViaGemini then failed to parse
+  // a plan and returned null, and handlePromptSplit silently fell back to the
+  // local-LLM strategy or the heuristic. Nothing reported that the strategy
+  // could not work at all on this platform.
+  //
+  // It also closes a latent injection. #69 fixed `model` by validating it, and
+  // noted that prompts are safe because they travel over stdin: true of
+  // claude_run, codex_run and gemini_run, and false of this one call site. A
+  // prompt is free-form by nature and cannot be validated, so it was held shut
+  // only by where buildAnalysisPrompt happens to put its newlines. Moving the
+  // caller's text above the first newline would have made it live. Keeping the
+  // value out of the command string entirely is what actually fixes that, which
+  // is why this is one change and not two.
+  const cliArgs = ['-p', '', '--output-format', 'json'];
   cliArgs.push('--model', model);
 
   let raw: string;
   try {
-    raw = await spawnLocal('gemini', cliArgs, 30_000);
+    raw = await spawnLocal('gemini', cliArgs, 30_000, undefined, analysisPrompt);
   } catch {
     return null;
   }
