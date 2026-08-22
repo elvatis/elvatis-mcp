@@ -24,6 +24,7 @@
         "*.example",
         "*.gitignore",
         "*.aiignore",
+      "*.toml",
         "LICENSE"
       ],
       "message": "em dash (U+2014) is banned; use a hyphen"
