@@ -11,9 +11,9 @@
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:1e54073236e0f0ce996e97ca51942484506edcc1eb43ed3446351af5909f9c59",
+      "checksum": "sha256:64f26af5b776c4accb1f3571c98d67b4628f90b05bc1532e367fc4e820d1ca3d",
       "updated": "2026-08-22T12:24:25Z",
-      "lines": 1318,
+      "lines": 1374,
       "summary": "ISSUE #72, HALF OF IT: ESCAPING AND SSH PARAMETER DISCLOSURE, NOT THE BIND ADDRESS"
     },
     "NEXT_ACTIONS.md": {

@@ -57,6 +57,24 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   dashboard should bind loopback or gain authentication; that is an access
   control decision that can break a working setup and is deliberately NOT
   changed here.
+- **`prompt_split` sent a one-line request to Gemini on every Windows call.**
+  `splitViaGemini` passed the multi-line analysis prompt as a command-line
+  ARGUMENT, and on Windows `spawnLocal` joins the arguments into one `cmd.exe`
+  command string, which ends at the first newline. Measured against `f004c7c` on
+  Windows 11 with Node v22.12.0, asking a real child process what it received:
+  one of five argv entries arrived, the prompt was cut from 83 characters to 23
+  (`You are a task planner.`), and `--output-format json` and `--model` never
+  arrived at all. The strategy then failed to parse a plan, returned `null`, and
+  `handlePromptSplit` silently fell back to the local-LLM strategy or the
+  heuristic, so a strategy that could not work on the platform was
+  indistinguishable from one that had looked and declined. The prompt now
+  travels over stdin, which is the shape `gemini_run` has always used. This also
+  closes the one free-form value that still reached the `cmd.exe` command
+  string: a prompt cannot be validated the way [#69](https://github.com/elvatis/elvatis-mcp/issues/69)
+  validated a model id, and it was held shut only by where `buildAnalysisPrompt`
+  happens to put its newlines. `tests/security/splitter-argv.test.ts` asserts
+  what a child process actually receives, on both platforms, rather than what
+  the source says.
 
 - The handoff notes under `.ai/` were partly German, in a public repository
   whose contributor documentation had never said which language it uses.
