@@ -22,6 +22,7 @@
 
 import { z } from 'zod';
 import { spawnLocal } from '../spawn.js';
+import { validateModel } from '../validate.js';
 import { getOrCreateSession, recordSuccess, invalidateSession, isNewSession } from '../session-registry.js';
 
 // --- Schema ---
@@ -47,7 +48,10 @@ export const claudeRunSchema = z.object({
 export async function handleClaudeRun(
   args: { prompt: string; model?: string; timeout_seconds: number; working_directory?: string },
 ) {
-  const model = args.model ?? 'claude-sonnet-4-6';
+  // Validated before it reaches the argv: on Windows spawnLocal joins the
+  // arguments into one cmd.exe command string, where an unvalidated value can
+  // close its own quoting and be parsed as command text. See validateModel.
+  const model = args.model ? validateModel(args.model) : 'claude-sonnet-4-6';
   const isOpus = model.includes('opus');
 
   const cliArgs = [
@@ -58,7 +62,7 @@ export async function handleClaudeRun(
     '--dangerously-skip-permissions',
   ];
 
-  if (args.model) cliArgs.push('--model', args.model);
+  if (args.model) cliArgs.push('--model', model);
 
   // Session resume: Opus only. Sonnet/Haiku have 45% hang rate with session resume
   // due to corrupted sessions after SIGTERM kills.

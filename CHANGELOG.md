@@ -56,6 +56,27 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the reader to check it against the workflow. It now points at the matrix
   instead of restating it, so it cannot drift again.
 
+### Security
+
+- **A caller-supplied `model` string could run as a second command on
+  Windows.** `spawnLocal` builds one command string for `cmd.exe` rather than
+  passing an argv array, and its escaper rewrites an inner `"` as `\"` on the
+  assumption that a backslash escapes a quote. cmd.exe has no backslash escape:
+  it toggles quote state on every `"`, so `\"` closed the quoted region and the
+  remainder was parsed as command text, where `&`, `&&`, `|` and `>` are
+  operators. Measured on Windows 11 with Node v22.12.0 against `main` at
+  94d0418: a `model` value of `x" & echo INJECTED_MARKER & "` executed
+  `echo INJECTED_MARKER` as its own command. The realistic trigger is prompt
+  injection, because the caller of these tools is a language model.
+  `validateModel` now refuses anything outside the alphabet real model
+  identifiers use, and the four sites that push `--model` into an argv
+  (`claude_run`, `codex_run`, `gemini_run` and the prompt splitter) pass the
+  validated value. `tests/security/model-injection.test.ts` exercises the
+  validator in both directions and calls each handler, so removing the wiring
+  fails the suite even though the validator would still pass its own tests.
+  This does not make `src/spawn.ts` safe for arguments added later; see
+  SECURITY.md and the open issue on the splitter's `-p` path.
+
 ## [1.3.0] - 2026-08-21
 
 The first release to contain the security fixes merged on 2026-06-28 and

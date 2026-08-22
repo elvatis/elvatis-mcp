@@ -1,3 +1,77 @@
+## 2026-08-22 - A model name could become a second command, and the rule that forbade it was already written
+
+ISSUE #69, CLOSED AT THE BOUNDARY RATHER THAN AT THE SINK, BECAUSE THE SINK
+CANNOT CURRENTLY BE BOTH SAFE AND FAITHFUL. On Windows `spawnLocal` does not
+pass an argv array: it joins the arguments into one command string for cmd.exe.
+The escaper rewrites an inner `"` as `\"`, assuming backslash escapes a quote.
+cmd.exe has no backslash escape - it toggles quote state on every `"` it meets -
+so `\"` CLOSES the quoted region and the rest is command text, where `&`, `&&`,
+`|` and `>` are operators.
+
+REPRODUCED, NOT INFERRED. Windows 11 (10.0.26200), Node v22.12.0, against `main`
+at 94d0418. `model` = `x" & echo INJECTED_MARKER & "` produced
+
+  echo "exec" "--json" "--model" "x\" & echo INJECTED_MARKER & \""
+
+and `echo INJECTED_MARKER` ran as its own command. The marker appeared in the
+output.
+
+THE RULE WAS ALREADY THERE. `src/validate.ts` opens with "All values that reach
+a shell command (even via SSH) must be validated here before use", and its own
+header names `--model` as an example of the option-value position that `--`
+cannot protect. There was no model validator. Nothing compared the set of
+validators against the set of values that reach a command string, so the file
+read as evidence while the value it names travelled unchecked. Same shape as
+#67 and #70: a rule that is stated and not executed.
+
+THREE ROUTES WERE MEASURED BEFORE CHOOSING, and the issue's own recommendation
+is not implementable:
+
+  A  spawn(shim, argv, {shell:false})     EINVAL against a .cmd shim
+  C  cmd.exe /d /s /c + verbatim + ^esc   no injection, but the payload arrived
+                                          split across six argv entries
+  D  today's escaper                      injected
+
+A is Node's CVE-2024-27980 mitigation, and all three agent CLIs here are `.cmd`
+shims, so it cannot be written as the issue describes. C is safe and wrong. So
+the value was constrained at the boundary instead, which is the route #73
+already took for `--channel` in this repository.
+
+`validateModel` refuses everything outside the alphabet real model identifiers
+use, and the four `--model` push sites pass the validated local.
+`tests/security/model-injection.test.ts` runs the validator in both directions,
+CALLS each of the three handlers so the wiring is load-bearing, and refuses a
+raw `args.model` push reappearing next to a validated local - with a control
+asserting that last scan can actually fire.
+
+MUTATION PROOF, RUN AFTER COMMITTING THE FIX, every substitution asserted to
+have changed the file before the suite ran:
+
+  validateModel body replaced with `return value;`      13 rejection tests red
+  claude.ts push reverted to `args.model`               scan + handler test red
+  gemini.ts validateModel( call removed                 handler test red
+  import of validateModel removed from splitter.ts      import test red
+
+Each was restored and the suite returned to 40 passing.
+
+WHAT IS NOT FIXED, AND IS NOW FILED SEPARATELY. `src/spawn.ts` is still wrong
+for any argument added later, and `splitViaGemini` puts the analysis prompt into
+`-p` as a command-line argument instead of over stdin the way `gemini_run` does.
+
+That one was measured before it was written down, and the first answer was
+wrong. It is NOT a live injection: `buildAnalysisPrompt` places the caller's
+text after several newlines, and cmd.exe ends the command at the first newline,
+so the payload never reaches a position where it could run. What it IS, today,
+is a functional break - the command is cut at that newline, so `--output-format`,
+`--model` and all but the first line of the prompt are silently dropped, and the
+Gemini split strategy cannot be doing what it claims on Windows. With the same
+argv position and no leading newline the marker executes, so the sink is
+injectable and only the template's shape is holding it shut.
+
+Issue #69 states "prompt is not affected: it travels over stdin". That is true
+of the three run tools and false of the splitter, in a way that happens not to
+be exploitable rather than by design.
+
 ## 2026-08-22 - The changelog gate that two documents described now exists, and one of those documents is public
 
 ISSUE #76 IS THE THIRD INSTANCE OF ONE CLASS IN THIS REPOSITORY AND THE ONLY ONE
