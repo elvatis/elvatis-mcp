@@ -11,7 +11,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "test": "npm run build && npx --no-install tsx --test tests/unit.test.ts tests/security/action-pin.test.ts tests/security/publish-guard.test.ts tests/security/version-guard.test.ts tests/security/runtime-support.test.ts tests/security/aahp-gate.test.ts tests/security/changelog-guard.test.ts",
+    "test": "npm run build && npx --no-install tsx --test tests/unit.test.ts tests/security/action-pin.test.ts tests/security/publish-guard.test.ts tests/security/version-guard.test.ts tests/security/runtime-support.test.ts tests/security/aahp-gate.test.ts tests/security/changelog-guard.test.ts tests/security/secret-scan.test.ts",
     "test:integration": "npx --no-install tsx tests/integration.test.ts",
     "version-guard": "node scripts/check-version-unpublished.mjs",
     "typecheck": "tsc --noEmit",

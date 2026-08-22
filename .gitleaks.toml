@@ -1,0 +1,59 @@
+# gitleaks configuration for elvatis-mcp
+#
+# Read by .github/workflows/secret-scan.yml, which scans the full git history on
+# every push, every tag and every pull request, with no path filter of any kind.
+#
+# ALLOWLIST BY VALUE, NEVER BY FILE PATH.
+#
+# A `paths` entry does not narrow a finding, it deletes the file from the scan:
+# every rule, every line, from now on, including the credential someone pastes
+# into that file next year. elvatis/elvatis-security-platform#647 measured the
+# cost of the other reading: five path entries covering 11 of 908 tracked files
+# were suppressing exactly two findings, both documentation placeholders, and
+# seven synthetic AWS key pairs planted one per file were missed in precisely
+# the four allowlisted ones. The `regexes` block below matches the placeholder
+# TEXT instead, so the files that contain those placeholders stay scanned.
+#
+# tests/security/secret-scan.test.ts asserts `paths` is empty, and asserts it in
+# a way that fails if the key is merely renamed or removed.
+
+title = "elvatis-mcp gitleaks configuration"
+
+[extend]
+# Start from the full upstream rule set rather than replacing it.
+useDefault = true
+
+[allowlist]
+description = "elvatis-mcp known false positives, matched by value"
+
+# Deliberately empty. See the header.
+paths = []
+
+# Applied to the matched secret text, not to the file path. These are the
+# placeholder conventions used across the estate, plus the two this repository
+# actually needs.
+regexes = [
+  '''(?i)your[_-]?(api[_-]?)?(key|token|secret)[_-]?here''',
+  '''YOUR_[A-Z_]*(KEY|TOKEN|SECRET)''',
+  '''(?i)change[-_]?me''',
+  '''(?i)replace[-_]?(this|me|with)''',
+  '''(?i)\bexample([-_](key|token|secret))?\b''',
+  # The estate's throwaway-value convention, e.g. a CI value that has to be
+  # long enough to satisfy a config schema and nothing else.
+  '''(?i)\b(test|placeholder|dummy|fixture|sample|throwaway)[-_][a-z0-9-]*(key|token|secret|password|pass)[a-z0-9-]*''',
+  '''(?i)\b(placeholder|dummy|fixture|sample)[-_]?(key|token|secret)\b''',
+  # Documented basic-auth placeholders in runbooks: `-u "service:<basic>"`.
+  # The angle brackets are the giveaway; a real credential does not carry them.
+  '''(?i)[a-z0-9_.-]*:<(basic|pass|password|secret|token|pw)>''',
+  '''Bearer\s+(YOUR|your|token|xxxxx|\.\.\.)''',
+  # Repeated-digit UUIDs used as fixture identifiers. Written out rather than
+  # with a backreference: gitleaks compiles these with Go's RE2, which has no
+  # backreferences at all and would reject the pattern outright.
+  '''0{8}-0{4}-[0-9a-f]0{3}-[0-9a-f]0{3}-0{12}''',
+  '''1{8}-1{4}-41{3}-81{3}-1{12}''',
+  '''9{8}-9{4}-49{3}-89{3}-9{12}''',
+]
+
+# Add a commit SHA here only if a historical commit carries a flagged value that
+# is provably not a credential and cannot be scrubbed.
+commits = []

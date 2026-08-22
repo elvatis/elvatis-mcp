@@ -1,3 +1,60 @@
+## 2026-08-22 - Zero of two secret-scanning layers, on a public repository
+
+ISSUE #71, HALF CLOSED, AND THE HALF THAT REMAINS IS NOT REACHABLE FROM THIS
+TREE. Re-measured on 2026-08-22 rather than taken from the issue: all five
+entries under `security_and_analysis` are still `disabled`, and
+`.github/workflows/` held aahp-verify.yml, ci.yml and supply-chain-guard.yml,
+none of which looks for a credential. `supply-chain-guard.yml` is a DEPENDENCY
+scanner; from a distance it reads as coverage and it has never scanned for a
+secret.
+
+THE CLASS IS WORTH THE NAME because it will recur across the estate: each of
+the two layers looks like the other one's backstop. A repository with one
+usually reads as covered, and a repository with NEITHER reads exactly the same
+from inside any single file. Only a query that asks both at once separates them.
+
+`.github/workflows/secret-scan.yml` is the layer that can live in the tree. Its
+own file, not a job in ci.yml, and it carries no `paths` or `paths-ignore` and
+must never get one: the precedent is elvatis-security-platform#647, where the
+scan sat beside jobs with a paths-ignore for `**/*.md`, `docs/**` and
+`.ai/handoff/**`, so a pull request confined to those globs started no jobs and
+was not scanned. This repository keeps its session notes under `.ai/handoff/`,
+which is that shape of file exactly.
+
+The push trigger names `tags:` as well as `branches:`. A push block carrying
+only a branches filter does not match a tag push AT ALL, which is how the ref
+that publishes to npm became the one ref no supply-chain gate ever saw (#79).
+The same trap was one line away here.
+
+VERIFIED AGAINST THE REAL SCANNER, NOT AGAINST THE YAML. gitleaks 8.29.0 in
+Docker, over a full clone rather than a worktree, because a worktree's `.git` is
+a file and the container would have found no history to walk:
+
+  current history, 140 commits            no leaks found        exit 0
+  synthetic AWS key in .ai/handoff/*.md   leaks found: 1        exit 1
+
+The planted key went into a markdown file under `.ai/handoff/` on purpose: that
+is the path a `paths-ignore` would have excluded, so the second row is what
+tells the difference between a scan and a scan-shaped file. The value stayed
+redacted in the output, and the throwaway clone was destroyed and never pushed.
+
+`tests/security/secret-scan.test.ts` PARSES the workflow as YAML rather than
+grepping it, because a regex passes just as well against a `paths-ignore` in
+flow style or a commented-out one, and refuses: any paths filter on any trigger,
+a job-level `if:`, `continue-on-error`, a `|| true` after the scan, a
+`fetch-depth` other than 0, a missing `--exit-code 1`, a non-empty `paths`
+allowlist in `.gitleaks.toml`, and `useDefault` being switched off. Each of
+those scans carries a CONTROL asserting it can fire against a synthetic bad
+input, so none of them can decay into a check that matches nothing.
+
+WHAT IS STILL OPEN AND NEEDS THE MAINTAINER. The platform layer is a repository
+setting and cannot be changed from any file here. Only push protection stops a
+credential BEFORE it becomes public; this workflow runs after the push, and on a
+public repository that difference is the whole point. #71 stays open for that
+half, next to the same class of gap already recorded for
+`required_status_checks`, which is `null`, so every gate in this repository
+reports rather than blocks.
+
 ## 2026-08-22 - The changelog gate that two documents described now exists, and one of those documents is public
 
 ISSUE #76 IS THE THIRD INSTANCE OF ONE CLASS IN THIS REPOSITORY AND THE ONLY ONE
