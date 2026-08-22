@@ -11,9 +11,9 @@
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:33966f386eca9c6dc42c9203bb696795f90fa08f45506d941e6865d9e44eeef1",
+      "checksum": "sha256:fda481aa50e453daebfb799a57731f0ae7ac1d70c54e23b18e4ba97525407eaf",
       "updated": "2026-08-22T09:33:14Z",
-      "lines": 997,
+      "lines": 1066,
       "summary": "ISSUE #69, CLOSED AT THE BOUNDARY RATHER THAN AT THE SINK, BECAUSE THE SINK"
     },
     "NEXT_ACTIONS.md": {

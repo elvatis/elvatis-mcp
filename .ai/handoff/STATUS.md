@@ -211,6 +211,75 @@ Open, and Emre's:
   on taking our word for it. Filed as its own issue.
 - #63, #64 and #66 are still open and still show stale green check marks. They
   are not this session's to close.
+## 2026-08-22 - A test file could exist under tests/ and never run, and the suite still said 234 passed
+
+ISSUE #70, CLOSED BY MEASUREMENT RATHER THAN BY ASSERTION. The `test` script
+named its files, nothing compared that list against the directory, and the drift
+ran in the dangerous direction: a file missing from the list was never reported
+as missing, it was simply never executed, and the run still reported a full
+pass. Reproduced here at 87c6cd4 before touching anything: an always-failing
+probe in `tests/security/` exits 1 on its own and leaves `npm test` at exit 0,
+with its filename absent from the output.
+
+THE GATE IS A SCRIPT WITH ITS OWN CI STEP, AND THE FIRST DRAFT GOT THAT WRONG.
+The obvious shape is a test file that reads `package.json` and walks `tests/`.
+It is also the one shape that cannot work here: a guard reached only through the
+enumerated list is removed by the same edit it exists to catch. So the deciding
+invocation is `node scripts/check-test-registration.mjs` as a step of its own in
+`ci.yml`, and `tests/security/test-registration.test.ts` executes that script as
+a child process instead of restating its logic.
+
+The first draft ran the step as `npm run test-registration`, and the test in
+this pull request went red on it. That is the correct verdict and worth
+recording, because the reasoning is not obvious: an npm script lives in
+`package.json`, which is the file the guard audits, so routing the invocation
+through it puts the gate inside its own subject. Rewriting `test-registration`
+to `echo ok` would then disable the check with the same edit that breaks the
+list. The step now names the script by path.
+
+The workflow assertion strips `#` comments before matching, for the same reason
+the last three matchers in this estate were defeated: a `run:` body whose only
+mention of the script sits in a comment names the gate without running it, and a
+substring match reads that as compliance.
+
+CONTRACT, ASSERTED EXACTLY AND NEVER AS "NON-ZERO". 0 registered, 1 drift, 2
+cannot determine. 1 is a real verdict here, so accepting any non-zero would let
+a deleted or renamed script - which exits 1 from node itself - impersonate a
+working gate on every drift row. Exit 2 covers a missing or unparseable
+`package.json`, no `test` script, a script passing no `--test`, an absent
+`tests/`, an unrecognised argument, an exclusion with no reason, and an
+exclusion map that is an array.
+
+A COMPLETE FILE LIST IS NOT A COMPLETE RUN, which is the second half and the
+half a list-versus-directory check misses entirely. `--test-name-pattern`,
+`--test-skip-pattern`, `--test-only` and `--test-shard` each leave the list
+correct while the run skips most of what it names, and `||`, `;` and `|` after
+the runner discard its exit status. All seven exit 2. `&&` is accepted, and
+there is a row asserting that, because it propagates failure.
+
+`tests/integration.test.ts` IS NOW DECLARED RATHER THAN FORGOTTEN. It is not a
+`node:test` file at all: it carries its own `assert`/`test` helpers, runs as a
+plain program, and calls live SSH, Home Assistant and a local LLM. It is
+excluded in `package.json` under `testRegistration.excluded` with that reason,
+and the guard requires an exclusion to name a file that exists and to carry a
+non-empty reason. A stale exclusion is a standing permission for a future file
+to arrive under that name and never run, so it exits 1.
+
+Mutation proofs recorded in the pull request body: five, each red, each restored
+green, each guarded by an assertion that the substitution actually changed the
+file.
+
+Suite: 234 tests before, 263 after, 0 failed.
+
+Open, and Emre's:
+
+- **The changelog gate described in `CONTRIBUTING.md` and `SECURITY.md` does not
+  exist.** Filed as its own issue. Same class as #67 and as this one, and worst
+  placed of the three: it is asserted in a public `SECURITY.md` section whose
+  opening claim is that nothing depends on taking our word for it.
+- `required_status_checks` on `main` is still `null`, so this gate reports
+  rather than blocks, exactly like CI, Scan and AAHP Verify. Unreachable from
+  any file in this tree.
 
 ## 2026-08-22 - The three blocked pull requests were already shipped, and the sweep #64 asked for
 

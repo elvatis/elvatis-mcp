@@ -17,6 +17,18 @@ Thanks for your interest in contributing to elvatis-mcp!
 3. Ensure the build passes (`npm run build`) and documentation is updated.
 4. Keep changes focused and small.
 
+## Adding a Test
+
+Put it under `tests/`, named `*.test.ts`, and add it to the `test` script in
+`package.json`. That script names its files explicitly rather than globbing, so
+a new file is not picked up on its own.
+
+`npm run test-registration` fails when the two disagree, and CI runs the same
+check in a step of its own, so an unregistered file is reported rather than
+silently skipped. If a file genuinely should not run under `npm test`, declare
+it under `testRegistration.excluded` in `package.json` with the reason; the
+guard requires that reason and requires the file to exist.
+
 ## Adding a New Tool
 
 1. Create `src/tools/<domain>.ts` with Zod schemas and handler functions.
