@@ -149,6 +149,62 @@ Open, and Emre's:
   a base that no longer exists. It edits the same `test` script line this change
   appends to, so the two will conflict textually; keeping both filenames on that
   line is the whole resolution. Not this session's pull request to touch.
+## 2026-08-22 - The supply-chain scan never ran on the one ref that publishes
+
+ISSUE #68. `supply-chain-guard.yml` triggered on `push: branches: [main]`. A
+`push:` block carrying a `branches:` filter does not match a tag push AT ALL,
+and `ci.yml` publishes from exactly a `v[0-9]+.[0-9]+.[0-9]+` tag push. So the
+ref that becomes a public npm tarball was the one ref no supply-chain gate was
+configured to see, and `npm publish --provenance` attested a tree that no scan
+had inspected. Re-measured on `c12c6e5`, which is also tag `v1.3.0`: of the
+three workflows in `.github/workflows/`, ONE ran on the tag ref and two did not.
+
+WHY IT READ AS COVERED, WHICH IS THE PART TO REMEMBER. A tag normally points at
+a commit that also landed on `main`, and `main` is scanned. So the published
+tree usually HAD been scanned: by a different run, on a different ref, at a
+different time. That is a convention, not a control. Nothing in this repository
+requires a `v*` tag to name a commit `main` ever carried, and
+`gh api repos/elvatis/elvatis-mcp/rulesets` returns `[]`, so no tag ruleset
+supplies it either. Every gate added here later inherits the same gap unless its
+trigger list is written against the release path rather than against `main`.
+
+THE FIX IS ONE LINE, SO THE ASSERTION IS THE SUBSTANCE.
+`tests/security/publish-guard.test.ts` now compares the two trigger lists as a
+COVERAGE RELATION: for every ref pattern a publishing job can fire on, some scan
+workflow must trigger on a pattern that covers it. `covers()` is deliberately
+conservative (equality, `*`, or a trailing-wildcard prefix) and reports anything
+it cannot prove as uncovered rather than guessing, because a wrong answer here
+would announce coverage that does not exist. The scanner is located by the
+ACTION it runs, not by the file it lives in, for the same reason the rest of
+that file locates the publisher by capability.
+
+MUTATION PROOF, 11 ROWS, ALL AS EXPECTED, run after committing the fix. Two are
+worth naming:
+
+  publish gains a `release-*` tag trigger, scan not extended   red, names `release-*`
+  scan broadened to `v*`, which COVERS the publish pattern     green
+
+The first is the forward case: the defect recurring rather than the original
+being restored. The second is what separates a coverage relation from a
+hardcoded expectation, and a hardcoded one would have forced the next
+maintainer to edit the test to widen the scan.
+
+WHAT IS NOT FIXED, AND IS EMRE'S. The scan reports; it does not block. `publish`
+does not name it in `needs:` and no status check here is required, so a Critical
+finding on the tagged tree ships anyway. That is written into SECURITY.md under
+`What that path does NOT guarantee, today`, with the cost on both sides stated,
+rather than left implied: a blocking scan makes every release depend on a
+third-party action and an indicator feed, and a non-blocking one means the
+provenance attestation covers a tree nothing was empowered to refuse. Issue #68
+asks for that decision to be recorded somewhere a stranger can find it; the
+state is now recorded there, the decision itself is not mine to make.
+
+Full suite locally: 237 tests, 0 failures. `npm run typecheck` clean.
+
+NOT EXERCISED: nothing here can be proved without pushing a tag, which this
+session did not and must not do. The workflow change is asserted by the test and
+by CI parsing the file; the run on a real tag ref happens at the next release,
+and the check for it is the `gh api` one-liner in issue #68.
 ## 2026-08-22 - The em-dash gate was declared, never run, and could not have seen the code
 
 ISSUE #67, AND THE SECOND DEFECT THAT ONLY APPEARS ONCE THE FIRST IS FIXED.

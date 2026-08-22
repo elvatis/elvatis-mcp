@@ -168,6 +168,32 @@ which is exactly the question a supply-chain consumer is entitled to ask.
 
 Neither is in place yet. This section will say so until one is.
 
+**The supply-chain scan reaches the published ref, and does not stop a
+publish.** Until 2026-08-22 the scan workflow triggered on `push` to `main`
+only. A `push:` block carrying a `branches:` filter does not match a tag push at
+all, so the ref that becomes a public tarball was the one ref no supply-chain
+gate was configured to see, and `--provenance` attested a tree no scan had
+inspected. Measured on `c12c6e5`, which is also `v1.3.0`: of the three workflows
+in `.github/workflows/`, one ran on the tag ref and two did not. It read as
+covered only because a tag normally points at a commit that also landed on
+`main`, which is a convention rather than a control.
+
+That half is fixed: the scan now triggers on the same `v*` tag pattern the
+publish does, and
+[`tests/security/publish-guard.test.ts`](tests/security/publish-guard.test.ts)
+asserts the coverage relation between the two trigger lists, so adding a publish
+trigger without the matching scan trigger goes red rather than shipping another
+release unnoticed.
+
+What the scan still does not do is **stop** a publish. The `publish` job does
+not name it in `needs:`, and no status check on this repository is required, so
+a Critical finding on the tagged tree is reported and the tarball ships anyway.
+Whether it should block is a maintainer decision with a real cost on each side:
+a blocking scan makes every release depend on a third-party action and on the
+availability of an indicator feed, while a non-blocking one means the provenance
+attestation covers a tree that nothing was empowered to refuse. Undecided as of
+2026-08-22, and this section will say so until it is decided.
+
 ### Verifying what you installed
 
 Registry signatures are present on every published version:

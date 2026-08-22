@@ -159,6 +159,7 @@ interface Job {
 }
 
 interface Workflow {
+  readonly on?: unknown;
   readonly jobs?: Record<string, Job>;
 }
 
@@ -181,15 +182,51 @@ function workflowFiles(): string[] {
     .sort();
 }
 
+function workflow(file: string): Workflow {
+  return (parse(readFileSync(join(WORKFLOW_DIR, file), 'utf8')) ?? {}) as Workflow;
+}
+
 function jobs(): NamedJob[] {
   const found: NamedJob[] = [];
   for (const file of workflowFiles()) {
-    const parsed = parse(readFileSync(join(WORKFLOW_DIR, file), 'utf8')) as Workflow | null;
+    const parsed = workflow(file) as Workflow | null;
     for (const [id, job] of Object.entries(parsed?.jobs ?? {})) {
       found.push({ file, id, job });
     }
   }
   return found;
+}
+
+/**
+ * The `on:` block, normalised to a map of trigger name to configuration.
+ *
+ * `on` is a YAML 1.1 boolean. The `yaml` package parses this repository's files
+ * under the 1.2 core schema, where it stays the string "on", but a parser or
+ * schema change would silently move the key to `true` and make every trigger
+ * assertion vacuous. Both are read, and neither being present throws.
+ */
+function triggers(file: string): Record<string, unknown> {
+  const parsed = workflow(file);
+  const on = parsed.on ?? (parsed as unknown as Record<string, unknown>)['true'];
+  if (typeof on === 'string') return { [on]: null };
+  if (Array.isArray(on)) return Object.fromEntries(on.map((name) => [String(name), null]));
+  if (on !== null && typeof on === 'object') return on as Record<string, unknown>;
+  throw new Error(
+    `\`${file}\` has an \`on:\` block this file cannot read (${JSON.stringify(on)}). Extend ` +
+      'triggers() rather than dropping the assertion.',
+  );
+}
+
+/** `on.push.<key>` as a list of ref patterns, empty when the key is absent. */
+function pushRefPatterns(file: string, key: 'branches' | 'tags'): string[] {
+  const push = triggers(file)['push'];
+  if (push === null || push === undefined || typeof push !== 'object' || Array.isArray(push)) {
+    return [];
+  }
+  const value = (push as Record<string, unknown>)[key];
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.map((entry) => String(entry));
+  return [];
 }
 
 function permission(job: Job, scope: string): string | undefined {
@@ -761,6 +798,118 @@ describe('the npm publish is reachable only from a pushed v-tag', () => {
             candidates.filter((c) => c.refused).map((c) => c.script.split('\n')[0]),
           )}.`,
       );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The scan follows the release path, not only the branch
+// ---------------------------------------------------------------------------
+
+/**
+ * The supply-chain scanner, located by the action it runs rather than by the
+ * file it lives in. Same reasoning as `publishesToRegistry` above: a guard keyed
+ * to `supply-chain-guard.yml` goes silent the day the scan moves.
+ */
+const SCANNER_ACTION = /^homeofe\/supply-chain-guard@/;
+
+function scansSupplyChain(job: Job): boolean {
+  return (job.steps ?? []).some((step) => typeof step.uses === 'string' && SCANNER_ACTION.test(step.uses));
+}
+
+/**
+ * Does `broad` cover `narrow` as a ref pattern?
+ *
+ * Deliberately conservative: equality, `*`, or a trailing-wildcard prefix. Full
+ * subsumption between glob patterns is not decidable cheaply and a wrong answer
+ * here would be the worst kind, since it would report coverage that does not
+ * exist. Anything this cannot prove is reported as uncovered, with the two
+ * patterns named, so a deliberate broadening is a one-line addition here rather
+ * than a silent pass.
+ */
+function covers(broad: string, narrow: string): boolean {
+  if (broad === narrow) return true;
+  if (broad === '*' || broad === '**') return true;
+  if (broad.endsWith('*') && !broad.slice(0, -1).includes('*')) {
+    return narrow.startsWith(broad.slice(0, -1));
+  }
+  return false;
+}
+
+describe('every ref that can publish is a ref the supply-chain scan runs on', () => {
+  it('has a scan to speak about', () => {
+    // Without this row the whole block is vacuously true the moment the scanner
+    // is removed, which is the more likely way to lose it than a trigger edit.
+    const scanning = jobs().filter(({ job }) => scansSupplyChain(job));
+    assert.ok(
+      scanning.length > 0,
+      `No job in ${JSON.stringify(workflowFiles())} runs the supply-chain scanner. Every assertion ` +
+        'below would then be comparing a publish trigger against an empty set and passing.',
+    );
+  });
+
+  it('covers the tag refs the publish job fires on', () => {
+    // THE DEFECT. A `push:` block with a `branches:` filter does not match a tag
+    // push at all, so the ref that becomes a public npm tarball was the one ref
+    // the scanner was not configured to see. Measured on c12c6e5, which is also
+    // v1.3.0: the tag push produced a CI run, no Supply Chain Guard run and no
+    // AAHP Verify run.
+    //
+    // It read as covered because a tag usually points at a commit that also
+    // landed on `main`. That is a convention, not a control: nothing requires a
+    // v-tag to name a commit `main` ever carried, and there is no tag ruleset.
+    const publishers = jobs().filter(({ job }) => publishesToRegistry(job));
+    const scanFiles = [...new Set(jobs().filter(({ job }) => scansSupplyChain(job)).map((j) => j.file))];
+
+    assert.ok(
+      publishers.length > 0,
+      'No job publishes to the registry, so this assertion is aimed at nothing. If the release path ' +
+        'moved, aim it at the new one rather than deleting it.',
+    );
+
+    for (const publisher of publishers) {
+      for (const key of ['tags', 'branches'] as const) {
+        const publishRefs = pushRefPatterns(publisher.file, key);
+        if (publishRefs.length === 0) continue;
+
+        const scanRefs = scanFiles.flatMap((file) => pushRefPatterns(file, key));
+        const uncovered = publishRefs.filter(
+          (pattern) => !scanRefs.some((candidate) => covers(candidate, pattern)),
+        );
+
+        assert.deepEqual(
+          uncovered,
+          [],
+          `\`${label(publisher)}\` publishes to the public registry on a push to ` +
+            `${JSON.stringify(uncovered)} (\`on.push.${key}\` of \`${publisher.file}\`), and no ` +
+            `supply-chain scan workflow triggers on those refs. The scan's own \`on.push.${key}\` is ` +
+            `${JSON.stringify(scanRefs)}, from ${JSON.stringify(scanFiles)}. The published tarball ` +
+            'would then be built, provenance-attested and shipped from a tree no supply-chain gate ' +
+            'inspected. Adding a publish trigger without the matching scan trigger is the edit this ' +
+            'row exists to catch.',
+        );
+      }
+    }
+  });
+
+  it('does not filter the scan by path, which would reopen the same gap per-commit', () => {
+    // A `paths:` filter is the quieter version of the same defect: the scan is
+    // configured for the right refs and still does not run on the commit that
+    // needed it. A dependency change that touches only a lockfile is exactly the
+    // shape a paths filter tends to exclude and exactly what this scanner reads.
+    for (const file of new Set(jobs().filter(({ job }) => scansSupplyChain(job)).map((j) => j.file))) {
+      for (const [trigger, config] of Object.entries(triggers(file))) {
+        if (config === null || config === undefined) continue;
+        if (typeof config !== 'object' || Array.isArray(config)) continue;
+        for (const filter of ['paths', 'paths-ignore']) {
+          assert.equal(
+            Object.prototype.hasOwnProperty.call(config, filter),
+            false,
+            `\`${file}\` filters \`${trigger}\` by \`${filter}\`, so a change outside that filter ` +
+              'reaches `main` and the registry without a supply-chain scan.',
+          );
+        }
+      }
     }
   });
 });
