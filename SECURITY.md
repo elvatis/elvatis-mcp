@@ -75,11 +75,23 @@ minor or a major, raise it again then. The placeholder exists so that `main` is
 always releasable; it is not a prediction of the next release's size.
 
 Opening that number's section in [CHANGELOG.md](CHANGELOG.md) is part of the
-same step rather than a follow-up. The changelog gate requires the topmost
-dated release heading to equal the version in `package.json`, so the number and
-its entry move together or the gate fails; what the release contains then
-accumulates under that heading until the tag is pushed. The date is the day the
-section was opened, and it is corrected at freeze time if the release slips.
+same step rather than a follow-up.
+[`scripts/check-changelog-heading.mjs`](scripts/check-changelog-heading.mjs)
+requires the topmost dated release heading to equal the version in
+`package.json`, so the number and its entry move together or the check fails. It
+runs in its own job on every pull request, and `publish` lists that job in
+`needs:`, so a tag cannot ship a version whose section was never opened. It
+fails closed: an unparseable heading, an `[Unreleased]` section above the dated
+one, an impossible date, or the same version heading twice all exit 2 rather
+than passing. What the release contains then accumulates under that heading
+until the tag is pushed. The date is the day the section was opened, and it is
+corrected at freeze time if the release slips.
+
+**That sentence was here before the check was.** It was written on 2026-08-21 as
+a statement of the convention and implemented on 2026-08-22, and in between,
+this section named a control that a reader accepting the invitation above would
+not have found. It is recorded rather than quietly corrected, because a section
+that claims to be checkable has to be checkable about itself too.
 
 **Why this is a rule and not a preference.** Between 2026-04-15 and 2026-08-21
 this package sat on a published `1.2.4` while two security fixes were merged to
