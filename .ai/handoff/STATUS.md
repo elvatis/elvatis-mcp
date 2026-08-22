@@ -1,3 +1,60 @@
+## 2026-08-22 - prompt_split sent one line to Gemini, and the argv position was the last free-form value reaching cmd.exe
+
+ISSUE #81. `splitViaGemini` passed the multi-line analysis prompt as a
+command-line ARGUMENT. On Windows `spawnLocal` joins the arguments into ONE
+`cmd.exe` command string, and `cmd.exe` ends the command at the first newline.
+
+MEASURED, NOT REASONED. A node script standing in for the CLI reported what it
+actually received, against `f004c7c` on Windows 11 (10.0.26200), Node v22.12.0:
+
+  prompt in argv  ->  argvCount 1 of 5, first arg 23 of 83 chars
+                      `--output-format json` and `--model` never arrived
+  prompt on stdin ->  argvCount 5 of 5, stdin 83 chars over 6 lines
+
+So on EVERY Windows call the request was `gemini -p "You are a task planner."`
+and nothing else: not the output format, not the model, and not the task the
+caller asked to split.
+
+WHY NOTHING REPORTED IT, WHICH IS THE PART TO REMEMBER. `splitViaGemini` returns
+`null` on any failure and `handlePromptSplit` falls back to the local-LLM
+strategy or the heuristic. A strategy that CANNOT WORK on a platform is, from
+the outside, indistinguishable from a strategy that looked at the prompt and
+declined. The fallback was doing its job, and that is exactly what hid a total
+failure of the primary path for as long as it existed.
+
+WHY THE FIX IS ONE CHANGE AND NOT TWO. #69 closed `model` by validating it and
+recorded that prompts are safe because they travel over stdin. True of
+claude_run, codex_run and gemini_run; false of this one call site. A prompt is
+free-form and cannot be validated the way a model id can, so this argv position
+was held shut ONLY by where `buildAnalysisPrompt` puts its newlines: `cmd.exe`
+reached the newline before it reached anything injectable. Reordering that
+template, or trimming its leading blank lines, would have turned it into a live
+command injection with no other change. Sending the prompt over stdin removes it
+from the command string entirely, so the truncation and the latent injection
+close together.
+
+THE TEST ASKS THE CHILD, NOT THE TREE. Every existing check in this repository
+asks what the source says; this defect only exists once `cmd.exe` has parsed the
+string, so `tests/security/splitter-argv.test.ts` spawns a real process through
+the real `spawnLocal` and asserts what arrived. It asserts in BOTH directions
+rather than skipping on Linux: on POSIX the argv route works (argv array, no
+shell), so the same test asserts "intact" there and "truncated" on Windows.
+Neither platform gets a test that passes by not running. The static half carries
+a "the scan can actually fire" guard, because a renamed function would otherwise
+make every assertion after it pass by finding nothing.
+
+MUTATION PROOF, run after committing the fix: restoring the prompt to argv and
+dropping the stdin argument turns the suite red on both the behavioural and the
+static assertions; restoring the fix returns it to green.
+
+NOT VERIFIED, AND IT SHOULD BE BEFORE ANYONE TRUSTS THE STRATEGY: no real
+`gemini` CLI is installed on this machine, so what is proven here is that the
+bytes now reach the child intact, not that the Gemini CLI parses `-p ''` plus
+stdin the way `gemini_run` assumes. `gemini_run` is the production path and has
+always used that shape, which is the basis for copying it. Worst case is
+unchanged behaviour: `splitViaGemini` returns `null` and the fallback runs,
+which is what happens today on every Windows call anyway.
+
 ## 2026-08-22 - A model name could become a second command, and the rule that forbade it was already written
 
 ISSUE #69, CLOSED AT THE BOUNDARY RATHER THAN AT THE SINK, BECAUSE THE SINK
