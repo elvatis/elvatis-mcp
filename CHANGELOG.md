@@ -38,6 +38,23 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the reader to check it against the workflow. It now points at the matrix
   instead of restating it, so it cannot drift again.
 
+### Security
+
+- **The supply-chain scan never ran on the ref that publishes to npm.** Its
+  `push:` trigger carried a `branches:` filter, and such a block does not match
+  a tag push at all, while `ci.yml` publishes from exactly a `v*` tag push. On
+  `c12c6e5`, which is also `v1.3.0`, one of the three workflows ran on the tag
+  ref and two did not, so `--provenance` attested a tree that no supply-chain
+  gate had inspected. It looked covered only because a tag normally points at a
+  commit that also landed on `main`, which is a convention and not a control:
+  nothing requires it, and there is no tag ruleset. The scan now triggers on the
+  same tag pattern the publish does, and
+  `tests/security/publish-guard.test.ts` asserts the coverage relation between
+  the two trigger lists, so adding a publish trigger without the matching scan
+  trigger goes red. The scan still reports rather than blocks;
+  [SECURITY.md](SECURITY.md#release-integrity) records that as an open
+  maintainer decision rather than leaving it implied.
+
 ## [1.3.0] - 2026-08-21
 
 The first release to contain the security fixes merged on 2026-06-28 and
