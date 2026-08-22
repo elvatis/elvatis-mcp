@@ -1,5 +1,5 @@
 /**
- * SSH exec helper — runs shell commands on the OpenClaw server.
+ * SSH exec helper - runs shell commands on the OpenClaw server.
  * Uses the system `ssh` binary (OpenSSH, available on Windows 10+, macOS, Linux).
  * No additional npm dependencies required.
  *
@@ -26,7 +26,7 @@ export interface SshConfig {
  */
 function sshBinary(): string {
   if (process.platform !== 'win32') return 'ssh';
-  // Prefer Git's ssh — works in all Windows stdio contexts
+  // Prefer Git's ssh - works in all Windows stdio contexts
   const gitSsh = 'C:\\Program Files\\Git\\usr\\bin\\ssh.exe';
   if (require('fs').existsSync(gitSsh)) return gitSsh;
   // Fallback to Windows OpenSSH
@@ -37,7 +37,7 @@ function sshBinary(): string {
 /**
  * Build the environment for the SSH child process.
  * Keep it simple: inherit process.env with HOME set.
- * No PATH manipulation — using the absolute ssh binary path instead.
+ * No PATH manipulation - using the absolute ssh binary path instead.
  */
 function sshEnv(): NodeJS.ProcessEnv {
   return { ...process.env, HOME: os.homedir() };
@@ -107,7 +107,7 @@ function sshExecOnce(cfg: SshConfig, command: string, timeoutMs: number): Promis
       // write temp/lock files in its working directory.
       cwd: os.tmpdir(),
     });
-    // Immediately signal EOF on stdin — SSH doesn't need input from us.
+    // Immediately signal EOF on stdin - SSH doesn't need input from us.
     proc.stdin!.end();
 
     let stdout = '';

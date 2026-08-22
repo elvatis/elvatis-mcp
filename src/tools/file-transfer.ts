@@ -1,5 +1,5 @@
 /**
- * file_transfer — upload/download files between local machine and OpenClaw server.
+ * file_transfer - upload/download files between local machine and OpenClaw server.
  *
  * Uses SSH (cat + base64) for transfer. No scp/sftp dependency needed.
  * Files are base64-encoded to survive shell escaping.

@@ -125,3 +125,38 @@ jobs:
       - name: Emit conformance record
         if: ${{ github.actor != 'dependabot[bot]' && github.event.head_commit.author.username != 'dependabot[bot]' }}
         run: npx --no-install aahp doctor . --json
+
+  # `aahp check`, which is the command that evaluates `forbiddenPatterns`.
+  #
+  # `aahp.config.json` has declared an em-dash ban since this repository was
+  # created and nothing has ever run it. The two AAHP steps above are `verify`
+  # and `doctor`; neither evaluates forbidden patterns. Measured on `main` at
+  # df66e15: 112 occurrences of U+2014 across 35 of 101 tracked files, while
+  # CONTRIBUTING.md published the rule and every check stayed green. A config
+  # declaring a rule that nothing executes does not prove less than it appears
+  # to prove; it proves nothing at all, while making the file it lives in read
+  # as evidence.
+  #
+  # A SEPARATE JOB, not a step in `aahp-verify` above, for two reasons. Every
+  # step there carries the Dependabot exemption `if:`, and inheriting it would
+  # make this gate conditional on who opened the pull request, when nothing
+  # about a denylist depends on that. And a job-level condition is the one-line
+  # edit that disables a gate while leaving every visible sign of it in place,
+  # which is why tests/security/forbidden-patterns.test.ts refuses one here.
+  #
+  # It fails the job on a match: `aahp check` exits 1, measured rather than
+  # assumed, and nothing on this line swallows that status.
+  governance:
+    name: governance gates (aahp check)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install dependencies (pinned AAHP CLI)
+        run: npm ci --ignore-scripts
+      - name: Run aahp check (evaluates forbiddenPatterns)
+        run: npx --no-install aahp check .

@@ -1,5 +1,5 @@
 /**
- * openclaw_cron_create / openclaw_cron_edit / openclaw_cron_delete — full cron lifecycle.
+ * openclaw_cron_create / openclaw_cron_edit / openclaw_cron_delete - full cron lifecycle.
  *
  * Extends the existing cron tools (list, run, status) with create, edit, and delete.
  * Uses the OpenClaw CLI `openclaw cron add|edit|rm` commands via SSH.

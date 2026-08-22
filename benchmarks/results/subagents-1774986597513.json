@@ -124,7 +124,7 @@
       "task_id": "code",
       "latency_ms": 41932,
       "success": true,
-      "response_preview": "```typescript\n#!/usr/bin/env node\n/**\n * elvatis-mcp — MCP server exposing OpenClaw tools to Claude Desktop, Cursor, Win",
+      "response_preview": "```typescript\n#!/usr/bin/env node\n/**\n * elvatis-mcp \u2014 MCP server exposing OpenClaw tools to Claude Desktop, Cursor, Win",
       "quality_score": 0.5
     },
     {

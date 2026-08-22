@@ -45,10 +45,10 @@ export const codexRunSchema = z.object({
   ),
   sandbox: z.enum(['full-auto', 'dangerous']).default('full-auto').describe(
     '"full-auto": workspace-write sandbox, no approval prompts (default, recommended). ' +
-    '"dangerous": bypass all approvals and sandbox — only use in isolated environments.',
+    '"dangerous": bypass all approvals and sandbox - only use in isolated environments.',
   ),
   timeout_seconds: z.number().min(10).max(600).default(120).describe(
-    'Max seconds to wait. Codex tasks can take longer than Gemini — 120s default.',
+    'Max seconds to wait. Codex tasks can take longer than Gemini - 120s default.',
   ),
   working_directory: z.string().optional().describe(
     'Working directory for the Codex process. Set this to the project root so Codex can read and write local files. Defaults to the user home directory.',

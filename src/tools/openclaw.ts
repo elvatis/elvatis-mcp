@@ -51,7 +51,7 @@ function toSshCfg(config: Config): SshConfig {
  *
  * Uses: openclaw agents send --message "<prompt>" --local --timeout <seconds>
  *   --local  : bypasses the WebSocket Gateway, runs the embedded runtime directly.
- *              Perfect for SSH-based calls — no gateway connection needed.
+ *              Perfect for SSH-based calls - no gateway connection needed.
  *   --timeout: how long the CLI waits for the agent turn to complete.
  *
  * The agent has access to all installed plugins (trading, home, etc.)
