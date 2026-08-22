@@ -1,5 +1,5 @@
 /**
- * openclaw_notify — send notifications via OpenClaw channels (WhatsApp, Telegram, etc.)
+ * openclaw_notify - send notifications via OpenClaw channels (WhatsApp, Telegram, etc.)
  *
  * Uses `openclaw message send` to deliver messages through configured channels.
  * WhatsApp is the primary channel (loaded by default on the server).

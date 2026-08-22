@@ -1,5 +1,5 @@
 /**
- * prompt_split — analyze a complex prompt and split it into sub-tasks.
+ * prompt_split - analyze a complex prompt and split it into sub-tasks.
  *
  * Returns a structured plan showing which sub-agent handles each part,
  * dependency ordering, and the actual prompts to send. The LLM client
@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import { Config } from '../config.js';
 import { spawnLocal } from '../spawn.js';
+import { validateModel } from '../validate.js';
 import { matchRules, KNOWN_AGENTS, ROUTING_RULES } from './routing-rules.js';
 
 // --- Schema ---
@@ -126,7 +127,10 @@ async function splitViaGemini(
   config: Config,
 ): Promise<Subtask[] | null> {
   const analysisPrompt = buildAnalysisPrompt(prompt);
-  const model = config.geminiModel ?? 'gemini-2.5-flash';
+  // Validated before it reaches the argv: on Windows spawnLocal joins the
+  // arguments into one cmd.exe command string, where an unvalidated value can
+  // close its own quoting and be parsed as command text. See validateModel.
+  const model = validateModel(config.geminiModel ?? 'gemini-2.5-flash');
   const cliArgs = ['-p', analysisPrompt, '--output-format', 'json'];
   cliArgs.push('--model', model);
 

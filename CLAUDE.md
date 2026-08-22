@@ -128,7 +128,7 @@ npm run build && node dist/index.js  # manual: starts in stdio mode (waits for M
 
 ## Style Rules
 
-- Never use em dashes (—, U+2014) in any content: documentation, markdown, README, code comments, GitHub issue titles, or handoff files. Use a plain hyphen (-) instead.
+- Never use em dashes (U+2014) in any content: documentation, markdown, README, code comments, GitHub issue titles, or handoff files. Use a plain hyphen (-) instead.
 - When reviewing existing files, scan for em dashes and replace them.
 - Applies to all .md files, HTML templates, comments, and .ai/handoff files.
 - If an AI tool auto-inserts em dashes (e.g. "Title - Subtitle"), fix before committing.

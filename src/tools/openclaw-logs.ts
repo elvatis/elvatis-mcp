@@ -1,5 +1,5 @@
 /**
- * openclaw_logs — view recent logs from the OpenClaw server via SSH.
+ * openclaw_logs - view recent logs from the OpenClaw server via SSH.
  *
  * Reads systemd journal, OpenClaw workspace logs, or arbitrary log files.
  */

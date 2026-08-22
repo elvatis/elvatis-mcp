@@ -1,5 +1,5 @@
 /**
- * mcp_help — routing guide and task-to-tool recommender.
+ * mcp_help - routing guide and task-to-tool recommender.
  *
  * Returns a structured guide of all available sub-agents and their strengths.
  * When a task description is provided, analyzes it and recommends the best tool(s).

@@ -36,6 +36,23 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
 
+      # BEFORE `npm test`, and deliberately not part of it. The `test` script
+      # selects test files by name, so a guard reached only through that script
+      # is removed by the same edit it exists to catch: drop the file from the
+      # list and the guard stops running, silently. Measured on 2026-08-21 at
+      # c12c6e5, an always-failing probe in tests/security/ left `npm test` at
+      # exit 0 and reported 175 passed. This step compares the enumerated list
+      # against the directory and fails closed on anything it cannot read.
+      # tests/security/test-registration.test.ts executes the script in both
+      # directions and asserts this step is still here and still consequential.
+      # Invoked by PATH, not through `npm run`. An npm script lives in
+      # package.json, which is the file this guard audits, so routing the
+      # deciding invocation through it would put the gate inside its own
+      # subject: rewriting `test-registration` to `echo ok` would disable the
+      # check with the same edit that breaks the test list.
+      - name: Every test file is registered
+        run: node scripts/check-test-registration.mjs
+
       - name: Build and unit tests
         run: npm test
 

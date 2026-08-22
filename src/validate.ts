@@ -218,6 +218,56 @@ export function validateCronId(value: string): string {
 }
 
 /**
+ * Validate a model identifier before it reaches an agent CLI.
+ *
+ * WHY THIS ONE IS NOT OPTIONAL, EVEN THOUGH THE VALUE LOOKS HARMLESS
+ * ---------------------------------------------------------------------------
+ * On Windows `spawnLocal` does not pass an argv array. It joins the arguments
+ * into ONE command string and hands it to cmd.exe (src/spawn.ts). The escaper
+ * there wraps each argument in double quotes and turns an inner `"` into `\"`,
+ * on the assumption that backslash escapes a quote. It does not: cmd.exe has no
+ * backslash escape and toggles quote state on every `"` it meets. So `\"` ENDS
+ * the quoted region and everything after it is parsed as command text, where
+ * `&`, `&&`, `|` and `>` are operators.
+ *
+ * Measured on Windows 11 with Node v22.12.0: the value
+ *   x" & echo INJECTED_MARKER & "
+ * passed as `model` runs `echo INJECTED_MARKER` as a separate command.
+ *
+ * `model` lands in OPTION-VALUE position (the token after `--model`), which the
+ * header above notes `--` cannot protect, so the leading character is refused
+ * here along with every character that cmd.exe could act on.
+ *
+ * A CHARACTER ALLOWLIST RATHER THAN A METACHARACTER DENYLIST. Model names are
+ * drawn from a small, well-behaved alphabet across all three CLIs
+ * ("claude-sonnet-4-6", "o3", "gpt-5-codex", "gemini-2.5-pro", and provider
+ * prefixed forms such as "anthropic/claude-opus-4-6" or "us.anthropic.claude:1").
+ * Nothing legitimate needs a quote, a space or a shell operator, so the safe set
+ * can be named exactly instead of guessing at the dangerous one - a denylist has
+ * to be right about every escape cmd.exe understands, and this file's own header
+ * records that grepping for metacharacters misses the flag-injection case.
+ *
+ * This does NOT make src/spawn.ts safe. It closes the caller-controlled values
+ * that reach it today; the escaper itself is still wrong for any argument added
+ * later. See the note in spawn.ts.
+ */
+export function validateModel(value: string): string {
+  if (!value || value.length === 0) throw new Error('Model must not be empty.');
+  if (value.length > 128) throw new Error('Model too long (max 128 chars).');
+  // Must start with an alphanumeric so the value can never be read as a flag.
+  // Body: alphanumerics, hyphen, underscore, dot, colon, slash. No quotes, no
+  // whitespace, no shell operators, no backslash.
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/.test(value)) {
+    throw new Error(
+      `Invalid model "${value}". Only alphanumerics, hyphens, underscores, dots, colons, ` +
+      'and forward slashes are allowed, and the model must start with an alphanumeric character.',
+    );
+  }
+  if (value.includes('..')) throw new Error('Model must not contain "..".');
+  return value;
+}
+
+/**
  * Single-quote-escape a string for safe embedding in a POSIX shell command.
  * The resulting string is wrapped in single quotes. Any embedded single quotes
  * are escaped by ending the quote, inserting a literal single quote, then

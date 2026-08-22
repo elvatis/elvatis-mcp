@@ -1,5 +1,5 @@
 /**
- * prompt_split_execute — execute a SplitPlan produced by prompt_split.
+ * prompt_split_execute - execute a SplitPlan produced by prompt_split.
  *
  * Takes a plan (or runs prompt_split inline), executes subtasks in dependency
  * order using parallelizable_groups, passes results between dependent tasks,

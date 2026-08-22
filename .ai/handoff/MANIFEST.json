@@ -11,9 +11,9 @@
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:12bbcfb5dc4bd7421093a94af70571d3769569499a7df20644738c1d82e256c9",
+      "checksum": "sha256:676427465a091d92c9309d22de27dff7d1db347a5ae09df6858bce67339daf80",
       "updated": "2026-08-22T09:08:26Z",
-      "lines": 979,
+      "lines": 1201,
       "summary": "ISSUE #76 IS THE THIRD INSTANCE OF ONE CLASS IN THIS REPOSITORY AND THE ONLY ONE"
     },
     "NEXT_ACTIONS.md": {
@@ -50,7 +50,7 @@
       "checksum": "sha256:2c3a7ba7ae89b5b64ef1158261a24e5ea14f0468785d7ca8c08c9d53bc354c30",
       "updated": "2026-08-22T09:07:46Z",
       "lines": 38,
-      "summary": "- **TypeScript strict** — no `any`, no ts-ignore"
+      "summary": "- **TypeScript strict** - no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",
@@ -71,7 +71,7 @@
       "summary": "{"
     }
   },
-  "quick_context": "ISSUE #76 IS THE THIRD INSTANCE OF ONE CLASS IN THIS REPOSITORY AND THE ONLY ONE - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
+  "quick_context": "ISSUE #69, CLOSED AT THE BOUNDARY RATHER THAN AT THE SINK, BECAUSE THE SINK - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
   "token_budget": {
     "manifest_only": 85,
     "manifest_plus_core": 19002,

@@ -1,5 +1,5 @@
 /**
- * local_llm_models — list and manage models on the local LLM server.
+ * local_llm_models - list and manage models on the local LLM server.
  *
  * Works with any OpenAI-compatible server that exposes GET /v1/models.
  * LM Studio also supports POST /v1/models/load and POST /v1/models/unload
