@@ -119,6 +119,21 @@ the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Nothing looked for a credential in this public repository, at either of
+  the two layers that could.** GitHub secret scanning, push protection,
+  non-provider patterns and validity checks are all disabled, and
+  `.github/workflows/` held no scanner: `supply-chain-guard.yml` is a
+  dependency scanner and has never looked for a secret. Each layer reads as
+  the other one's backstop, so zero of two looks the same from inside any
+  single file. `.github/workflows/secret-scan.yml` now runs gitleaks over the
+  FULL history on every pull request, every push to `main` and every release
+  tag, with no `paths` or `paths-ignore` filter of any kind and no shallow
+  clone. Verified in both directions against the real scanner before landing:
+  140 commits of current history scan clean, and a synthetic AWS key planted
+  in a markdown file under `.ai/handoff/` - the path a `paths-ignore` would
+  have excluded - is caught, redacted, and fails the job. The platform layer
+  is a repository setting and remains OFF; only push protection can stop a
+  credential before it becomes public, so issue #71 stays open for that half.
 - **The supply-chain scan never ran on the ref that publishes to npm.** Its
   `push:` trigger carried a `branches:` filter, and such a block does not match
   a tag push at all, while `ci.yml` publishes from exactly a `v*` tag push. On

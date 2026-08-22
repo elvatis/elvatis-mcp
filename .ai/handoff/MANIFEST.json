@@ -11,70 +11,70 @@
   },
   "files": {
     "STATUS.md": {
-      "checksum": "sha256:7eca614ee34c4489e46b6075e6879fe19086ab5d2a3d5354e02f75070afade8a",
+      "checksum": "sha256:e8ecff3e0c071f0048cbf7296319a676f5e45cd37143efb51515188ec209a812",
       "updated": "2026-08-22T12:16:25Z",
-      "lines": 1258,
+      "lines": 1314,
       "summary": "ISSUE #81: THE ANALYSIS PROMPT WENT IN ARGV AND CMD.EXE CUT IT AT THE FIRST NEWLINE"
     },
     "NEXT_ACTIONS.md": {
       "checksum": "sha256:ca50aeddc5d8554505879affb60d87473e9f174213d61f442555cd11bbaaeab7",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 163,
       "summary": "- `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json`"
     },
     "LOG.md": {
       "checksum": "sha256:faf63087b5f8680e2842352b558c57600445dfd700fb5ebe5b24f94a67b384b0",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 23,
       "summary": "**What happened:**"
     },
     "LOG-ARCHIVE.md": {
       "checksum": "sha256:7f4fcbe216b91b869ae80004c9ad17e46987b2ff173c069cbae0da7aee7db1f5",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 10,
       "summary": "(no summary available)"
     },
     "DASHBOARD.md": {
       "checksum": "sha256:b39a95f60edee0e9fa78dd3fd0f384f0f9105e9ba2ca8e11368dd39c8136913e",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 51,
       "summary": "```"
     },
     "TRUST.md": {
       "checksum": "sha256:050cc4dde9249cd2a49bb0f4d00ee65722b0890937ead51a4bc37e1867b07620",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 84,
       "summary": "| Level | Meaning |"
     },
     "CONVENTIONS.md": {
       "checksum": "sha256:f953a2d748484fd9163552ca4be53df18ccc27e39878161c2d5d9c3f03cf89a7",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 38,
       "summary": "- **TypeScript strict** - no `any`, no ts-ignore"
     },
     "WORKFLOW.md": {
       "checksum": "sha256:cf9c640c1b4398449f2e206a214189651799823ef9bdb1d5677eab9f9dbf893b",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 167,
       "summary": "| Agent | Model | Role | Responsibility |"
     },
     "GROUNDING.md": {
       "checksum": "sha256:7ef8cece585dc5defb4285175b9ba560d5469675df553d4ce28ec9e7aec24343",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 209,
       "summary": "This register EXTENDS existing AAHP machinery; it does not fork or replace it. It"
     },
     "pii-allowlist.json": {
       "checksum": "sha256:7c1051f6e2bc3943b7c1dbe4da229694455681b8875a346c99279e555edb733f",
-      "updated": "2026-08-22T09:07:46Z",
+      "updated": "2026-08-22T09:36:30Z",
       "lines": 4,
       "summary": "{"
     }
   },
-  "quick_context": "ISSUE #69, CLOSED AT THE BOUNDARY RATHER THAN AT THE SINK, BECAUSE THE SINK - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
+  "quick_context": "ISSUE #71, HALF CLOSED, AND THE HALF THAT REMAINS IS NOT REACHABLE FROM THIS - `src/session-registry.ts`: persistent session registry at `~/.openclaw/cli-bridge/cli-sessions.json` ",
   "token_budget": {
     "manifest_only": 85,
-    "manifest_plus_core": 19002,
-    "full_read": 23813
+    "manifest_plus_core": 18949,
+    "full_read": 23760
   }
 }
