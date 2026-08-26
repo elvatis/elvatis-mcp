@@ -120,7 +120,7 @@ jobs:
       # deletion that froze a sibling repository for eight releases.
       #
       # Pinned by commit, with the version it corresponds to in the trailing comment.
-      - uses: homeofe/supply-chain-guard@fc8fb8f4989cd1960f48833fbaa1f726df897bbc # v5.28.1
+      - uses: homeofe/supply-chain-guard@d4639fcd012c9babb762d342852d4930c3b9cdc8 # v6.0.0
         with:
           fail-on: critical
           comment-on-pr: true
